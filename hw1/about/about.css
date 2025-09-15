@@ -527,75 +527,97 @@ body {
   margin-top: 2rem;
 }
 
-.interests-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1.5rem;
-  min-height: 200px;
+/* Interests - minimalist badges */
+.interest-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
-.interest-card {
+.interest-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: rgba(59, 130, 246, 0.06);
+  color: var(--text-color);
+  font-size: 0.85rem;
+  line-height: 1;
+  transition: all 0.2s ease;
+}
+
+.interest-badge i {
+  color: var(--primary-color);
+  font-size: 0.9rem;
+}
+
+.interest-badge:hover {
+  background: var(--primary-color);
+  color: var(--secondary-color);
+  border-color: transparent;
+  transform: translateY(-1px);
+}
+
+/* Interest small tiles with images */
+.interest-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.interest-tile {
   background: var(--bg-light);
-  padding: 2rem 1.5rem;
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  overflow: hidden;
   box-shadow: var(--shadow);
-  border: 2px solid var(--primary-color);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
-  text-align: center;
-  transition: all 0.3s ease;
-  cursor: pointer;
+  justify-content: center;
+  padding: 0.5rem;
+  min-height: 120px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   position: relative;
-  min-height: 150px;
-  opacity: 1;
-  visibility: visible;
 }
 
-.interest-card:hover {
-  transform: translateY(-6px);
+.interest-tile:hover {
+  transform: translateY(-2px);
   box-shadow: var(--shadow-hover);
 }
 
-.interest-card i {
-  font-size: 2.5rem;
-  color: var(--primary-color);
-  transition: all 0.3s ease;
+.interest-img {
+  width: 100%;
+  height: 70px;
+  object-fit: cover;
+  border-radius: 6px;
 }
 
-.interest-card:hover i {
-  transform: scale(1.1);
-}
-
-.interest-card span {
-  font-weight: 600;
-  color: var(--text-color);
-  font-size: 1.1rem;
-}
-
-/* Tooltip */
-.interest-card::before {
-  content: attr(data-tooltip);
+.interest-chip {
   position: absolute;
-  bottom: -40px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--text-color);
-  color: var(--bg-light);
-  padding: 0.5rem 1rem;
-  border-radius: var(--radius);
-  font-size: 0.9rem;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transition: all 0.3s ease;
-  z-index: 10;
+  left: 8px;
+  bottom: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  font-size: 0.8rem;
+  line-height: 1;
+  backdrop-filter: blur(2px);
 }
 
-.interest-card:hover::before {
-  opacity: 1;
-  bottom: -50px;
+.interest-placeholder {
+  color: var(--primary-color);
+}
+
+.interest-placeholder i {
+  font-size: 1.6rem;
 }
 
 /* Copy Button Styles */

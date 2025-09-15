@@ -1,3 +1,4 @@
+"use strict";
 // Footer 配置檔案 - 從home頁面獲取footer內容和樣式
 // 只有home頁面有footer HTML，其他頁面通過JavaScript載入
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {

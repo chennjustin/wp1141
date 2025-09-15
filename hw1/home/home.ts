@@ -1,6 +1,4 @@
-// 導入共用的語言切換類
-import { LanguageToggle } from '../src/language-toggle.js';
-
+// 引入共用類（Navigation, ThemeToggle, ScrollAnimations 在 script.ts 中定義）
 // 照片載入處理
 class ProfileImageHandler {
   private profilePhoto: HTMLImageElement | null;
@@ -44,7 +42,6 @@ class ProfileImageHandler {
     }
   }
 }
-
 
 // Title動畫功能
 class TitleAnimation {
@@ -107,13 +104,13 @@ class TitleAnimation {
 
   private updateDots(): void {
     // 移除所有active類
-    this.dots.forEach((dot: any) => {
+    this.dots.forEach((dot) => {
       dot.classList.remove('active');
     });
     
     // 為當前對應的點點添加active類
     if (this.dots[this.currentIndex]) {
-      (this.dots[this.currentIndex] as any).classList.add('active');
+      this.dots[this.currentIndex].classList.add('active');
     }
   }
 }
@@ -177,12 +174,13 @@ class ThemeToggle {
   }
 }
 
+// 語言切換功能已移除，翻譯文案現在直接寫在 HTML 中
+
 // 頁面載入完成後初始化所有功能
 document.addEventListener('DOMContentLoaded', () => {
   new ProfileImageHandler();
   new TitleAnimation();
   new ThemeToggle();
-  new LanguageToggle();
 
   // 添加頁面載入動畫
   document.body.style.opacity = '0';

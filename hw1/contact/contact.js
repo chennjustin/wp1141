@@ -1,3 +1,4 @@
+"use strict";
 // 引入共用類（Navigation, ThemeToggle, ScrollAnimations 在 script.ts 中定義）
 // 滾動動畫功能（Contact頁面專用）
 class ContactScrollAnimations {
@@ -99,10 +100,11 @@ class ContactForm {
         if (!this.form)
             return;
         this.form.addEventListener('submit', (e) => {
+            var _a;
             e.preventDefault();
-            const inputs = this.form.querySelectorAll('input, textarea');
+            const inputs = (_a = this.form) === null || _a === void 0 ? void 0 : _a.querySelectorAll('input, textarea');
             let isFormValid = true;
-            inputs.forEach((input) => {
+            inputs === null || inputs === void 0 ? void 0 : inputs.forEach((input) => {
                 if (!this.validateField(input)) {
                     isFormValid = false;
                 }

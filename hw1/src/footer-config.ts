@@ -36,9 +36,6 @@ async function loadFooterFromHome(): Promise<void> {
   }
 }
 
-// 引用navbar-config.ts中的loadHomeStyles函數
-declare function loadHomeStyles(): void;
-
 // 包裝函數以避免重複定義
 function loadHomeStylesFromNavbar(): void {
   // 如果navbar-config.ts已載入，直接調用

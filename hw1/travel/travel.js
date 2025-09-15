@@ -1,3 +1,4 @@
+"use strict";
 // 引入共用類（Navigation, ThemeToggle, ScrollAnimations 在 script.ts 中定義）
 // 目的地導航功能
 class DestinationNavigation {
@@ -222,7 +223,6 @@ class TimelineAccordion {
                 }, photoPairs.length * 200);
             }
         }, 100);
-        // 移除自動滾動功能，讓用戶自己滑動
     }
     closeDay(dayNumber) {
         const timelineBlock = document.querySelector(`[data-day="${dayNumber}"]`);

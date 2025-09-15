@@ -2,11 +2,10 @@
   "compilerOptions": {
     "target": "es6",
     "module": "esnext",
-    "outDir": "./dist",      
-    "rootDir": "./",         
     "strict": true,
     "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "./"  // 保證輸出回原資料夾（可加可不加）
   },
   "include": [
     "home/**/*.ts",

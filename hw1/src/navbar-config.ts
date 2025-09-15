@@ -196,7 +196,7 @@ function updateActiveNavLink(): void {
   const currentPage = window.location.pathname;
   const navLinks = document.querySelectorAll('.nav-link');
   
-  navLinks.forEach((link: any) => {
+  navLinks.forEach((link) => {
     link.classList.remove('active');
     const href = link.getAttribute('href');
     

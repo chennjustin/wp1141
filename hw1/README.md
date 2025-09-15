@@ -1,246 +1,132 @@
-# 陳竑齊 - 個人網站
+# 陳竑齊（Hung‑Chi, Justin）個人網站
 
-一個現代化、響應式的個人網站，使用 HTML、CSS 和 TypeScript 建構，展現個人履歷、旅行經歷和聯絡資訊。
+全站使用 HTML、CSS 與 TypeScript 實作，並支援深色/淺色主題。
 
-## 🌟 網站特色
+## 內容導覽
 
-### 現代化設計
-- 簡潔優雅的視覺設計，採用溫暖的配色方案
-- 流暢的動畫效果和懸停互動
-- 深色/淺色主題切換功能
-- 完全響應式設計，適配各種設備
+- 首頁 Home：名片式自我介紹與動態標題
+- 關於我 About：聯絡資訊、硬軟實力、學歷、經歷、興趣
+- 旅行 Travel：日本、香港與澳門的旅行紀錄（含圖文與亮點）
+- 聯繫 Contact：常用聯絡方式與表單（含即時驗證）
 
-### 多頁面架構
-- **首頁 (Home)**: 個人介紹卡片，包含動態標題輪播和興趣標籤
-- **關於我 (About)**: 詳細的個人履歷、技能展示、工作經驗和興趣
-- **旅行 (Travel)**: 互動式旅行相簿，展示日本、香港澳門的旅程
-- **聯繫 (Contact)**: 聯絡資訊和訊息表單
+## 網站特色與互動
 
-### 豐富的互動功能
-- **動態標題輪播**: 首頁標題自動切換，配合指示點動畫
-- **模態視窗**: 旅行頁面的詳細旅程展示
-- **主題切換**: 深色/淺色模式，自動保存偏好
-- **滾動動畫**: 元素進入視窗時的淡入動畫
-- **表單驗證**: 即時表單驗證和錯誤提示
-- **複製功能**: 一鍵複製聯絡資訊
+- 主題切換：支援深色/淺色模式，會記住偏好
+- 平滑動畫：進場淡入、卡片懸停、標題輪播、時間軸/模態切換
+- 模態視窗：旅行目的地詳情以模態呈現，帶旗幟、亮點與相片牆
+- 表單體驗：即時欄位驗證、錯誤提示、送出成功提醒
+- 複製便捷：在 About 可一鍵複製 Email/電話
+- 響應式設計（開發中）：桌機、平板、手機皆可舒適閱讀
+- 中英切換：開發中
 
-## 📱 響應式設計
+## 網站文案與故事
 
-### 桌面版 (>768px)
-- 兩欄布局（個人卡片 + 介紹文字）
-- 完整的導航欄和所有功能
-- 網格布局展示內容
+### 首頁 Home
 
-### 平板版 (768px-480px)
-- 調整為單欄布局
-- 保持主要功能
-- 優化觸控體驗
+- 名稱與標題：
+  - 陳竑齊（Hung‑Chi Chen）
+  - 標題輪播：「臺灣大學資訊管理學系」「SITCON2025行銷組」「努力賺錢中」
+- 自介重點：
+  - 練習不被內卷影響，維持自己的步調
+  - 對資訊技術、網頁開發、資料分析、量化與心理學有興趣
+  - 研究助理的學習與合作經驗
+- 興趣標籤：投資小白、網頁開發、資料分析、魔術、排球、攝影、桌遊
 
-### 手機版 (<480px)
-- 漢堡選單導航
-- 垂直堆疊布局
-- 觸控友好的按鈕大小
+### 關於我 About
 
-## 🎨 設計靈感
+- 聯絡資訊：Email、電話、GitHub、LinkedIn，支援複製按鈕
+- Hard Skills：Python、C/C++、R、Latex、Web Development、Node.js、Git
+- Soft Skills：投資理財、團隊合作、專案管理、溝通協調、解決問題
+- 學歷：成功高中（2020–2023）、臺灣大學資訊管理學系（2023–2027）
+- 個人陳述：喜歡排球/攝影/桌遊/收集吊飾；正在學會用自己的節奏做事，擅長團隊協作與專案管理
+- 活動與經驗（節錄）：
+  - 2024 資管營隊輔組（Sep.2023–Feb.2024）
+  - 2024 宿營攝影組（Apr.2024–Aug.2024）
+  - 2025 資管營活動組（Sep.2024–Feb.2025）
+  - DevFest Taipei 2024 與會者（Nov.2024）
+  - 2024 TSMC IT CareerHack 台積電校園黑客松（Feb.2025）
+  - SITCON2025 行銷組（Sep.2024–Mar.2025）
+  - 魔術課助教（Jun.2025–Sep.2025）
+- 興趣：採用「小型徽章」的極簡呈現（排球、桌遊、攝影），更俐落不占版面
 
-### 首頁設計
-- **個人卡片**: 頭像、姓名、動態標題、興趣標籤、社交連結
-- **介紹文字**: 個人簡介和背景故事
-- **動畫效果**: 標題自動輪播，指示點同步變化
+### 旅行 Travel
 
-### 旅行頁面
-- **目的地卡片**: 封面圖片、日期、地點、描述、標籤
-- **模態視窗**: 國旗、行程亮點、照片集、Google地圖
-- **互動設計**: 懸停效果、點擊展開詳細資訊
+- 日本 Osaka & Kyoto（2025/06）
+  - 卡片摘要：「第一次不是和家人出國，是和朋友一起的旅程…」
+  - 模態亮點：環球影城玩到晚、萬國博覽會、同伴醉到在樓梯間溜滑梯、吃遍日本、飛機故障多留一天大阪
+  - 相片：`jp1–jp11.jpg`
+- 香港與澳門（2025/08）
+  - 卡片摘要：「成為導遊的港澳六天五夜…」
+  - 模態亮點：港式燒臘與冰室、蛋塔巡禮、解決一家大小食衣住行、葡式建築與奢華賭場、氹仔的繁華
+  - 相片：`hm (1)–(7).jpg`
+- 澳洲（2026/07, Coming Soon）
+  - 計畫亮點：雪梨歌劇院、墨爾本咖啡文化、大堡礁潛水、袋鼠與考拉、大洋路自駕、黃金海岸
 
-## 🛠️ 技術規格
+### 聯繫 Contact
 
-### 前端技術
-- **HTML5**: 語義化標記，無障礙設計
-- **CSS3**: Flexbox、Grid、動畫、響應式設計
-- **TypeScript**: 類型安全的JavaScript，模組化程式設計
-- **Font Awesome**: 圖標庫
-- **Google Fonts**: Inter 字體
+- 四類卡片（Email/Phone/GitHub/LinkedIn），並有「發送郵件/撥打電話/前往 GitHub/查看檔案」等快速動作
+- 訊息表單欄位：姓名、Email、主旨、訊息
+- 互動：即時驗證、錯誤顯示、送出成功提示並重置表單
 
-### 架構特色
-- **模組化設計**: 每個頁面獨立的TypeScript文件
-- **共用組件**: 導航欄和頁腳由首頁統一管理
-- **類型安全**: 完整的TypeScript類型定義
-- **現代化API**: 使用Fetch API、Intersection Observer等
+## 介面與動線
 
-## 📁 檔案結構
+- 導航列：固定於頂端，滾動會改變樣式；手機為漢堡選單
+- Navbar/Footer：非首頁頁面會自動載入首頁的 Navbar/Footer，確保風格一致
+- 動畫節奏：元素淡入、卡片升起、圖示縮放、點點同步，讓閱讀不打擾但有層次
+
+## 技術與實作
+
+- HTML/CSS：語義化標記、CSS 變數、Grid/Flex、自訂動畫、RWD
+- TypeScript：頁面模組（home.ts、about.ts、travel.ts、contact.ts），與共用腳本（navbar-config.ts、footer-config.ts）
+- IntersectionObserver：滾動進場與時間軸/卡片動畫觸發
+- LocalStorage：主題偏好保存
+- 注意：語言切換已移除，所有文案直接寫在 HTML（避免多語程式邏輯，管理更單純）
+
+## 專案結構
 
 ```
-├── home/
-│   ├── index.html          # 首頁
-│   ├── home.css           # 首頁樣式
-│   ├── home.ts            # 首頁邏輯
-│   └── home.js            # 編譯後的JavaScript
-├── about/
-│   ├── about.html         # 關於我頁面
-│   ├── about.css          # 關於我樣式
-│   ├── about.ts           # 關於我邏輯
-│   └── about.js           # 編譯後的JavaScript
-├── travel/
-│   ├── travel.html        # 旅行頁面
-│   ├── travel.css         # 旅行樣式
-│   ├── travel.ts          # 旅行邏輯
-│   └── travel.js          # 編譯後的JavaScript
-├── contact/
-│   ├── contact.html       # 聯絡頁面
-│   ├── contact.css        # 聯絡樣式
-│   ├── contact.ts         # 聯絡邏輯
-│   └── contact.js         # 編譯後的JavaScript
-├── src/
-│   ├── navbar-config.ts   # 導航欄配置
-│   ├── footer-config.ts   # 頁腳配置
-│   └── [圖片檔案]         # 個人照片和旅行照片
-├── tsconfig.json          # TypeScript配置
-└── README.md              # 說明文件
+hw1/
+├── home/               首頁（index.html、home.css、home.ts/js）
+├── about/              關於我（about.html、about.css、about.ts/js）
+├── travel/             旅行（travel.html、travel.css、travel.ts/js）
+├── contact/            聯繫（contact.html、contact.css、contact.ts/js）
+├── src/                共用資源（navbar-config.ts/js、footer-config.ts/js、圖片）
+├── tsconfig.json
+└── README.md
 ```
 
-## 🚀 使用方式
+## 在本機開啟（可再home的資料夾找到index.html）
 
-### 開發環境設置
-1. **克隆專案**:
-   ```bash
-   git clone [專案網址]
-   cd [專案目錄]
-   ```
+1) 安裝 TypeScript 並編譯：
 
-2. **TypeScript編譯**:
-   ```bash
-   tsc
-   ```
-
-3. **本地伺服器**:
-   ```bash
-   # 使用 Python
-   python -m http.server 8000
-   
-   # 或使用 Node.js
-   npx serve .
-   ```
-
-4. **開啟網站**: 瀏覽器訪問 `http://localhost:8000/home/index.html`
-
-## 🎯 頁面功能詳解
-
-### 首頁 (Home)
-- **個人卡片**: 大頭照、姓名、動態標題輪播
-- **標題動畫**: 自動切換「臺灣大學資訊管理學系」、「SITCON2025行銷組」、「努力賺錢中」
-- **興趣標籤**: 投資小白、網頁開發、資料分析、魔術、排球、攝影、桌遊
-- **社交連結**: Email、GitHub、LinkedIn、Instagram
-
-### 關於我 (About)
-- **聯絡資訊**: 電子郵件、電話、地址、社交媒體（含複製功能）
-- **技能展示**: 
-  - Hard Skills: Python、C/C++、R、JavaScript、Node.js、Git
-  - Soft Skills: 投資理財、團隊協作、專案管理、溝通協調、解決問題
-- **學歷背景**: 成功高中、臺灣大學資訊管理學系
-- **工作經驗**: 資管營工人、宿營工人、SITCON2025行銷組、補習班魔術助教、家教老師、研究助理
-- **興趣愛好**: 排球、桌遊、攝影（含懸停提示）
-
-### 旅行 (Travel)
-- **日本之旅 (2025.06)**: 大阪京都自由行，環球影城、萬國博覽會
-- **香港澳門 (2025.08)**: 家庭旅遊，港式美食、葡式建築、賭場體驗
-- **澳洲計畫 (2026.07)**: 未來行程，雪梨、墨爾本、大堡礁（Coming Soon）
-- **互動功能**: 點擊卡片開啟詳細模態視窗，包含照片集、行程亮點、Google地圖
-
-### 聯繫 (Contact)
-- **聯絡方式**: 電子郵件、電話、GitHub、LinkedIn
-- **訊息表單**: 姓名、郵件、主旨、訊息內容
-- **表單驗證**: 即時驗證和錯誤提示
-
-## 🎨 自訂化指南
-
-### 更換個人資訊
-1. 編輯各頁面HTML中的文字內容
-2. 更新個人卡片中的姓名、學校、技能標籤
-3. 修改工作經驗和學歷資訊
-
-### 添加個人照片
-1. 將照片放入 `src/` 資料夾
-2. 更新HTML中的圖片路徑
-3. 調整CSS中的圖片尺寸和樣式
-
-### 修改顏色主題
-編輯CSS文件中的顏色變數：
-```css
-:root {
-  --primary-color: #550000;
-  --background-color: #FAF0E6;
-  --text-color: #333;
-  --accent-color: #f39c12;
-}
-```
-
-### 添加新的旅行目的地
-1. 在 `travel.html` 中添加新的目的地卡片
-2. 創建對應的模態視窗
-3. 在 `travel.ts` 中更新導航邏輯
-4. 添加照片到 `src/` 資料夾
-
-## 🌙 深色模式
-
-網站支援深色/淺色主題切換：
-- 點擊導航欄右側的月亮/太陽圖標
-- 主題偏好會自動保存到本地儲存
-- 支援所有頁面和組件
-
-## 📱 瀏覽器支援
-
-- Chrome 60+
-- Firefox 55+
-- Safari 12+
-- Edge 79+
-
-## 🔧 開發說明
-
-### TypeScript 編譯
 ```bash
-# 編譯所有TypeScript文件
-tsc
-
-# 監聽文件變化自動編譯
-tsc --watch
+cd hw1
+npx tsc
 ```
 
-### 主要類別架構
-- **共用類別** (script.ts):
-  - `Navigation`: 頁面導航和移動選單
-  - `ThemeToggle`: 深色/淺色主題切換
-  - `ScrollAnimations`: 滾動淡入動畫
-  - `SkillAnimator`: 技能進度條動畫
-  - `ContactForm`: 表單驗證和提交
-  - `CardAnimations`: 卡片懸停效果
+2) 啟動簡單伺服器：
 
-- **頁面專用類別**:
-  - `TitleAnimation` (home.ts): 首頁標題輪播動畫
-  - `DestinationNavigation` (travel.ts): 旅行頁面模態視窗管理
-  - `AboutScrollAnimations` (about.ts): 關於頁面滾動動畫
-  - `ContactScrollAnimations` (contact.ts): 聯絡頁面滾動動畫
+```bash
+python -m http.server 8000
+# 或
+npx serve .
+```
 
-### 模組化設計
-- 每個頁面有獨立的HTML、CSS、TypeScript文件
-- 共用組件由首頁統一管理
-- TypeScript提供類型安全和更好的開發體驗
+3) 瀏覽 `http://localhost:8000/hw1/home/index.html`
 
-## 📞 聯絡資訊
+## 自訂化建議
 
-- **電子郵件**: chenjustin824@ntu.im
-- **GitHub**: [chennjustin](https://github.com/chennjustin)
-- **LinkedIn**: [Hung-Chi Chen](https://www.linkedin.com/in/hung-chi-chen-b82b86369/)
-- **電話**: 0963617655
+- 修改文案：直接編輯各頁面的 HTML 文字
+- 更換相片：把檔案放到 `hw1/src/` 並更新對應路徑
+- 新增旅行：於 `travel.html` 新增卡片與模態、相片與亮點，必要時在 `travel.ts` 綁定互動
+- 調色：調整 `about.css/home.css/travel.css/contact.css` 冒頭的 CSS 變數（`--primary-color` 等）
 
-## 📝 更新日誌
+## 聯絡方式
 
-### v1.0.0 (2025.01)
-- 初始版本發布
-- 完成四頁面架構
-- 實現響應式設計
-- 添加TypeScript支援
-- 完成旅行模態視窗功能
+- Email：chenjustin824@ntu.im
+- GitHub：chennjustin
+- LinkedIn：Hung‑Chi Chen
+- Phone：0963617655
 
 ---
 
