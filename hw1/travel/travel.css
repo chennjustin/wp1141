@@ -21,16 +21,17 @@
 body.dark-mode {
   --primary-color: #EDEDED;
   --secondary-color: #121212;
-  --accent-color: #B8860B;
+  --accent-color: #EDEDED;
   --text-color: #EDEDED;
   --text-light: #B0B0B0;
   --bg-color: #121212;
-  --bg-light: #1a1a1a;
-  --card-bg: #1a1a1a;
+  --bg-light: #2a2a2a;
+  --card-bg: #2a2a2a;
   --border-color: #333333;
   --shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
   --shadow-light: 0 4px 15px rgba(0, 0, 0, 0.3);
   --shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.4);
+  --light-blue: #87CEEB;
 }
 
 /* Base Styles */
@@ -71,8 +72,8 @@ body {
 }
 
 body.dark-mode .navbar {
-  background: rgba(26, 26, 26, 0.95);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  background: rgba(18, 18, 18, 0.95);
+  box-shadow: 0 2px 20px rgba(255, 255, 255, 0.1);
 }
 
 .nav-container {
@@ -91,6 +92,10 @@ body.dark-mode .navbar {
   color: var(--primary-color);
   text-decoration: none;
   transition: var(--transition);
+}
+
+body.dark-mode .nav-logo a {
+  color: #ededed;
 }
 
 .nav-logo a:hover {
@@ -177,6 +182,14 @@ body.dark-mode .navbar {
   color: #7f8c8d;
   max-width: 600px;
   margin: 0 auto;
+}
+
+body.dark-mode .page-title {
+  color: white;
+}
+
+body.dark-mode .page-subtitle {
+  color: var(--light-blue);
 }
 
 /* Destination Selection */
@@ -1256,6 +1269,18 @@ body.dark-mode .navbar {
 
 .footer-social a:hover {
   color: rgba(255, 255, 255, 0.8);
+}
+
+body.dark-mode .footer-social a {
+  color: #121212;
+}
+
+body.dark-mode .destination-date {
+  color: white;
+}
+
+body.dark-mode .destination-location {
+  color: white;
 }
 
 /* Responsive Design */
