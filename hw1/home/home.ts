@@ -1,4 +1,5 @@
-// 引入共用類（Navigation, ThemeToggle, ScrollAnimations 在 script.ts 中定義）
+// 導入共用的語言切換類
+import { LanguageToggle } from '../src/language-toggle.js';
 
 // 照片載入處理
 class ProfileImageHandler {
@@ -181,6 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
   new ProfileImageHandler();
   new TitleAnimation();
   new ThemeToggle();
+  new LanguageToggle();
 
   // 添加頁面載入動畫
   document.body.style.opacity = '0';

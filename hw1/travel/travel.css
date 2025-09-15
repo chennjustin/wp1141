@@ -642,23 +642,6 @@ body.dark-mode .page-subtitle {
   transition: var(--transition);
 }
 
-.travel-map {
-  margin-bottom: 1rem;
-}
-
-.travel-map h3 {
-  font-size: 1.3rem;
-  font-weight: 600;
-  color: var(--text-color);
-  margin-bottom: 1rem;
-}
-
-.map-container {
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-}
-
 /* Timeline Overview */
 .timeline-overview {
   max-width: 1200px;
@@ -1335,8 +1318,7 @@ body.dark-mode .destination-location {
   }
 
   .trip-highlights h3,
-  .photo-memories h3,
-  .travel-map h3 {
+  .photo-memories h3 {
     font-size: 1.2rem;
   }
 }

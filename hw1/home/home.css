@@ -135,6 +135,30 @@ body {
   transform: translateY(-2px);
 }
 
+.language-toggle {
+  background: none;
+  border: none;
+  padding: 0.75rem;
+  border-radius: 8px;
+  color: var(--primary-color);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.language-toggle:hover {
+  background: var(--border-color);
+  transform: translateY(-2px);
+}
+
+.language-toggle span {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
 .hamburger {
   display: none;
   flex-direction: column;
