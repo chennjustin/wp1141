@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "es6", 
+    "strict": false,
+    "esModuleInterop": true
+  },
+  "include": [
+    "home/**/*.ts",
+    "about/**/*.ts",
+    "travel/**/*.ts",
+    "contact/**/*.ts",
+    "src/**/*.ts"
+  ],
+  "exclude": ["node_modules"]
+}

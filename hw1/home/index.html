@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Personal Website-HOME</title>
+  <link rel="stylesheet" href="home.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <div class="nav-logo">
+        <a href="../home/index.html">chccc</a>
+      </div>
+      <ul class="nav-menu">
+        <li class="nav-item">
+          <a href="../home/index.html" class="nav-link active">
+            <i class="fas fa-home"></i>
+            <span>Home</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="../about/about.html" class="nav-link">
+            <i class="fas fa-user"></i>
+            <span>About</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="../travel/travel.html" class="nav-link">
+            <i class="fas fa-plane"></i>
+            <span>Travel</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="../contact/contact.html" class="nav-link">
+            <i class="fas fa-envelope"></i>
+            <span>Contact</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <button class="theme-toggle" id="themeToggle">
+            <i class="fas fa-moon"></i>
+          </button>
+        </li>
+      </ul>
+      <div class="hamburger">
+        <span class="bar"></span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Home Page -->
+    <section id="home" class="page active">
+      <div class="container">
+        <div class="home-layout">
+          <!-- Personal Card -->
+          <div class="personal-card">
+            <div class="profile-image">
+              <img src="../src/大頭照.jpg" alt="陳竑齊的照片" class="profile-photo">
+              <!-- 如果照片載入失敗，顯示備用圖示 -->
+              <div class="image-placeholder" style="display: none;">
+                <i class="fas fa-user"></i>
+              </div>
+            </div>
+            <div class="profile-info">
+              <h1 class="name">陳竑齊</h1>
+              <div class="title-container">
+                <p class="title animated-title">臺灣大學資訊管理學系</p>
+              </div>
+              <div class="profile-dots">
+                <span class="dot active" data-index="0"></span>
+                <span class="dot" data-index="1"></span>
+                <span class="dot" data-index="2"></span>
+              </div>
+            </div>
+            <div class="tags-container">
+              <div class="tag">投資小白</div>
+              <div class="tag">網頁開發</div>
+              <div class="tag">資料分析</div>
+              <div class="tag">魔術</div>
+              <div class="tag">排球</div>
+              <div class="tag">攝影</div>
+              <div class="tag">桌遊</div>
+            </div>
+            <div class="social-links">
+              <a href="mailto:chenjustin824@ntu.im" class="social-link">
+                <i class="fas fa-envelope"></i>
+              </a>
+              <a href="https://github.com/chennjustin" target="_blank" class="social-link">
+                <i class="fab fa-github"></i>
+              </a>
+              <a href="https://www.linkedin.com/in/hung-chi-chen-b82b86369/" target="_blank" class="social-link">
+                <i class="fab fa-linkedin"></i>
+              </a>
+              <a href="#" class="social-link">
+                <i class="fab fa-instagram"></i>
+              </a>
+            </div>
+          </div>
+
+          <!-- Introduction Text -->
+          <div class="intro-content">
+            <h2 class="intro-title">Hello!</h2>
+            <p class="intro-subtitle">Here's Justin</p> 
+            <div class="intro-text">
+              <p>大家好，我是陳竑齊，目前就讀於臺大資管系大三。最近我正在練習不要被內卷影響，保持自己的節奏做事；我對於資訊技術、網頁開發、資料分析、量化交易、心理學有興趣。目前正在擔任經濟系教授的研究助理，參與相關研究專案</p>
+
+              <p>在生活中，我喜歡拍天空，也熱衷於收集各式各樣的吊飾，也會不定時約朋友打排球，享受運動帶來的樂趣。</p>
+                
+              <p>我相信持續學習與成長的重要性，也深信透過分享知識和經驗，能讓我們彼此拓展視野。期待有機會能與大家交流想法、展開合作！</p>
+            </div>
+          </div>
+        </div>
+    </div>
+  </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; 2025.09 陳竑齊. 保留所有權利.</p>
+      <div class="footer-social">
+        <a href="mailto:chenjustin824@ntu.im"><i class="fas fa-envelope"></i></a>
+        <a href="https://github.com/chennjustin" target="_blank"><i class="fab fa-github"></i></a>
+        <a href="https://www.linkedin.com/in/hung-chi-chen-b82b86369/" target="_blank"><i class="fab fa-linkedin"></i></a>
+        <a href="#"><i class="fab fa-instagram"></i></a>
+    </div>
+    </div>
+  </footer>
+  <script src="home.js"></script>
+  <script src="../src/navbar-config.js"></script>
+  <script src="../src/footer-config.js"></script>
+</body>
+</html>

@@ -1,0 +1,191 @@
+// 引入共用類（Navigation, ThemeToggle, ScrollAnimations 在 script.ts 中定義）
+
+// 照片載入處理
+class ProfileImageHandler {
+  private profilePhoto: HTMLImageElement | null;
+  private imagePlaceholder: HTMLElement | null;
+
+  constructor() {
+    this.profilePhoto = document.querySelector('.profile-photo');
+    this.imagePlaceholder = document.querySelector('.profile-image .image-placeholder');
+    this.init();
+  }
+
+  init(): void {
+    if (this.profilePhoto) {
+      this.profilePhoto.addEventListener('error', () => {
+        this.handleImageError();
+      });
+      
+      this.profilePhoto.addEventListener('load', () => {
+        this.handleImageLoad();
+      });
+    }
+  }
+
+  private handleImageError(): void {
+    // 照片載入失敗時，隱藏照片並顯示備用圖示
+    if (this.profilePhoto) {
+      this.profilePhoto.style.display = 'none';
+    }
+    if (this.imagePlaceholder) {
+      this.imagePlaceholder.style.display = 'flex';
+    }
+  }
+
+  private handleImageLoad(): void {
+    // 照片載入成功時，確保照片顯示，備用圖示隱藏
+    if (this.profilePhoto) {
+      this.profilePhoto.style.display = 'block';
+    }
+    if (this.imagePlaceholder) {
+      this.imagePlaceholder.style.display = 'none';
+    }
+  }
+}
+
+
+// Title動畫功能
+class TitleAnimation {
+  private titles: string[];
+  private currentIndex: number;
+  private titleElement: HTMLElement | null;
+  private dots: NodeListOf<Element>;
+
+  constructor() {
+    this.titles = [
+      '臺灣大學資訊管理學系',
+      'SITCON2025行銷組',
+      '努力賺錢中'
+    ];
+    this.currentIndex = 0;
+    this.titleElement = document.querySelector('.animated-title');
+    this.dots = document.querySelectorAll('.dot');
+    
+    if (this.titleElement) {
+      this.init();
+    }
+  }
+
+  init(): void {
+    // 開始動畫循環
+    this.startAnimation();
+  }
+
+  private startAnimation(): void {
+    // 每3秒切換一次title
+    setInterval(() => {
+      this.switchTitle();
+    }, 3000);
+  }
+
+  private switchTitle(): void {
+    // 淡出當前title
+    this.titleElement?.classList.add('fade-out');
+    
+    setTimeout(() => {
+      // 更新title內容
+      this.currentIndex = (this.currentIndex + 1) % this.titles.length;
+      if (this.titleElement) {
+        this.titleElement.textContent = this.titles[this.currentIndex];
+      }
+      
+      // 更新點點狀態
+      this.updateDots();
+      
+      // 淡入新title
+      this.titleElement?.classList.remove('fade-out');
+      this.titleElement?.classList.add('fade-in');
+      
+      // 移除fade-in類，準備下次動畫
+      setTimeout(() => {
+        this.titleElement?.classList.remove('fade-in');
+      }, 500);
+    }, 250);
+  }
+
+  private updateDots(): void {
+    // 移除所有active類
+    this.dots.forEach((dot: any) => {
+      dot.classList.remove('active');
+    });
+    
+    // 為當前對應的點點添加active類
+    if (this.dots[this.currentIndex]) {
+      (this.dots[this.currentIndex] as any).classList.add('active');
+    }
+  }
+}
+
+// 主題切換功能
+class ThemeToggle {
+  private themeToggle: HTMLElement | null;
+
+  constructor() {
+    this.themeToggle = document.getElementById('themeToggle');
+    this.init();
+  }
+
+  init(): void {
+    if (this.themeToggle) {
+      // 載入保存的主題設置
+      this.loadTheme();
+      
+      this.themeToggle.addEventListener('click', () => {
+        this.toggleTheme();
+      });
+    }
+  }
+
+  private toggleTheme(): void {
+    const isDarkMode = document.body.classList.contains('dark-mode');
+    
+    if (isDarkMode) {
+      // 切換到淺色模式
+      document.body.classList.remove('dark-mode');
+      localStorage.setItem('theme', 'light');
+      this.updateThemeIcon('moon');
+    } else {
+      // 切換到深色模式
+      document.body.classList.add('dark-mode');
+      localStorage.setItem('theme', 'dark');
+      this.updateThemeIcon('sun');
+    }
+  }
+
+  private loadTheme(): void {
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+      document.body.classList.add('dark-mode');
+      this.updateThemeIcon('sun');
+    } else {
+      document.body.classList.remove('dark-mode');
+      this.updateThemeIcon('moon');
+    }
+  }
+
+  private updateThemeIcon(iconType: string): void {
+    if (this.themeToggle) {
+      const icon = this.themeToggle.querySelector('i');
+      if (icon) {
+        icon.className = `fas fa-${iconType}`;
+      }
+    }
+  }
+}
+
+// 頁面載入完成後初始化所有功能
+document.addEventListener('DOMContentLoaded', () => {
+  new ProfileImageHandler();
+  new TitleAnimation();
+  new ThemeToggle();
+
+  // 添加頁面載入動畫
+  document.body.style.opacity = '0';
+  setTimeout(() => {
+    document.body.style.transition = 'opacity 0.5s ease';
+    document.body.style.opacity = '1';
+  }, 100);
+});

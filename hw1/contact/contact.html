@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Personal Website-Contact Me</title>
+  <link rel="stylesheet" href="contact.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+  <!-- Navbar will be loaded from home page -->
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Contact Page -->
+    <section id="contact" class="page active">
+      <div class="container">
+        <div class="page-header">
+          <h1 class="page-title">Contact Me</h1>
+          <p class="page-subtitle">Let's connect and create something amazing together</p>
+        </div>
+
+        <div class="contact-content">
+          <div class="contact-info">
+            <div class="contact-card">
+              <div class="contact-icon">
+                <i class="fas fa-envelope"></i>
+              </div>
+              <div class="contact-details">
+                <h3>電子郵件</h3>
+                <p>chenjustin824@ntu.im</p>
+                <a href="mailto:chenjustin824@ntu.im" class="contact-link">發送郵件</a>
+              </div>
+            </div>
+
+            <div class="contact-card">
+              <div class="contact-icon">
+                <i class="fas fa-phone"></i>
+              </div>
+              <div class="contact-details">
+                <h3>電話</h3>
+                <p>+886 912 345 678</p>
+                <a href="tel:+886912345678" class="contact-link">撥打電話</a>
+              </div>
+            </div>
+
+            <div class="contact-card">
+              <div class="contact-icon">
+                <i class="fab fa-github"></i>
+              </div>
+              <div class="contact-details">
+                <h3>GitHub</h3>
+                <p>查看我的專案作品</p>
+                <a href="https://github.com/chennjustin" target="_blank" class="contact-link">訪問 GitHub</a>
+              </div>
+            </div>
+
+            <div class="contact-card">
+              <div class="contact-icon">
+                <i class="fab fa-linkedin"></i>
+              </div>
+              <div class="contact-details">
+                <h3>LinkedIn</h3>
+                <p>專業網路連結</p>
+                <a href="https://www.linkedin.com/in/hung-chi-chen-b82b86369/" target="_blank" class="contact-link">查看檔案</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="contact-form-container">
+            <div class="contact-form">
+              <h3>發送訊息</h3>
+              <form id="contactForm">
+                <div class="form-group">
+                  <input type="text" id="name" name="name" placeholder="您的姓名" required>
+                </div>
+                <div class="form-group">
+                  <input type="email" id="email" name="email" placeholder="您的電子郵件" required>
+                </div>
+                <div class="form-group">
+                  <input type="text" id="subject" name="subject" placeholder="主旨" required>
+                </div>
+                <div class="form-group">
+                  <textarea id="message" name="message" placeholder="您的訊息" rows="5" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">發送訊息</button>
+              </form>
+            </div>
+          </div>
+      </div>
+    </div>
+  </section>
+  </main>
+
+  <!-- Footer -->
+  <!-- Footer will be loaded from home page -->
+
+  <script src="../src/navbar-config.js"></script>
+  <script src="../src/footer-config.js"></script>
+  <script src="contact.js"></script>
+</body>
+</html>

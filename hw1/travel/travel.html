@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Personal Website-My Journey</title>
+  <link rel="stylesheet" href="travel.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+  <!-- Navbar will be loaded from home page -->
+
+  <!-- Travel Destinations -->
+  <main class="main-content">
+    <div class="container">
+      <!-- Destination Selection -->
+      <section class="destination-selection" id="destinationSelection">
+        <div class="page-header">
+          <h1 class="page-title">My Journey</h1>
+          <p class="page-subtitle">Explore my journey and travel memories</p>
+        </div>
+        
+        <div class="destination-grid">
+          <!-- Japan Destination -->
+          <div class="destination-card" data-destination="japan" onclick="selectDestination('japan')">
+            <div class="destination-image">
+              <img src="../src/jp-cover.jpg" alt="日本" class="destination-photo">
+              <div class="destination-overlay">
+                <div class="destination-date">2025年6月</div>
+                <div class="destination-location">
+                  <i class="fas fa-map-marker-alt"></i>
+                  Osaka & Kyoto
+                </div>
+              </div>
+            </div>
+            <div class="destination-content">
+              <h3 class="destination-title">Japan</h3>
+              <p class="destination-summary">
+                第一次不是和家人出國，是和朋友一起的旅程...
+              </p>
+              <div class="destination-tags">
+                <span class="tag">環球</span>
+                <span class="tag">大阪</span>
+                <span class="tag">萬博</span>
+                <span class="tag">鮭魚</span>
+                <span class="tag">朋友</span>
+                <span class="tag">京都</span>
+                <span class="tag">爆買</span>
+                <span class="tag">攝影</span>
+                <span class="tag">飛機故障</span>
+              </div>
+              <button class="explore-btn">
+                <span>Explore More</span>
+                <i class="fas fa-arrow-right"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Hong Kong & Macau Destination -->
+          <div class="destination-card" data-destination="hongkong-macau" onclick="selectDestination('hongkong-macau')">
+            <div class="destination-image">
+              <img src="../src/hm-cover.jpg" alt="香港 & 澳門" class="destination-photo">
+              <div class="destination-overlay">
+                <div class="destination-date">2025年8月</div>
+                <div class="destination-location">
+                  <i class="fas fa-map-marker-alt"></i>
+                  Hong Kong & Macau
+                </div>
+              </div>
+            </div>
+            <div class="destination-content">
+              <h3 class="destination-title">Hong Kong & Macau</h3>
+              <p class="destination-summary">
+                再三請求之下久違的再次出國
+              </p>
+              <div class="destination-tags">
+                <span class="tag">港式燒臘</span>
+                <span class="tag">一堆纜車</span>
+                <span class="tag">蛋塔</span>
+                <span class="tag">奢華賭場</span>
+                <span class="tag">冰室</span>
+                <span class="tag">家人</span>
+                <span class="tag">自由行</span>
+                <span class="tag">澳門塔</span>
+              </div>
+              <button class="explore-btn">
+                <span>Explore More</span>
+                <i class="fas fa-arrow-right"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Australia Destination -->
+          <div class="destination-card disabled" data-destination="australia">
+            <div class="destination-image">
+              <img src="../src/comingsoon.jpg" alt="澳洲" class="destination-photo">
+              <div class="destination-overlay">
+                <div class="destination-date">2026年7月</div>
+                <div class="destination-location">
+                  <i class="fas fa-map-marker-alt"></i>
+                  Australia
+                </div>
+              </div>
+            </div>
+            <div class="destination-content">
+              <h3 class="destination-title">Australia</h3>
+              <p class="destination-summary">
+                Coming Soon
+              </p>
+              <div class="destination-tags">
+                <span class="tag">雪梨</span>
+                <span class="tag">墨爾本</span>
+                <span class="tag">大堡礁</span>
+                <span class="tag">袋鼠</span>
+                <span class="tag">自駕</span>
+                <span class="tag">潛水</span>
+                <span class="tag">海灘</span>
+                <span class="tag">待補</span>
+              </div>
+              <button class="explore-btn disabled" disabled>
+                <span>Coming Soon</span>
+                <i class="fas fa-clock"></i>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Travel Modal for Japan -->
+      <div class="travel-modal" id="japanModal">
+        <div class="modal-overlay" onclick="closeTravelModal()"></div>
+        <div class="modal-content">
+          <button class="modal-close" onclick="closeTravelModal()">
+            <i class="fas fa-times"></i>
+          </button>
+          
+          <div class="modal-header">
+            <div class="header-content">
+              <div class="country-flag">
+                <img src="../src/japan-flag.png" alt="日本國旗" class="flag-icon">
+              </div>
+              <div class="country-info">
+                <h2 class="country-title">Japan</h2>
+                <div class="travel-dates">
+                  <i class="fas fa-calendar-alt"></i>
+                  <span>2025. 06</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-body">
+            <div class="travel-description">
+              <p>第一次不是和家人出國，是和朋友一起的旅程...</p>
+            </div>
+
+            <div class="trip-highlights">
+              <h3>Trip Highlights</h3>
+              <div class="highlights-grid">
+                <div class="highlight-item">
+                  <div class="highlight-icon">
+                    <i class="fas fa-magic"></i>
+                  </div>
+                  <span>環球影城從早玩到晚</span>
+                </div>
+                <div class="highlight-item">
+                  <div class="highlight-icon">
+                    <i class="fas fa-utensils"></i>
+                  </div>
+                  <span>萬國博覽會w/璀璨的夢洲</span>
+                </div>
+                <div class="highlight-item">
+                  <div class="highlight-icon">
+                    <i class="fas fa-torii-gate"></i>
+                  </div>
+                  <span>看同行醉到在樓梯間溜滑梯</span>
+                </div>
+                <div class="highlight-item">
+                  <div class="highlight-icon">
+                    <i class="fas fa-leaf"></i>
+                  </div>
+                  <span>吃遍日本食物（感謝黃聖凱）</span>
+                </div>
+                <div class="highlight-item">
+                  <div class="highlight-icon">
+                    <i class="fas fa-plane-departure"></i>
+                  </div>
+                  <span>飛機故障多待一天大阪</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="photo-memories">
+              <h3>Photo Memories</h3>
+              <div class="photo-grid">
+                <div class="photo-item">
+                  <img src="../src/jp1.jpg" alt="Japan Photo 1" class="day-photo">
+                </div>
+                <div class="photo-item">
+                  <img src="../src/jp2.jpg" alt="Japan Photo 2" class="day-photo">
+                </div>
+                <div class="photo-item">
+                  <img src="../src/jp3.jpg" alt="Japan Photo 3" class="day-photo">
+                </div>
+                <div class="photo-item">
+                  <img src="../src/jp4.jpg" alt="Japan Photo 4" class="day-photo">
+                </div>
+                <div class="photo-item">
+                  <img src="../src/jp5.jpg" alt="Japan Photo 5" class="day-photo">
+                </div>
+                <div class="photo-item">
+                  <img src="../src/jp6.jpg" alt="Japan Photo 6" class="day-photo">
+                </div>
+                <div class="photo-item">
+                  <img src="../src/jp7.jpg" alt="Japan Photo 7" class="day-photo">
+                </div>
+                <div class="photo-item">
+                  <img src="../src/jp8.jpg" alt="Japan Photo 8" class="day-photo">
+                </div>
+                <div class="photo-item">
+                  <img src="../src/jp9.jpg" alt="Japan Photo 9" class="day-photo">
+                </div>
+                <div class="photo-item">
+                  <img src="../src/jp10.jpg" alt="Japan Photo 10" class="day-photo">
+                </div>        
+                <div class="photo-item">
+                  <img src="../src/jp11.jpg" alt="Japan Photo 11" class="day-photo">
+                </div>       
+              </div>
+            </div>
+
+            <div class="travel-map">
+              <h3>Travel Route</h3>
+              <div class="map-container">
+                <iframe 
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3354.0!2d135.5023!3d34.6937!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x6000e6553406e2e1%3A0xcd2c18801d0cc042!2z5aSn5a6J5a6J5Yy65YyX6Z2S5bGx5Yy6!5e0!3m2!1szh-TW!2stw!4v1234567890123"
+                  width="100%" 
+                  height="300" 
+                  style="border:0; border-radius: 10px;" 
+                  allowfullscreen="" 
+                  loading="lazy" 
+                  referrerpolicy="no-referrer-when-downgrade">
+                </iframe>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Travel Modal for Hong Kong & Macau -->
+      <div class="travel-modal" id="hongkongMacauModal">
+        <div class="modal-overlay" onclick="closeTravelModal()"></div>
+        <div class="modal-content">
+          <button class="modal-close" onclick="closeTravelModal()">
+            <i class="fas fa-times"></i>
+          </button>
+          
+          <div class="modal-header">
+            <div class="header-content">
+              <div class="country-flag">
+                <img src="../src/hm-flag.jpg" alt="香港區旗" class="flag-icon">
+              </div>
+              <div class="country-info">
+                <h2 class="country-title">Hong Kong & Macau</h2>
+                <div class="travel-dates">
+                  <i class="fas fa-calendar-alt"></i>
+                  <span>2025. 08</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-body">
+            <div class="travel-description">
+              <p>再三請求之下久違的再次出國，和家人一起的香港澳門之旅...</p>
+            </div>
+
+            <div class="trip-highlights">
+              <h3>Trip Highlights</h3>
+              <div class="highlights-grid">
+                <div class="highlight-item">
+                  <div class="highlight-icon">
+                    <i class="fas fa-utensils"></i>
+                  </div>
+                  <span>港式燒臘&各種冰室</span>
+                </div>
+                <div class="highlight-item">
+                  <div class="highlight-icon">
+                    <i class="fas fa-mountain"></i>
+                  </div>
+                  <span>吃遍每間蛋塔店</span>
+                </div>
+                <div class="highlight-item">
+                  <div class="highlight-icon">
+                    <i class="fas fa-cookie-bite"></i>
+                  </div>
+                  <span>當導遊解決全家食衣住行</span>
+                </div>
+                <div class="highlight-item">
+                  <div class="highlight-icon">
+                    <i class="fas fa-building"></i>
+                  </div>
+                  <span>葡式建築&賭場</span>
+                </div>
+                <div class="highlight-item">
+                  <div class="highlight-icon">
+                    <i class="fas fa-tower-broadcast"></i>
+                  </div>
+                  <span>超巨奢華的氹仔</span>
+                </div>                
+              </div>
+            </div>
+
+            <div class="photo-memories">
+              <h3>Photo Memories</h3>
+              <div class="photo-grid">
+                <div class="photo-item">
+                  <img src="../src/hm (1).jpg" alt="Hong Kong & Macau Photo 1" class="day-photo">
+                </div>
+                <div class="photo-item">
+                  <img src="../src/hm (2).jpg" alt="Hong Kong & Macau Photo 2" class="day-photo">
+                </div>
+                <div class="photo-item">
+                  <img src="../src/hm (3).jpg" alt="Hong Kong & Macau Photo 3" class="day-photo">
+                </div>
+                <div class="photo-item">
+                  <img src="../src/hm (4).jpg" alt="Hong Kong & Macau Photo 4" class="day-photo">
+                </div>
+                <div class="photo-item">
+                  <img src="../src/hm (5).jpg" alt="Hong Kong & Macau Photo 5" class="day-photo">
+                </div>
+                <div class="photo-item">
+                  <img src="../src/hm (6).jpg" alt="Hong Kong & Macau Photo 6" class="day-photo">
+                </div>
+                <div class="photo-item">
+                  <img src="../src/hm (7).jpg" alt="Hong Kong & Macau Photo 7" class="day-photo">
+                </div>
+              </div>
+            </div>
+
+            <div class="travel-map">
+              <h3>Travel Route</h3>
+              <div class="map-container">
+                <iframe 
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3691.0!2d114.1734!3d22.3193!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3404005b8c2b2b2b%3A0x2b2b2b2b2b2b2b2b!2z5rKz5Y2X5Lit!5e0!3m2!1szh-TW!2stw!4v1234567890123"
+                  width="100%" 
+                  height="300" 
+                  style="border:0; border-radius: 10px;" 
+                  allowfullscreen="" 
+                  loading="lazy" 
+                  referrerpolicy="no-referrer-when-downgrade">
+                </iframe>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Travel Modal for Australia -->
+      <div class="travel-modal" id="australiaModal">
+        <div class="modal-overlay" onclick="closeTravelModal()"></div>
+        <div class="modal-content">
+          <button class="modal-close" onclick="closeTravelModal()">
+            <i class="fas fa-times"></i>
+          </button>
+          
+          <div class="modal-header">
+            <div class="header-content">
+              <div class="country-flag">
+                <img src="../src/australia-flag.png" alt="澳洲國旗" class="flag-icon">
+              </div>
+              <div class="country-info">
+                <h2 class="country-title">Australia</h2>
+                <div class="travel-dates">
+                  <i class="fas fa-calendar-alt"></i>
+                  <span>2026. TBD</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-body">
+            <div class="travel-description">
+              <p>明年的新挑戰，準備探索南半球的魅力。期待與澳洲的自然美景、野生動物和咖啡文化相遇...</p>
+            </div>
+
+            <div class="trip-highlights">
+              <h3>Planned Highlights</h3>
+              <div class="highlights-grid">
+                <div class="highlight-item">
+                  <div class="highlight-icon">
+                    <i class="fas fa-city"></i>
+                  </div>
+                  <span>雪梨歌劇院 & 海港大橋</span>
+                </div>
+                <div class="highlight-item">
+                  <div class="highlight-icon">
+                    <i class="fas fa-coffee"></i>
+                  </div>
+                  <span>墨爾本咖啡文化探索</span>
+                </div>
+                <div class="highlight-item">
+                  <div class="highlight-icon">
+                    <i class="fas fa-fish"></i>
+                  </div>
+                  <span>大堡礁潛水體驗</span>
+                </div>
+                <div class="highlight-item">
+                  <div class="highlight-icon">
+                    <i class="fas fa-paw"></i>
+                  </div>
+                  <span>與袋鼠和考拉相遇</span>
+                </div>
+                <div class="highlight-item">
+                  <div class="highlight-icon">
+                    <i class="fas fa-car"></i>
+                  </div>
+                  <span>大洋路自駕之旅</span>
+                </div>
+                <div class="highlight-item">
+                  <div class="highlight-icon">
+                    <i class="fas fa-umbrella-beach"></i>
+                  </div>
+                  <span>黃金海岸海灘時光</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="photo-memories">
+              <h3>Planning Photos</h3>
+              <div class="photo-grid">
+                <div class="photo-item">
+                  <img src="../src/au-plan1.jpg" alt="Australia Planning Photo 1" class="day-photo">
+                </div>
+                <div class="photo-item">
+                  <img src="../src/au-plan2.jpg" alt="Australia Planning Photo 2" class="day-photo">
+                </div>
+                <div class="photo-item">
+                  <img src="../src/au-plan3.jpg" alt="Australia Planning Photo 3" class="day-photo">
+                </div>
+                <div class="photo-item">
+                  <img src="../src/au-plan4.jpg" alt="Australia Planning Photo 4" class="day-photo">
+                </div>
+                <div class="photo-item">
+                  <img src="../src/au-plan5.jpg" alt="Australia Planning Photo 5" class="day-photo">
+                </div>
+                <div class="photo-item">
+                  <img src="../src/au-plan6.jpg" alt="Australia Planning Photo 6" class="day-photo">
+                </div>
+              </div>
+            </div>
+
+            <div class="travel-map">
+              <h3>Planned Route</h3>
+              <div class="map-container">
+                <iframe 
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d424143.0!2d151.2093!3d-33.8688!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x6b129838f39a743f%3A0x3017d681632a850!2z5rKz5Y2X5Lit!5e0!3m2!1szh-TW!2stw!4v1234567890123"
+                  width="100%" 
+                  height="300" 
+                  style="border:0; border-radius: 10px;" 
+                  allowfullscreen="" 
+                  loading="lazy" 
+                  referrerpolicy="no-referrer-when-downgrade">
+                </iframe>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+
+  <!-- Back to Top Button -->
+  <button class="back-to-top" id="backToTop">
+    <i class="fas fa-arrow-up"></i>
+  </button>
+
+  <!-- Footer will be loaded from home page -->
+
+  <script src="../src/navbar-config.js"></script>
+  <script src="../src/footer-config.js"></script>
+  <script src="travel.js"></script>
+</body>
+</html>
