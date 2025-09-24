@@ -4,7 +4,7 @@ export const CANVAS_HEIGHT = 540;
 export const PLAYER_DEFAULTS = {
   radius: 10,
   speed: 2.2,
-  maxHp: 100,
+  maxHp: 5,
   damage: 10,
   attackIntervalMs: 700,
   attackRange: 220,

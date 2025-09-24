@@ -8,14 +8,16 @@ interface GameContextValue {
   ui: UIState;
   setPhase: (p: GamePhase) => void;
   reset: () => void;
-  buyUpgrade: (type: 'damage' | 'attackSpeed' | 'range') => void;
+  buyUpgrade: (type: 'damage' | 'attackSpeed' | 'range' | 'maxHp') => void;
 }
 
 const GameContext = createContext<GameContextValue | null>(null);
 
 function createInitialWorld(): WorldState {
+  const width = typeof window !== 'undefined' ? window.innerWidth : CANVAS_WIDTH;
+  const height = typeof window !== 'undefined' ? window.innerHeight : CANVAS_HEIGHT;
   const player: PlayerState = {
-    position: { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 },
+    position: { x: width / 2, y: height / 2 },
     radius: PLAYER_DEFAULTS.radius,
     speed: PLAYER_DEFAULTS.speed,
     hp: PLAYER_DEFAULTS.maxHp,
@@ -37,8 +39,8 @@ function createInitialWorld(): WorldState {
   };
   return {
     phase: 'menu',
-    width: CANVAS_WIDTH,
-    height: CANVAS_HEIGHT,
+    width,
+    height,
     player,
     enemies: [],
     projectiles: [],
@@ -59,6 +61,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     worldRef.current.phase = p;
     if (p === 'playing' && ui.phase === 'menu') {
       // initialize UI at start of game
+      // center player at start
+      const w = worldRef.current;
+      w.player.position.x = w.width / 2;
+      w.player.position.y = w.height / 2;
       syncUi();
     }
     syncUi();
@@ -69,16 +75,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUi({ hp: worldRef.current.player.hp, money: 0, waveIndex: 1, phase: 'menu' });
   };
 
-  const buyUpgrade = (type: 'damage' | 'attackSpeed' | 'range') => {
+  const buyUpgrade = (type: 'damage' | 'attackSpeed' | 'range' | 'maxHp') => {
     const w = worldRef.current;
     const p = w.player;
-    const costs = { damage: 50, attackSpeed: 60, range: 70 } as const;
+    const costs = { damage: 50, attackSpeed: 60, range: 70, maxHp: 80 } as const;
     const cost = costs[type];
     if (p.money < cost) return;
     p.money -= cost;
     if (type === 'damage') p.damage += 5;
     if (type === 'attackSpeed') p.attackIntervalMs = Math.max(200, p.attackIntervalMs - 80);
     if (type === 'range') p.attackRange += 40;
+    if (type === 'maxHp') { p.maxHp += 2; p.hp = Math.min(p.maxHp, p.hp + 2); }
     syncUi();
   };
 
@@ -175,11 +182,18 @@ export function stepWorld(world: WorldState, input: { up: boolean; down: boolean
   world.projectiles = world.projectiles.filter(p => p.position.x > -1000 && p.position.y > -1000 && p.position.x < world.width + 1000 && p.position.y < world.height + 1000);
   world.enemies = world.enemies.filter(e => e.hp > 0);
 
-  // enemy touch player -> damage lethal
+  // enemy touch player -> gradual damage (tick)
+  let touching = false;
   for (const e of world.enemies) {
     const d = distance(player.position, e.position);
-    if (d <= e.radius + player.radius) {
-      player.hp = 0;
+    if (d <= e.radius + player.radius) { touching = true; break; }
+  }
+  if (!('lastTouchDamageAt' in (player as any))) (player as any).lastTouchDamageAt = 0;
+  const lastTouchDamageAt: number = (player as any).lastTouchDamageAt;
+  if (touching && t - lastTouchDamageAt > 400) {
+    (player as any).lastTouchDamageAt = t;
+    player.hp = Math.max(0, player.hp - 1);
+    if (player.hp <= 0) {
       world.phase = 'gameover';
     }
   }

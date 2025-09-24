@@ -5,10 +5,13 @@ export const HUD: React.FC = () => {
   const { ui } = useGame();
   return (
     <div className="hud">
-      <div>生命: {ui.hp}</div>
-      <div>金錢: {ui.money}</div>
-      <div>輪次: {ui.waveIndex}</div>
-      <div>階段: {ui.phase}</div>
+      <div className="hpbar">
+        <div className="hpbar-fill" style={{ width: Math.max(0, Math.min(100, ui.hp / 10 * 100)) + '%' }} />
+        <span className="hpbar-label">HP {ui.hp}</span>
+      </div>
+      <div className="hud-chip">⟐ Credits: {ui.money}</div>
+      <div className="hud-chip">Wave: {ui.waveIndex}</div>
+      <div className="hud-chip">Phase: {ui.phase}</div>
     </div>
   );
 };
