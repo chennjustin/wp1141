@@ -1,0 +1,18 @@
+html, body, #root { height: 100%; margin: 0; }
+body { background: #0b1020; color: #e8ecf1; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Noto Sans, "Apple Color Emoji", "Segoe UI Emoji"; }
+.app { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+.menu { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+canvas { background: #0f1630; border: 1px solid #223; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+button { background: #2a5bd7; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; }
+button:hover { background: #1f4ab0; }
+.hud { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 16px; background: rgba(10,15,30,0.6); padding: 8px 12px; border-radius: 8px; border: 1px solid #223; }
+.shop-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; }
+.shop { background: #111a33; border: 1px solid #223; border-radius: 10px; padding: 16px; width: 420px; max-width: 90vw; }
+.shop h2 { margin-top: 0; }
+.shop .grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }
+.shop .card { background: #0e1731; border: 1px solid #223; padding: 12px; border-radius: 8px; }
+.shop .card h3 { margin: 0 0 6px; }
+.shop .footer { display: flex; justify-content: flex-end; margin-top: 12px; }
+.gameover { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); padding: 8px 12px; border: 1px solid #333; border-radius: 6px; }
+
+
