@@ -4,8 +4,40 @@ import { CANVAS_HEIGHT, CANVAS_WIDTH } from '@game/constants';
 import { nextWave, stepWorld } from '@game/GameContext';
 import { playShoot, playHit, playBgm } from '@game/audio';
 
+// preload sprite frames for main character
+const idleFrames = [
+  new Image(),
+  new Image(),
+];
+idleFrames[0].src = '/src/asset/main_character/character_1.png';
+idleFrames[1].src = '/src/asset/main_character/character_2.png';
+
+const walkFrames = [
+  new Image(), new Image(), new Image(), new Image(),
+];
+walkFrames[0].src = '/src/asset/main_character/character_9.png';
+walkFrames[1].src = '/src/asset/main_character/character_10.png';
+walkFrames[2].src = '/src/asset/main_character/character_11.png';
+walkFrames[3].src = '/src/asset/main_character/character_12.png';
+
+const dieFrames = [
+  new Image(), new Image(), new Image(), new Image(),
+];
+dieFrames[0].src = '/src/asset/main_character/character_37.png';
+dieFrames[1].src = '/src/asset/main_character/character_38.png';
+dieFrames[2].src = '/src/asset/main_character/character_39.png';
+dieFrames[3].src = '/src/asset/main_character/character_40.png';
+
+const victoryFrames = [
+  new Image(), new Image(), new Image(), new Image(),
+];
+victoryFrames[0].src = '/src/asset/main_character/character_33.png';
+victoryFrames[1].src = '/src/asset/main_character/character_34.png';
+victoryFrames[2].src = '/src/asset/main_character/character_35.png';
+victoryFrames[3].src = '/src/asset/main_character/character_36.png';
+
 export const GameCanvas: React.FC = () => {
-  const { worldRef, ui, setPhase } = useGame();
+  const { worldRef, ui, setPhase, reset } = useGame();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const inputRef = useRef({ up: false, down: false, left: false, right: false });
   const rafRef = useRef<number | null>(null);
@@ -46,6 +78,7 @@ export const GameCanvas: React.FC = () => {
     };
 
     if (ui.phase === 'playing') { playBgm(); start(); }
+    if (ui.phase === 'victory') { start(); }
     return () => { if (rafRef.current != null) cancelAnimationFrame(rafRef.current); };
   }, [ui.phase]);
 
@@ -69,34 +102,85 @@ export const GameCanvas: React.FC = () => {
       ctx.fillRect(sx, sy, 2, 2);
     }
 
-    // draw player
+    // draw player sprite
     const p = world.player;
-    const playerGradient = ctx.createRadialGradient(p.position.x, p.position.y, 2, p.position.x, p.position.y, p.radius + 6);
-    playerGradient.addColorStop(0, '#7bf5b3');
-    playerGradient.addColorStop(1, 'rgba(123,245,179,0)');
-    ctx.fillStyle = '#3ddc84';
-    ctx.shadowColor = '#7bf5b3';
-    ctx.shadowBlur = 20;
-    ctx.beginPath(); ctx.arc(p.position.x, p.position.y, p.radius + 1, 0, Math.PI * 2); ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = playerGradient; ctx.beginPath(); ctx.arc(p.position.x, p.position.y, p.radius + 8, 0, Math.PI * 2); ctx.fill();
+    const frames = p.anim === 'idle' ? idleFrames : (p.anim === 'walk' ? walkFrames : (p.anim === 'die' ? dieFrames : victoryFrames));
+    const frameImg = frames[p.frame % frames.length];
+    const scale = 3.5;
+    const imgW = frameImg.width * scale || 64;
+    const imgH = frameImg.height * scale || 64;
+    const drawX = p.position.x - imgW / 2;
+    const drawY = p.position.y - imgH / 2;
+
+    ctx.save();
+    if (p.facing === 'left') {
+      ctx.translate(p.position.x, 0);
+      ctx.scale(-1, 1);
+      ctx.translate(-p.position.x, 0);
+    }
+    if (frameImg.complete) {
+      ctx.drawImage(frameImg, drawX, drawY, imgW, imgH);
+    } else {
+      // fallback: circle if image not ready yet
+      ctx.fillStyle = '#3ddc84';
+      ctx.beginPath(); ctx.arc(p.position.x, p.position.y, p.radius + 8, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
 
     // draw range (faint)
     ctx.strokeStyle = 'rgba(74,222,128,0.15)';
     ctx.beginPath(); ctx.arc(p.position.x, p.position.y, p.attackRange, 0, Math.PI * 2); ctx.stroke();
 
-    // draw enemies
+    // draw enemies or their disappear animation
     for (const e of world.enemies) {
-      const eg = ctx.createLinearGradient(e.position.x - e.radius, e.position.y - e.radius, e.position.x + e.radius, e.position.y + e.radius);
-      eg.addColorStop(0, '#ff7a7a');
-      eg.addColorStop(1, '#b91c1c');
-      ctx.fillStyle = eg;
-      ctx.beginPath();
-      ctx.moveTo(e.position.x, e.position.y - e.radius);
-      ctx.lineTo(e.position.x + e.radius, e.position.y + e.radius);
-      ctx.lineTo(e.position.x - e.radius, e.position.y + e.radius);
-      ctx.closePath();
-      ctx.fill();
+      (window as any).__enemyCache = (window as any).__enemyCache || new Map<string, HTMLImageElement>();
+      const cache: Map<string, HTMLImageElement> = (window as any).__enemyCache;
+
+      let sprite: HTMLImageElement | undefined;
+      if (e.dying) {
+        const disIdx = Math.min(4, Math.max(0, (e.disappearFrame ?? 0)));
+        const cacheKey = `dis_${disIdx}`;
+        sprite = cache.get(cacheKey) as HTMLImageElement | undefined;
+        if (!sprite) {
+          const img = new Image();
+          img.src = `/src/asset/enemy/enemy_disappear/dis_${disIdx + 1}.png`;
+          cache.set(cacheKey, img);
+          sprite = img;
+        }
+      } else {
+        const cacheKey = `${e.type}_${e.frame % 12}`;
+        sprite = cache.get(cacheKey) as HTMLImageElement | undefined;
+        if (!sprite) {
+          const idx = (e.frame % 12) + 1;
+          const img = new Image();
+          img.src = `/src/asset/enemy/${e.type}/${e.type}_${idx}.png`;
+          cache.set(cacheKey, img);
+          sprite = img;
+        }
+      }
+
+      const size = 32; // smaller enemies
+      const dw = size;
+      const dh = size;
+      const dx = e.position.x - dw / 2;
+      const dy = e.position.y - dh / 2;
+      ctx.save();
+      if (!e.dying && e.facing === 'left') {
+        ctx.translate(e.position.x, 0);
+        ctx.scale(-1, 1);
+        ctx.translate(-e.position.x, 0);
+      }
+      if (sprite && (sprite as HTMLImageElement).complete) {
+        ctx.globalAlpha = e.dying ? 0.95 : 1;
+        ctx.drawImage(sprite as HTMLImageElement, dx, dy, dw, dh);
+        ctx.globalAlpha = 1;
+      } else {
+        ctx.fillStyle = '#ff7a7a';
+        ctx.beginPath();
+        ctx.arc(e.position.x, e.position.y, e.radius + 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
     }
 
     // draw projectiles
@@ -121,6 +205,25 @@ export const GameCanvas: React.FC = () => {
       ctx.textAlign = 'center';
       ctx.fillText('遊戲結束 - 按 Enter 返回主頁', canvas.width / 2, canvas.height / 2);
     }
+
+    if (world.phase === 'victory') {
+      // fancy "You Win" style text
+      const t = performance.now();
+      const pulse = 1 + Math.sin(t * 0.006) * 0.08;
+      const hue = (t * 0.05) % 360;
+      ctx.save();
+      ctx.fillStyle = `hsla(${hue}, 85%, 65%, 0.9)`;
+      ctx.shadowColor = `hsla(${hue}, 85%, 55%, 1)`;
+      ctx.shadowBlur = 30;
+      ctx.textAlign = 'center';
+      ctx.font = `900 ${Math.floor(48 * pulse)}px ui-sans-serif, system-ui`;
+      ctx.fillText('你勝利了！', canvas.width / 2, canvas.height / 2 - 20);
+      ctx.font = '600 20px ui-sans-serif, system-ui';
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.fillText('稍後將進入商店，請稍候...', canvas.width / 2, canvas.height / 2 + 18);
+      ctx.restore();
+    }
   };
 
   useEffect(() => {
@@ -138,7 +241,8 @@ export const GameCanvas: React.FC = () => {
       if (e.key.toLowerCase() === 'enter') {
         const w = worldRef.current;
         if (w.phase === 'gameover') {
-          setPhase('menu');
+          // reset entire world and UI back to initial state
+          reset();
         } else if (w.phase === 'shop') {
           // resume next wave
           nextWave(w);

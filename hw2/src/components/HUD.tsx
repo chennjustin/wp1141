@@ -9,6 +9,7 @@ export const HUD: React.FC = () => {
         <div className="hpbar-fill" style={{ width: Math.max(0, Math.min(100, ui.hp / 10 * 100)) + '%' }} />
         <span className="hpbar-label">HP {ui.hp}</span>
       </div>
+      <div className="hud-chip">⏱ 倒數: {ui.timeLeftSec ?? 0}s</div>
       <div className="hud-chip">⟐ Credits: {ui.money}</div>
       <div className="hud-chip">Wave: {ui.waveIndex}</div>
       <div className="hud-chip">Phase: {ui.phase}</div>

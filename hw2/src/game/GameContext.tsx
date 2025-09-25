@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { CANVAS_HEIGHT, CANVAS_WIDTH, ENEMY_BASE, PLAYER_DEFAULTS, PROJECTILE_DEFAULTS } from './constants';
+import { CANVAS_HEIGHT, CANVAS_WIDTH, ENEMY_BASE, ENEMIES_CONFIG, ENEMY_REWARD, PLAYER_DEFAULTS, PROJECTILE_DEFAULTS } from './constants';
 import { EnemyState, GamePhase, PlayerState, ProjectileState, UIState, WaveState, WorldState } from './types';
 import { distance, normalize, now, randomEdgeSpawn } from './utils';
 
@@ -27,12 +27,16 @@ function createInitialWorld(): WorldState {
     attackIntervalMs: PLAYER_DEFAULTS.attackIntervalMs,
     attackRange: PLAYER_DEFAULTS.attackRange,
     lastAttackAt: 0,
+    facing: 'right',
+    anim: 'idle',
+    frame: 0,
+    lastFrameAtMs: 0,
   };
   const wave: WaveState = {
     index: 1,
-    enemiesToSpawn: 8,
+    enemiesToSpawn: 24,
     spawned: 0,
-    spawnCooldownMs: 900,
+    spawnCooldownMs: 360,
     lastSpawnAt: 0,
     enemyHp: ENEMY_BASE.hp,
     enemySpeed: ENEMY_BASE.speed,
@@ -50,7 +54,7 @@ function createInitialWorld(): WorldState {
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const worldRef = useRef<WorldState>(createInitialWorld());
-  const [ui, setUi] = useState<UIState>({ hp: worldRef.current.player.hp, money: 0, waveIndex: worldRef.current.wave.index, phase: 'menu' });
+  const [ui, setUi] = useState<UIState>({ hp: worldRef.current.player.hp, money: 0, waveIndex: worldRef.current.wave.index, phase: 'menu', timeLeftSec: 30 });
 
   const syncUi = () => {
     const w = worldRef.current;
@@ -65,6 +69,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const w = worldRef.current;
       w.player.position.x = w.width / 2;
       w.player.position.y = w.height / 2;
+      // start 30s timer each time playing starts
+      w.timerEndAt = now() + 30_000;
       syncUi();
     }
     syncUi();
@@ -98,9 +104,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           prev.hp === w.player.hp &&
           prev.money === w.player.money &&
           prev.waveIndex === w.wave.index &&
-          prev.phase === w.phase
+          prev.phase === w.phase &&
+          Math.floor((Math.max(0, (w.timerEndAt ?? now()) - now())) / 1000) === (prev.timeLeftSec ?? 0)
         ) return prev;
-        return { hp: w.player.hp, money: w.player.money, waveIndex: w.wave.index, phase: w.phase };
+        return { hp: w.player.hp, money: w.player.money, waveIndex: w.wave.index, phase: w.phase, timeLeftSec: Math.floor((Math.max(0, (w.timerEndAt ?? now()) - now())) / 1000) };
       });
     }, 120);
     return () => clearInterval(id);
@@ -118,9 +125,25 @@ export function useGame(): GameContextValue {
 
 // Game update logic
 export function stepWorld(world: WorldState, input: { up: boolean; down: boolean; left: boolean; right: boolean }) {
-  if (world.phase !== 'playing') return;
   const t = now();
   const { player } = world;
+
+  // Handle victory timing even when not playing
+  if (world.phase === 'victory') {
+    // advance victory frames
+    const interval = 140;
+    if (t - player.lastFrameAtMs >= interval) {
+      player.lastFrameAtMs = t;
+      player.frame = (player.frame + 1) % 4; // 0..3 -> 33..36
+    }
+    const start = (world as any).victoryAt as number | undefined;
+    if (start && t - start > 1800) {
+      world.phase = 'shop';
+    }
+    return;
+  }
+
+  if (world.phase !== 'playing') return;
 
   // movement
   const dir = { x: (input.right ? 1 : 0) - (input.left ? 1 : 0), y: (input.down ? 1 : 0) - (input.up ? 1 : 0) };
@@ -128,24 +151,65 @@ export function stepWorld(world: WorldState, input: { up: boolean; down: boolean
   player.position.x = Math.max(0, Math.min(world.width, player.position.x + n.x * player.speed));
   player.position.y = Math.max(0, Math.min(world.height, player.position.y + n.y * player.speed));
 
+  // animation state
+  const isMoving = Math.abs(n.x) > 0.0001 || Math.abs(n.y) > 0.0001;
+  // don't override death animation once started
+  if (player.anim !== 'die') {
+    player.anim = isMoving ? 'walk' : 'idle';
+  }
+  if (n.x > 0.0001) player.facing = 'right';
+  else if (n.x < -0.0001) player.facing = 'left';
+
+  // frame advance: idle uses [1,2], walk uses [9,10,11,12]
+  const frameIntervalMs = player.anim === 'idle' ? 400 : (player.anim === 'walk' ? 120 : 180);
+  if (t - player.lastFrameAtMs >= frameIntervalMs) {
+    player.lastFrameAtMs = t;
+    if (player.anim === 'idle') {
+      // 0 -> character_1, 1 -> character_2
+      player.frame = (player.frame + 1) % 2;
+    } else if (player.anim === 'walk') {
+      // 0..3 -> character_9..12
+      player.frame = (player.frame + 1) % 4;
+    } else if (player.anim === 'die') {
+      // 0..3 -> character_37..40, stop at last frame
+      player.frame = Math.min(3, player.frame + 1);
+    }
+  }
+
   // spawn enemies per wave
   const w = world.wave;
-  if (w.spawned < w.enemiesToSpawn && t - w.lastSpawnAt >= w.spawnCooldownMs) {
+  if (t - w.lastSpawnAt >= w.spawnCooldownMs) {
     w.lastSpawnAt = t;
     w.spawned += 1;
     const pos = randomEdgeSpawn(world.width, world.height);
-    world.enemies.push({ id: Math.random(), position: pos, radius: ENEMY_BASE.radius, speed: w.enemySpeed, hp: w.enemyHp, maxHp: w.enemyHp });
+    // choose enemy type by wave
+    let type: 'mask_dude' | 'ninja_frog' | 'pink_man' | 'virtual_guy' = 'mask_dude';
+    if (w.index >= 4) type = (Math.random() < 0.4) ? 'virtual_guy' : (Math.random() < 0.5 ? 'pink_man' : (Math.random() < 0.6 ? 'ninja_frog' : 'mask_dude'));
+    else if (w.index === 3) type = Math.random() < 0.6 ? 'pink_man' : (Math.random() < 0.7 ? 'ninja_frog' : 'mask_dude');
+    else if (w.index === 2) type = Math.random() < 0.7 ? 'ninja_frog' : 'mask_dude';
+    else type = 'mask_dude';
+
+    const cfg = ENEMIES_CONFIG[type];
+    world.enemies.push({ id: Math.random(), position: pos, radius: ENEMY_BASE.radius, speed: cfg.speed, hp: cfg.hp, maxHp: cfg.hp, type, damage: cfg.damage, frame: 0, lastFrameAtMs: t, facing: 'right' });
   }
 
-  // move enemies toward player
+  // move enemies toward player & animate
   for (const e of world.enemies) {
     const toPlayer = normalize({ x: player.position.x - e.position.x, y: player.position.y - e.position.y });
     e.position.x += toPlayer.x * e.speed;
     e.position.y += toPlayer.y * e.speed;
+    if (toPlayer.x > 0.001) e.facing = 'right';
+    else if (toPlayer.x < -0.001) e.facing = 'left';
+    // animate 12-frame loop every 120ms
+    const interval = 120;
+    if (t - e.lastFrameAtMs >= interval) {
+      e.lastFrameAtMs = t;
+      e.frame = (e.frame + 1) % 12;
+    }
   }
 
-  // auto attack
-  if (t - player.lastAttackAt >= player.attackIntervalMs) {
+  // auto attack (slower than before)
+  if (t - player.lastAttackAt >= Math.max(140, Math.floor(player.attackIntervalMs * 0.6))) {
     // find nearest in range
     let nearest: EnemyState | null = null;
     let nearestDist = Infinity;
@@ -180,7 +244,26 @@ export function stepWorld(world: WorldState, input: { up: boolean; down: boolean
     }
   }
   world.projectiles = world.projectiles.filter(p => p.position.x > -1000 && p.position.y > -1000 && p.position.x < world.width + 1000 && p.position.y < world.height + 1000);
-  world.enemies = world.enemies.filter(e => e.hp > 0);
+  // award money for kills and trigger dying animation (do not remove immediately)
+  for (const e of world.enemies) {
+    if (e.hp <= 0 && !e.dying) {
+      player.money += (ENEMY_REWARD as any)[e.type] ?? 1;
+      e.dying = true;
+      e.disappearFrame = 0; // 0..4 -> dis_1..dis_5
+      e.lastDisappearAtMs = t;
+    }
+  }
+  // advance dying animation very fast; remove after last frame
+  for (const e of world.enemies) {
+    if (e.dying) {
+      const interval = 50; // very fast
+      if (t - (e.lastDisappearAtMs ?? 0) >= interval) {
+        e.lastDisappearAtMs = t;
+        e.disappearFrame = Math.min(4, (e.disappearFrame ?? 0) + 1);
+      }
+    }
+  }
+  world.enemies = world.enemies.filter(e => !e.dying || (e.disappearFrame ?? 0) < 4);
 
   // enemy touch player -> gradual damage (tick)
   let touching = false;
@@ -194,25 +277,62 @@ export function stepWorld(world: WorldState, input: { up: boolean; down: boolean
     (player as any).lastTouchDamageAt = t;
     player.hp = Math.max(0, player.hp - 1);
     if (player.hp <= 0) {
-      world.phase = 'gameover';
+      // trigger death animation and keep phase until frames finish then set gameover
+      if (player.anim !== 'die') {
+        player.anim = 'die';
+        player.frame = 0;
+        player.lastFrameAtMs = t;
+      }
     }
   }
 
-  // wave complete -> shop phase
-  if (world.phase === 'playing' && w.spawned >= w.enemiesToSpawn && world.enemies.length === 0) {
+  // timer reached -> victory phase (short celebration). No need to kill all enemies
+  if (world.phase === 'playing' && (world.timerEndAt && t >= world.timerEndAt)) {
     player.money += 50 + w.index * 10;
-    world.phase = 'shop';
+    world.phase = 'victory';
+    (world as any).victoryAt = t;
+    // set victory animation for player
+    player.anim = 'victory';
+    player.frame = 0;
+    player.lastFrameAtMs = t;
+  }
+
+  // victory animation timing: loop 33..36, then after delay -> shop
+  if (world.phase === 'victory') {
+    const start = (world as any).victoryAt as number | undefined;
+    // advance frames
+    const interval = 140;
+    if (t - player.lastFrameAtMs >= interval) {
+      player.lastFrameAtMs = t;
+      player.frame = (player.frame + 1) % 4; // 0..3 -> 33..36
+    }
+    if (start && t - start > 1800) {
+      // clear all enemies and projectiles before entering shop
+      world.enemies = [];
+      world.projectiles = [];
+      world.phase = 'shop';
+    }
+  }
+
+  // if dead animation reached final frame, end game
+  if (player.anim === 'die' && player.frame >= 3) {
+    world.phase = 'gameover';
   }
 }
 
 export function nextWave(world: WorldState) {
   const w = world.wave;
+  // ensure battlefield is clean for the next wave
+  world.enemies = [];
+  world.projectiles = [];
   w.index += 1;
-  w.enemiesToSpawn = Math.floor(8 + w.index * 1.8);
+  w.enemiesToSpawn = Math.floor(24 + w.index * 6);
   w.spawned = 0;
-  w.spawnCooldownMs = Math.max(280, Math.floor(w.spawnCooldownMs * 0.92));
+  w.spawnCooldownMs = Math.max(120, Math.floor(w.spawnCooldownMs * 0.9));
   w.enemyHp = Math.floor(w.enemyHp * 1.2 + 4);
   w.enemySpeed = Math.min(3.5, w.enemySpeed + 0.12);
+  // reset 30s timer each wave
+  world.timerEndAt = now() + 30_000;
 }
 
 // Light UI polling to keep minimal values in sync without heavy React state churn

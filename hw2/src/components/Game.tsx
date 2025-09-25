@@ -11,7 +11,7 @@ export const Game: React.FC = () => {
   return (
     <div className="game-root">
       {ui.phase === 'menu' && <StartScreen />}
-      {(ui.phase === 'playing' || ui.phase === 'shop' || ui.phase === 'gameover') && (
+      {(ui.phase === 'playing' || ui.phase === 'victory' || ui.phase === 'shop' || ui.phase === 'gameover') && (
         <>
           <GameCanvas />
           <HUD />

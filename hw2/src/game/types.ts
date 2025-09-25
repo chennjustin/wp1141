@@ -1,4 +1,4 @@
-export type GamePhase = 'menu' | 'playing' | 'shop' | 'gameover';
+export type GamePhase = 'menu' | 'playing' | 'victory' | 'shop' | 'gameover';
 
 export interface Vector2 {
   x: number;
@@ -16,6 +16,11 @@ export interface PlayerState {
   attackIntervalMs: number;
   attackRange: number;
   lastAttackAt: number;
+  // sprite/animation
+  facing: 'left' | 'right';
+  anim: 'idle' | 'walk' | 'die' | 'victory';
+  frame: number;
+  lastFrameAtMs: number;
 }
 
 export interface EnemyState {
@@ -25,6 +30,15 @@ export interface EnemyState {
   speed: number;
   hp: number;
   maxHp: number;
+  type: 'mask_dude' | 'ninja_frog' | 'pink_man' | 'virtual_guy';
+  damage: number;
+  frame: number;
+  lastFrameAtMs: number;
+  facing?: 'left' | 'right';
+  // dying/disappear animation state
+  dying?: boolean;
+  disappearFrame?: number; // 0..4 -> dis_1..dis_5
+  lastDisappearAtMs?: number;
 }
 
 export interface ProjectileState {
@@ -50,6 +64,7 @@ export interface UIState {
   money: number;
   waveIndex: number;
   phase: GamePhase;
+  timeLeftSec?: number;
 }
 
 export interface WorldState {
@@ -60,6 +75,8 @@ export interface WorldState {
   enemies: EnemyState[];
   projectiles: ProjectileState[];
   wave: WaveState;
+  victoryAt?: number;
+  timerEndAt?: number;
 }
 
 
