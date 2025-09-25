@@ -62,7 +62,15 @@ export const GameCanvas: React.FC = () => {
       const world = worldRef.current;
       const beforeHp = world.player.hp;
       stepWorld(world, inputRef.current);
-      if (world.player.hp < beforeHp) playHit();
+      if (world.player.hp < beforeHp) {
+        playHit();
+        const canvas = canvasRef.current; if (canvas) {
+          canvas.classList.remove('shake');
+          void canvas.offsetWidth; // reflow to restart animation
+          canvas.classList.add('shake');
+          setTimeout(() => canvas.classList.remove('shake'), 300);
+        }
+      }
       render();
       if (world.phase === 'shop') {
         // pause loop but keep frame drawn; shop UI will show
@@ -88,13 +96,20 @@ export const GameCanvas: React.FC = () => {
     const world = worldRef.current;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // background grid
-    // gradient background + starfield
-    const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-    grad.addColorStop(0, '#0b122b');
-    grad.addColorStop(1, '#1a2558');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // background image
+    const bgImg = new Image();
+    bgImg.src = '/src/asset/lobby2.png';
+    if (bgImg.complete) {
+      ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+    } else {
+      // fallback gradient background
+      const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      grad.addColorStop(0, '#0b122b');
+      grad.addColorStop(1, '#1a2558');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    // animated starfield overlay
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
     for (let i = 0; i < 80; i++) {
       const sx = (i * 97 + performance.now() * 0.02) % canvas.width;
@@ -207,21 +222,36 @@ export const GameCanvas: React.FC = () => {
     }
 
     if (world.phase === 'victory') {
-      // fancy "You Win" style text
+      // fancy "You Win" style text with pixel effects
       const t = performance.now();
-      const pulse = 1 + Math.sin(t * 0.006) * 0.08;
-      const hue = (t * 0.05) % 360;
+      const pulse = 1 + Math.sin(t * 0.008) * 0.12;
+      const hue = (t * 0.08) % 360;
+      const sparkle = Math.sin(t * 0.02) * 0.3;
+      
       ctx.save();
-      ctx.fillStyle = `hsla(${hue}, 85%, 65%, 0.9)`;
-      ctx.shadowColor = `hsla(${hue}, 85%, 55%, 1)`;
-      ctx.shadowBlur = 30;
+      // Victory title with pixel glow
+      ctx.fillStyle = `hsla(${hue}, 90%, 70%, 0.95)`;
+      ctx.shadowColor = `hsla(${hue}, 90%, 50%, 1)`;
+      ctx.shadowBlur = 40;
       ctx.textAlign = 'center';
-      ctx.font = `900 ${Math.floor(48 * pulse)}px ui-sans-serif, system-ui`;
-      ctx.fillText('你勝利了！', canvas.width / 2, canvas.height / 2 - 20);
-      ctx.font = '600 20px ui-sans-serif, system-ui';
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
-      ctx.fillText('稍後將進入商店，請稍候...', canvas.width / 2, canvas.height / 2 + 18);
+      ctx.font = `bold ${Math.floor(52 * pulse)}px 'Press Start 2P', monospace`;
+      ctx.fillText('VICTORY!', canvas.width / 2, canvas.height / 2 - 30);
+      
+      // Subtitle with sparkle effect
+      ctx.font = '600 18px "Orbitron", monospace';
+      ctx.shadowBlur = 20;
+      ctx.fillStyle = `rgba(255,255,255,${0.8 + sparkle})`;
+      ctx.fillText('Entering Neon Workshop...', canvas.width / 2, canvas.height / 2 + 15);
+      
+      // Pixel particles around text
+      for (let i = 0; i < 8; i++) {
+        const angle = (t * 0.003 + i * 0.785) % (Math.PI * 2);
+        const radius = 80 + Math.sin(t * 0.01 + i) * 20;
+        const x = canvas.width / 2 + Math.cos(angle) * radius;
+        const y = canvas.height / 2 + Math.sin(angle) * radius;
+        ctx.fillStyle = `hsla(${(hue + i * 45) % 360}, 80%, 60%, 0.7)`;
+        ctx.fillRect(x, y, 3, 3);
+      }
       ctx.restore();
     }
   };

@@ -62,18 +62,20 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const setPhase = (p: GamePhase) => {
-    worldRef.current.phase = p;
     if (p === 'playing' && ui.phase === 'menu') {
-      // initialize UI at start of game
-      // center player at start
+      // reset world to initial state when starting from menu
+      worldRef.current = createInitialWorld();
       const w = worldRef.current;
+      w.phase = 'playing';
       w.player.position.x = w.width / 2;
       w.player.position.y = w.height / 2;
       // start 30s timer each time playing starts
       w.timerEndAt = now() + 30_000;
       syncUi();
+    } else {
+      worldRef.current.phase = p;
+      syncUi();
     }
-    syncUi();
   };
 
   const reset = () => {

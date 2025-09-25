@@ -16,16 +16,21 @@ export const ShopModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   return (
     <div className="shop-backdrop">
       <div className="shop">
-        <h2>商店（按 Enter 開始下一波）</h2>
-        <div>當前金錢：{ui.money}</div>
+        <h2 className="typing">Neon Workshop</h2>
+        <div className="credits-display">
+          <span className="credit-icon">⟐</span>
+          <span className="credit-amount">{ui.money}</span>
+        </div>
         <div className="grid">
           {items.map((it) => (
-            <div key={it.key} className="card">
-              <h3>{it.title}</h3>
-              <div style={{ opacity: (('disabled' in it) && it.disabled) ? 0.6 : 1 }}>{it.desc}</div>
-              <div>價格：{it.cost}</div>
+            <div key={it.key} className={`card ${(('disabled' in it) && it.disabled) ? 'disabled' : ''}`}>
+              <div className="card-header">
+                <h3>{it.title}</h3>
+                <div className="price-tag">{it.cost}</div>
+              </div>
+              <div className="card-desc" style={{ opacity: ((('disabled' in it) && it.disabled) ? 0.6 : 1) }}>{it.desc}</div>
               <button
-                className="btn-primary"
+                className="btn-tech"
                 disabled={(('disabled' in it) && it.disabled) || worldRef.current.player.money < it.cost}
                 onClick={() => { buyUpgrade(it.key as any); playPurchase(); }}
               >購買</button>
@@ -33,8 +38,8 @@ export const ShopModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           ))}
         </div>
         <div className="footer">
-          <button onClick={() => { nextWave(worldRef.current); setPhase('playing'); }}>繼續（開始下一波：回車）</button>
-          <button onClick={() => { setPhase('menu'); }}>返回主頁</button>
+          <button className="btn-tech" onClick={() => { nextWave(worldRef.current); setPhase('playing'); }}>Start Next Wave (Enter)</button>
+          <button className="btn-tech" onClick={() => { setPhase('menu'); }}>Back to Lobby</button>
         </div>
       </div>
     </div>
