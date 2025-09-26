@@ -273,6 +273,11 @@ export const GameCanvas: React.FC = () => {
       (window as any).__enemyCache = (window as any).__enemyCache || new Map<string, HTMLImageElement>();
       const cache: Map<string, HTMLImageElement> = (window as any).__enemyCache;
 
+      // 檢查是否在閃光階段
+      const isFlashing = e.flashPosition && e.flashStartTime && e.type !== 'mask_dude';
+      const flashDuration = 1000; // 1秒閃光
+      const flashProgress = isFlashing ? Math.min(1, (now() - (e.flashStartTime || 0)) / flashDuration) : 1;
+
       let sprite: HTMLImageElement | undefined;
       if (e.dying) {
         const disIdx = Math.min(4, Math.max(0, (e.disappearFrame ?? 0)));
@@ -301,22 +306,58 @@ export const GameCanvas: React.FC = () => {
       const dh = size;
       const dx = e.position.x - dw / 2;
       const dy = e.position.y - dh / 2;
+      
       ctx.save();
-      if (!e.dying && e.facing === 'left') {
-        ctx.translate(e.position.x, 0);
-        ctx.scale(-1, 1);
-        ctx.translate(-e.position.x, 0);
-      }
-      if (sprite && (sprite as HTMLImageElement).complete) {
-        ctx.globalAlpha = e.dying ? 0.95 : 1;
-        ctx.drawImage(sprite as HTMLImageElement, dx, dy, dw, dh);
-        ctx.globalAlpha = 1;
-      } else {
-        ctx.fillStyle = '#ff7a7a';
+      
+      // 閃光效果渲染
+      if (isFlashing && flashProgress < 1) {
+        // 閃光階段：只顯示fancy閃光效果，不顯示敵人
+        const flashSize = 40 + Math.sin(now() * 0.02) * 10; // 閃爍大小
+        const flashAlpha = 0.8 + Math.sin(now() * 0.03) * 0.2; // 閃爍透明度
+        
+        // 外圈閃光
+        const outerGradient = ctx.createRadialGradient(e.position.x, e.position.y, 0, e.position.x, e.position.y, flashSize);
+        outerGradient.addColorStop(0, `rgba(255, 255, 255, ${flashAlpha * 0.3})`);
+        outerGradient.addColorStop(0.5, `rgba(0, 255, 255, ${flashAlpha * 0.2})`);
+        outerGradient.addColorStop(1, `rgba(0, 255, 255, 0)`);
+        ctx.fillStyle = outerGradient;
         ctx.beginPath();
-        ctx.arc(e.position.x, e.position.y, e.radius + 4, 0, Math.PI * 2);
+        ctx.arc(e.position.x, e.position.y, flashSize, 0, Math.PI * 2);
         ctx.fill();
+        
+        // 內圈閃光
+        const innerGradient = ctx.createRadialGradient(e.position.x, e.position.y, 0, e.position.x, e.position.y, flashSize * 0.6);
+        innerGradient.addColorStop(0, `rgba(255, 255, 255, ${flashAlpha * 0.8})`);
+        innerGradient.addColorStop(1, `rgba(0, 255, 255, 0)`);
+        ctx.fillStyle = innerGradient;
+        ctx.beginPath();
+        ctx.arc(e.position.x, e.position.y, flashSize * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // 中心點
+        ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha})`;
+        ctx.beginPath();
+        ctx.arc(e.position.x, e.position.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // 正常階段：顯示敵人
+        if (!e.dying && e.facing === 'left') {
+          ctx.translate(e.position.x, 0);
+          ctx.scale(-1, 1);
+          ctx.translate(-e.position.x, 0);
+        }
+        if (sprite && (sprite as HTMLImageElement).complete) {
+          ctx.globalAlpha = e.dying ? 0.95 : 1;
+          ctx.drawImage(sprite as HTMLImageElement, dx, dy, dw, dh);
+          ctx.globalAlpha = 1;
+        } else {
+          ctx.fillStyle = '#ff7a7a';
+          ctx.beginPath();
+          ctx.arc(e.position.x, e.position.y, e.radius + 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
+      
       ctx.restore();
     }
 

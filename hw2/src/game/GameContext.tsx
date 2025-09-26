@@ -179,9 +179,21 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }];
     p.selectedWeaponIndex = 0;
     
-    // 選擇武器後直接開始遊戲
+    // 選擇武器後開始第一關
     w.phase = 'playing';
     w.timerEndAt = now() + 30_000;
+    // 確保第一關開始
+    w.wave.index = 1;
+    // 初始化第一關的敵人配置
+    w.wave.enemiesToSpawn = Infinity;
+    w.wave.spawned = 0;
+    w.wave.spawnCooldownMs = 1000;
+    w.wave.enemyHp = 15;
+    w.wave.enemySpeed = 1.5;
+    
+    // 調試信息：顯示第一關開始
+    console.log(`第一關開始，波次: ${w.wave.index}`);
+    
     syncUi();
   };
 
@@ -270,99 +282,99 @@ export function stepWorld(world: WorldState, input: { up: boolean; down: boolean
 
   // spawn enemies per wave
   const w = world.wave;
-  if (t - w.lastSpawnAt >= w.spawnCooldownMs) {
-    w.lastSpawnAt = t;
-    w.spawned += 1;
-    
-    // choose enemy type by wave with unlock system
-    let type: 'mask_dude' | 'ninja_frog' | 'pink_man' | 'virtual_guy' = 'mask_dude';
-    const availableTypes: string[] = [];
-    
+  
+  // 無限生成模式：每一關的敵人都會無限生成直到關卡結束
+  if (true) { // 永遠為真，實現無限生成
     // 檢查解鎖的敵人類型
+    const availableTypes: string[] = [];
     if (w.index >= GameConfig.ENEMIES.mask_dude.UNLOCK_WAVE) availableTypes.push('mask_dude');
     if (w.index >= GameConfig.ENEMIES.ninja_frog.UNLOCK_WAVE) availableTypes.push('ninja_frog');
     if (w.index >= GameConfig.ENEMIES.pink_man.UNLOCK_WAVE) availableTypes.push('pink_man');
     if (w.index >= GameConfig.ENEMIES.virtual_guy.UNLOCK_WAVE) availableTypes.push('virtual_guy');
     
-    // 從可用類型中隨機選擇
-    if (availableTypes.length > 0) {
-      type = availableTypes[Math.floor(Math.random() * availableTypes.length)] as any;
-    }
-
-    const cfg = GameConfig.getEnemyConfig(type);
-    const waveIndex = w.index;
+    // 調試信息：顯示當前波次和可用敵人類型
+    console.log(`波次: ${w.index}, 可用敵人類型:`, availableTypes);
     
-    // 計算動態數值
-    const currentHp = cfg.BASE_HP + (waveIndex - 1) * cfg.HP_PER_WAVE;
-    const currentSpeed = cfg.BASE_SPEED + (waveIndex - 1) * cfg.SPEED_PER_WAVE;
-    
-    if (type === 'mask_dude') {
-      // mask_dude: 從外面跑進來
-      const pos = randomEdgeSpawn(world.width, world.height);
-      world.enemies.push({ 
-        id: Math.random(), 
-        position: pos, 
-        radius: cfg.RADIUS, 
-        speed: currentSpeed, 
-        hp: currentHp, 
-        maxHp: currentHp, 
-        type, 
-        damage: cfg.DAMAGE, 
-        frame: 0, 
-        lastFrameAtMs: t, 
-        facing: 'right',
-        // 特殊屬性
-        flashPosition: null,
-        dashTarget: null,
-        dashCooldown: 0,
-        lastDashAt: 0
-      });
-    } else if (type === 'ninja_frog' || type === 'pink_man') {
-      // ninja_frog 和 pink_man: 先閃光，然後出現在閃光位置
-      const flashPos = {
-        x: Math.random() * (world.width - 100) + 50,
-        y: Math.random() * (world.height - 100) + 50
-      };
+    // 為每個敵人類型檢查是否可以生成
+    for (const type of availableTypes) {
+      const enemyType = type as 'mask_dude' | 'ninja_frog' | 'pink_man' | 'virtual_guy';
+      const cfg = GameConfig.getEnemyConfig(enemyType);
       
-      world.enemies.push({ 
-        id: Math.random(), 
-        position: flashPos, 
-        radius: cfg.RADIUS, 
-        speed: currentSpeed, 
-        hp: currentHp, 
-        maxHp: currentHp, 
-        type, 
-        damage: cfg.DAMAGE, 
-        frame: 0, 
-        lastFrameAtMs: t, 
-        facing: 'right',
-        // 特殊屬性
-        flashPosition: flashPos,
-        flashStartTime: t,
-        dashTarget: null,
-        dashCooldown: type === 'pink_man' ? 3000 : 0, // pink_man 有衝刺冷卻
-        lastDashAt: 0
-      });
-    } else {
-      // virtual_guy: 暫時保持原樣
-      const pos = randomEdgeSpawn(world.width, world.height);
-      world.enemies.push({ 
-        id: Math.random(), 
-        position: pos, 
-        radius: cfg.RADIUS, 
-        speed: currentSpeed, 
-        hp: currentHp, 
-        maxHp: currentHp, 
-        type, 
-        damage: cfg.DAMAGE, 
-        frame: 0, 
-        lastFrameAtMs: t, 
-        facing: 'right',
-        flashPosition: null,
-        dashTarget: null,
-        dashCooldown: 0,
-        lastDashAt: 0
-      });
+      // 檢查場上該類型敵人數量是否已達上限
+      const currentTypeCount = world.enemies.filter(e => e.type === enemyType && !e.dying).length;
+      
+      if (currentTypeCount < cfg.MAX_ON_SCREEN) {
+        // 檢查該類型的生成間隔
+        const lastSpawnKey = `lastSpawnAt_${enemyType}`;
+        const lastSpawnAt = (w as any)[lastSpawnKey] || 0;
+        const timeSinceLastSpawn = t - lastSpawnAt;
+        
+        console.log(`檢查 ${enemyType}：場上數量 ${currentTypeCount}/${cfg.MAX_ON_SCREEN}，間隔 ${timeSinceLastSpawn}ms/${cfg.SPAWN_INTERVAL_MS}ms`);
+        
+        if (timeSinceLastSpawn >= cfg.SPAWN_INTERVAL_MS) {
+          // 更新該類型的生成時間
+          (w as any)[lastSpawnKey] = t;
+          w.spawned += 1;
+          console.log(`生成敵人: ${enemyType}`);
+        
+          const waveIndex = w.index;
+          
+          // 計算動態數值（使用波次縮放）
+          const scaling = 1 + (waveIndex - 1) * GameConfig.GAME.WAVE_SCALING;
+          const currentHp = Math.floor((cfg.BASE_HP + (waveIndex - 1) * cfg.HP_PER_WAVE) * scaling);
+          const currentSpeed = (cfg.BASE_SPEED + (waveIndex - 1) * cfg.SPEED_PER_WAVE) * scaling;
+      
+      if (enemyType === 'mask_dude') {
+        // mask_dude: 從外面跑進來，不閃光，直接出現
+        const pos = randomEdgeSpawn(world.width, world.height);
+        world.enemies.push({ 
+          id: Math.random(), 
+          position: pos, 
+          radius: cfg.RADIUS, 
+          speed: currentSpeed, 
+          hp: currentHp, 
+          maxHp: currentHp, 
+          type: enemyType, 
+          damage: cfg.DAMAGE, 
+          frame: 0, 
+          lastFrameAtMs: t, 
+          facing: 'right',
+          // 特殊屬性
+          flashPosition: null,
+          flashStartTime: undefined,
+          dashTarget: null,
+          dashCooldown: 0,
+          lastDashAt: 0
+        });
+      } else {
+        // ninja_frog, pink_man, virtual_guy: 先閃光1秒，然後在場上隨機出現
+        const flashPos = {
+          x: Math.random() * (world.width - 100) + 50,
+          y: Math.random() * (world.height - 100) + 50
+        };
+        
+        world.enemies.push({ 
+          id: Math.random(), 
+          position: flashPos, 
+          radius: cfg.RADIUS, 
+          speed: currentSpeed, 
+          hp: currentHp, 
+          maxHp: currentHp, 
+          type: enemyType, 
+          damage: cfg.DAMAGE, 
+          frame: 0, 
+          lastFrameAtMs: t, 
+          facing: 'right',
+          // 特殊屬性 - 閃光效果
+          flashPosition: flashPos,
+          flashStartTime: t,
+          dashTarget: null,
+          dashCooldown: enemyType === 'pink_man' ? 3000 : 0, // pink_man 有衝刺冷卻
+          lastDashAt: 0
+        });
+      }
+        }
+      }
     }
   }
 
@@ -370,10 +382,10 @@ export function stepWorld(world: WorldState, input: { up: boolean; down: boolean
   for (const e of world.enemies) {
     if (e.dying) continue;
     
-    // 閃光效果處理
-    if (e.flashPosition && (e.type === 'ninja_frog' || e.type === 'pink_man')) {
-      const flashDuration = 800; // 閃光持續時間
-      if (e.flashStartTime && t - e.flashStartTime < flashDuration) {
+    // 閃光效果處理（除了mask_dude，其他敵人都會閃光）
+    if (e.flashPosition && e.flashStartTime && e.type !== 'mask_dude') {
+      const flashDuration = 1000; // 閃光持續時間1秒
+      if (t - e.flashStartTime < flashDuration) {
         // 還在閃光階段，不移動
         continue;
       }
@@ -568,15 +580,21 @@ export function stepWorld(world: WorldState, input: { up: boolean; down: boolean
 
   // enemy touch player -> gradual damage (tick)
   let touching = false;
+  let touchingEnemy: EnemyState | null = null;
   for (const e of world.enemies) {
     const d = distance(player.position, e.position);
-    if (d <= e.radius + player.radius) { touching = true; break; }
+    if (d <= e.radius + player.radius) { 
+      touching = true; 
+      touchingEnemy = e;
+      break; 
+    }
   }
   if (!('lastTouchDamageAt' in (player as any))) (player as any).lastTouchDamageAt = 0;
   const lastTouchDamageAt: number = (player as any).lastTouchDamageAt;
-  if (touching && t - lastTouchDamageAt > 400) {
+  if (touching && touchingEnemy && t - lastTouchDamageAt > 400) {
     (player as any).lastTouchDamageAt = t;
-    player.hp = Math.max(0, player.hp - 1);
+    // 使用敵人的實際傷害值
+    player.hp = Math.max(0, player.hp - touchingEnemy.damage);
     if (player.hp <= 0) {
       // trigger death animation and keep phase until frames finish then set gameover
       if (player.anim !== 'die') {
@@ -626,33 +644,19 @@ export function nextWave(world: WorldState) {
   // ensure battlefield is clean for the next wave
   world.enemies = [];
   world.projectiles = [];
+  // 增加波次索引
   w.index += 1;
   
-  // 計算每波敵人數量
-  let totalEnemies = 0;
-  if (w.index >= GameConfig.ENEMIES.mask_dude.UNLOCK_WAVE) {
-    totalEnemies += 10 + (w.index - 1) * 5; // mask_dude: starts 10, +5 per wave
-  }
-  if (w.index >= GameConfig.ENEMIES.ninja_frog.UNLOCK_WAVE) {
-    totalEnemies += 5 + (w.index - 2) * 3; // ninja_frog: starts 5, +3 per wave
-  }
-  if (w.index >= GameConfig.ENEMIES.pink_man.UNLOCK_WAVE) {
-    totalEnemies += 3 + (w.index - 3) * 2; // pink_man: starts 3, +2 per wave
-  }
-  if (w.index >= GameConfig.ENEMIES.virtual_guy.UNLOCK_WAVE) {
-    totalEnemies += 2 + (w.index - 4) * 1; // virtual_guy: starts 2, +1 per wave
-  }
+  // 調試信息：顯示波次更新
+  console.log(`nextWave 被調用，新波次: ${w.index}`);
   
-  w.enemiesToSpawn = totalEnemies;
+  // 無限生成模式：移除敵人數量限制
+  w.enemiesToSpawn = Infinity; // 無限生成
+  
   w.spawned = 0;
-  w.spawnCooldownMs = Math.max(600, Math.floor(w.spawnCooldownMs * 0.95));  // 生成間隔更長
-  w.enemyHp = Math.floor(w.enemyHp * 1.2 + 4);
-  w.enemySpeed = Math.min(3.5, w.enemySpeed + 0.12);
+  w.spawnCooldownMs = 1000; // 基礎生成間隔，會被各敵人類型覆蓋
+  w.enemyHp = 15; // 基礎HP，會被各敵人類型覆蓋
+  w.enemySpeed = 1.5; // 基礎速度，會被各敵人類型覆蓋
   // reset 30s timer each wave
   world.timerEndAt = now() + 30_000;
 }
-
-// Light UI polling to keep minimal values in sync without heavy React state churn
-// (reserved) external UI sync util could be added here if needed in future
-
-
