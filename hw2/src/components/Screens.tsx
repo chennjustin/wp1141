@@ -17,7 +17,7 @@ export const StartScreen: React.FC = () => {
             className="btn-tech pulse"
             onClick={() => {
               setFx(true);
-              setTimeout(() => setPhase('playing'), 300);
+              setTimeout(() => setPhase('weaponSelect'), 300);
               setTimeout(() => setFx(false), 800);
             }}
           >Start Game</button>

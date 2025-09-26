@@ -1,8 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import { useGame } from '@game/GameContext';
-import { CANVAS_HEIGHT, CANVAS_WIDTH } from '@game/constants';
 import { nextWave, stepWorld } from '@game/GameContext';
 import { playShoot, playHit, playBgm } from '@game/audio';
+import { GameConfig } from '@game/config/GameConfig';
+import { now } from '@game/utils';
 
 // preload sprite frames for main character
 const idleFrames = [
@@ -35,6 +36,27 @@ victoryFrames[0].src = '/src/asset/main_character/character_33.png';
 victoryFrames[1].src = '/src/asset/main_character/character_34.png';
 victoryFrames[2].src = '/src/asset/main_character/character_35.png';
 victoryFrames[3].src = '/src/asset/main_character/character_36.png';
+
+// preload weapon images
+const weaponImages = {
+  weapon_R1: new Image(),
+  weapon_R1_shoot: new Image(),
+  weapon_R2: new Image(),
+  weapon_R2_shoot: new Image(),
+  weapon_R3: new Image(),
+  weapon_R3_shoot: new Image(),
+};
+weaponImages.weapon_R1.src = '/src/asset/weaponR1.png';
+weaponImages.weapon_R1_shoot.src = '/src/asset/weaponR1_shoot.png';
+weaponImages.weapon_R2.src = '/src/asset/weaponR2.png';
+weaponImages.weapon_R2_shoot.src = '/src/asset/weaponR2_shoot.png';
+weaponImages.weapon_R3.src = '/src/asset/weaponR3.png';
+weaponImages.weapon_R3_shoot.src = '/src/asset/weaponR3_shoot.png';
+
+// 武器類型到圖像鍵的映射函數
+const getWeaponImageKey = (weaponType: string) => {
+  return weaponType as keyof typeof weaponImages;
+};
 
 export const GameCanvas: React.FC = () => {
   const { worldRef, ui, setPhase, reset } = useGame();
@@ -142,9 +164,109 @@ export const GameCanvas: React.FC = () => {
     }
     ctx.restore();
 
-    // draw range (faint)
+    // draw weapons
+    for (let i = 0; i < p.weapons.length; i++) {
+      const weapon = p.weapons[i];
+      const weaponImg = weaponImages[getWeaponImageKey(weapon.type)];
+      const shootImg = weaponImages[getWeaponImageKey(`${weapon.type}_shoot`)];
+      
+      // Check if weapon just fired (within configured duration)
+      const justFired = now() - weapon.lastAttackAt < GameConfig.ANIMATION.WEAPON_SHOOT_DURATION;
+      // Use shoot image when firing, otherwise use base image
+      const imgToUse = (justFired && shootImg && shootImg.complete) ? shootImg : weaponImg;
+      
+      // Draw if either selected image is ready or base image is ready
+      if ((imgToUse && imgToUse.complete) || (weaponImg && weaponImg.complete)) {
+        // Calculate weapon position based on weapon index using config
+        const positionOffset = GameConfig.WEAPON_POSITIONS[i as keyof typeof GameConfig.WEAPON_POSITIONS] || { x: 0, y: 0 };
+        const weaponX = p.position.x + positionOffset.x;
+        const weaponY = p.position.y + positionOffset.y;
+        
+        // Find nearest enemy for weapon direction
+        let targetAngle = 0;
+        let nearestEnemy = null;
+        let nearestDist = Infinity;
+        
+        for (const enemy of world.enemies) {
+          if (enemy.dying) continue;
+          const dist = Math.hypot(enemy.position.x - weaponX, enemy.position.y - weaponY);
+          if (dist <= weapon.range && dist < nearestDist) {
+            nearestEnemy = enemy;
+            nearestDist = dist;
+          }
+        }
+        
+        // Brotato-style weapon orientation calculation
+        let weaponAngle = 0;
+        let isMirrored = false;
+        
+        if (nearestEnemy) {
+          const dx = nearestEnemy.position.x - weaponX;
+          const dy = nearestEnemy.position.y - weaponY;
+          const rawAngle = Math.atan2(dy, dx);
+          
+          if (dx < 0) {
+            // Enemy on left side: mirror the weapon horizontally
+            isMirrored = true;
+            // Calculate angle as if enemy is on the right (inverted dx)
+            weaponAngle = Math.atan2(dy, -dx);
+          } else {
+            // Enemy on right side: normal rotation
+            isMirrored = false;
+            weaponAngle = rawAngle;
+          }
+          
+          // 強制限制角度在 -90° 到 +90° 範圍內
+          weaponAngle = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, weaponAngle));
+        } else {
+          // No target: weapon faces player's movement direction
+          if (p.facing === 'left') {
+            // Player facing left: weapon points left (mirrored)
+            isMirrored = true;
+            weaponAngle = 0; // Point straight left when mirrored
+          } else {
+            // Player facing right: weapon points right
+            isMirrored = false;
+            weaponAngle = 0; // Point straight right
+          }
+        }
+        
+        // Direct rotation to target angle (no smooth interpolation)
+        const finalAngle = weaponAngle;
+        
+        // Calculate weapon dimensions
+        const weaponScale = GameConfig.WEAPON_TYPE_SCALES[weapon.type as keyof typeof GameConfig.WEAPON_TYPE_SCALES] || 0.03;
+        const weaponW = (imgToUse.width || 32) * weaponScale;
+        const weaponH = (imgToUse.height || 32) * weaponScale;
+        
+        // Brotato-style weapon rendering
+        ctx.save();
+        
+        // 1. Translate to weapon pivot point (player's hand)
+        ctx.translate(weaponX, weaponY);
+        
+        // 2. Apply horizontal mirror if enemy is on the left
+        if (isMirrored) {
+          ctx.scale(-1, 1);
+        }
+        
+        // 3. Apply rotation around the pivot point
+        ctx.rotate(finalAngle);
+        
+        // 4. Draw weapon centered at the pivot point
+        ctx.drawImage(imgToUse, -weaponW / 2, -weaponH / 2, weaponW, weaponH);
+        
+        ctx.restore();
+      }
+    }
+
+    // draw weapon ranges (faint)
     ctx.strokeStyle = 'rgba(74,222,128,0.15)';
-    ctx.beginPath(); ctx.arc(p.position.x, p.position.y, p.attackRange, 0, Math.PI * 2); ctx.stroke();
+    for (const weapon of p.weapons) {
+      ctx.beginPath(); 
+      ctx.arc(p.position.x, p.position.y, weapon.range, 0, Math.PI * 2); 
+      ctx.stroke();
+    }
 
     // draw enemies or their disappear animation
     for (const e of world.enemies) {

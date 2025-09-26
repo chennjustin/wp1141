@@ -1,8 +1,19 @@
-export type GamePhase = 'menu' | 'playing' | 'victory' | 'shop' | 'gameover';
+export type GamePhase = 'menu' | 'weaponSelect' | 'playing' | 'victory' | 'shop' | 'gameover';
 
 export interface Vector2 {
   x: number;
   y: number;
+}
+
+export interface WeaponState {
+  id: string;
+  type: 'weapon_R1' | 'weapon_R2' | 'weapon_R3';
+  damage: number;
+  attackIntervalMs: number;
+  range: number;
+  level: number;
+  lastAttackAt: number;
+  traits?: string[]; // 武器特質
 }
 
 export interface PlayerState {
@@ -12,15 +23,21 @@ export interface PlayerState {
   hp: number;
   maxHp: number;
   money: number;
-  damage: number;
-  attackIntervalMs: number;
-  attackRange: number;
-  lastAttackAt: number;
   // sprite/animation
   facing: 'left' | 'right';
   anim: 'idle' | 'walk' | 'die' | 'victory';
   frame: number;
   lastFrameAtMs: number;
+  // weapons
+  weapons: WeaponState[];
+  selectedWeaponIndex: number;
+  // 升級屬性
+  upgrades?: {
+    attackDamage?: number; // 攻擊傷害加成
+    attackSpeed?: number;  // 攻擊速度加成
+    maxHp?: number;        // 最大生命值加成
+    moveSpeed?: number;    // 移動速度加成
+  };
 }
 
 export interface EnemyState {
@@ -39,6 +56,12 @@ export interface EnemyState {
   dying?: boolean;
   disappearFrame?: number; // 0..4 -> dis_1..dis_5
   lastDisappearAtMs?: number;
+  // 特殊行為屬性
+  flashPosition?: Vector2 | null;
+  flashStartTime?: number;
+  dashTarget?: Vector2 | null;
+  dashCooldown?: number;
+  lastDashAt?: number;
 }
 
 export interface ProjectileState {
