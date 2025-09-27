@@ -42,76 +42,77 @@ export const WeaponSelect: React.FC = () => {
     }
   }, [particles]);
 
-  if (showReady && selectedWeapon) {
-    return (
-      <div className="ready-screen">
-        <div className="bg-animate" />
-        <div className="particles">
-          {particles.map(p => (
-            <div key={p.id} className="particle" style={{ 
-              left: p.x, 
-              top: p.y,
-              '--delay': `${p.id * 0.1}s` 
-            } as React.CSSProperties} />
-          ))}
-        </div>
-        
-        <div className="ready-content">
-          <div className="weapon-showcase">
-            <div className="weapon-glow">
-              <img 
-                src={`/src/asset/${selectedWeapon.replace('_', '')}.png`} 
-                alt={selectedWeapon}
-                className="weapon-image"
-              />
-            </div>
-            <h1 className="ready-title typing">WEAPON SELECTED</h1>
-            <h2 className="weapon-name-glow">{selectedWeapon.replace('weapon', 'Weapon ')}</h2>
-          </div>
-          
-          <div className="ready-stats">
-            {(() => {
-              const config = GameConfig.getWeaponConfig(selectedWeapon);
-              return (
-                <>
-                  <div className="stat-row">
-                    <span className="stat-icon">⚡</span>
-                    <span className="stat-label">Damage:</span>
-                    <span className="stat-value">{config.DAMAGE}</span>
-                  </div>
-                  <div className="stat-row">
-                    <span className="stat-icon">🔥</span>
-                    <span className="stat-label">Fire Rate:</span>
-                    <span className="stat-value">{Math.round(1000 / config.ATTACK_INTERVAL_MS)}/s</span>
-                  </div>
-                  <div className="stat-row">
-                    <span className="stat-icon">🎯</span>
-                    <span className="stat-label">Range:</span>
-                    <span className="stat-value">{config.RANGE}</span>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-          
-          <div className="ready-actions">
-            <button className="btn-ready pulse" onClick={handleStartGame}>
-              <span className="btn-text">BEGIN MISSION</span>
-              <span className="btn-glow"></span>
-            </button>
-            <button className="btn-back" onClick={() => setShowReady(false)}>
-              BACK TO SELECTION
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="weapon-select-screen">
       <div className="bg-animate" />
       <div className="scanlines"></div>
+      
+      {/* 準備開始浮窗 */}
+      {showReady && selectedWeapon && (
+        <div className="ready-modal-overlay">
+          <div className="ready-modal">
+            <div className="particles">
+              {particles.map(p => (
+                <div key={p.id} className="particle" style={{ 
+                  left: p.x, 
+                  top: p.y,
+                  '--delay': `${p.id * 0.1}s` 
+                } as React.CSSProperties} />
+              ))}
+            </div>
+            
+            <div className="ready-content">
+              <div className="weapon-showcase">
+                <div className="weapon-glow">
+                  <img 
+                    src={`/src/asset/${selectedWeapon.replace('_', '')}.png`} 
+                    alt={selectedWeapon}
+                    className="weapon-image"
+                  />
+                </div>
+                <h1 className="ready-title typing">WEAPON SELECTED</h1>
+                <h2 className="weapon-name-glow">{selectedWeapon.replace('weapon', 'Weapon ')}</h2>
+              </div>
+              
+              <div className="ready-stats">
+                {(() => {
+                  const config = GameConfig.getWeaponConfig(selectedWeapon);
+                  return (
+                    <>
+                      <div className="stat-row">
+                        <span className="stat-icon">⚡</span>
+                        <span className="stat-label">Damage:</span>
+                        <span className="stat-value">{config.DAMAGE}</span>
+                      </div>
+                      <div className="stat-row">
+                        <span className="stat-icon">🔥</span>
+                        <span className="stat-label">Fire Rate:</span>
+                        <span className="stat-value">{Math.round(1000 / config.ATTACK_INTERVAL_MS)}/s</span>
+                      </div>
+                      <div className="stat-row">
+                        <span className="stat-icon">🎯</span>
+                        <span className="stat-label">Range:</span>
+                        <span className="stat-value">{config.RANGE}</span>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+              
+              <div className="ready-actions">
+                <button className="btn-ready pulse" onClick={handleStartGame}>
+                  <span className="btn-text">BEGIN MISSION</span>
+                  <span className="btn-glow"></span>
+                </button>
+                <button className="btn-back" onClick={() => setShowReady(false)}>
+                  BACK TO SELECTION
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="weapon-select-content">
         <div className="header-section">

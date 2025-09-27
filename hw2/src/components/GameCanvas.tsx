@@ -350,12 +350,8 @@ export const GameCanvas: React.FC = () => {
           ctx.globalAlpha = e.dying ? 0.95 : 1;
           ctx.drawImage(sprite as HTMLImageElement, dx, dy, dw, dh);
           ctx.globalAlpha = 1;
-        } else {
-          ctx.fillStyle = '#ff7a7a';
-          ctx.beginPath();
-          ctx.arc(e.position.x, e.position.y, e.radius + 4, 0, Math.PI * 2);
-          ctx.fill();
         }
+        // 圖片未載入完成時不顯示任何東西（包括紅色圓圈）
       }
       
       ctx.restore();
