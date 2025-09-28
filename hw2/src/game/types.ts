@@ -23,6 +23,10 @@ export interface PlayerState {
   hp: number;
   maxHp: number;
   money: number;
+  // 經驗值系統
+  experience: number;
+  level: number;
+  experienceToNext: number;
   // sprite/animation
   facing: 'left' | 'right';
   anim: 'idle' | 'walk' | 'die' | 'victory';
@@ -72,6 +76,21 @@ export interface ProjectileState {
   damage: number;
 }
 
+export interface DamageNumberState {
+  id: number;
+  position: Vector2;
+  damage: number;
+  startTime: number;
+  velocity: Vector2;
+}
+
+export interface LevelUpTextState {
+  id: number;
+  position: Vector2;
+  startTime: number;
+  velocity: Vector2;
+}
+
 export interface WaveState {
   index: number;
   enemiesToSpawn: number;
@@ -88,6 +107,9 @@ export interface UIState {
   waveIndex: number;
   phase: GamePhase;
   timeLeftSec?: number;
+  experience: number;
+  level: number;
+  experienceToNext: number;
 }
 
 export interface WorldState {
@@ -97,6 +119,8 @@ export interface WorldState {
   player: PlayerState;
   enemies: EnemyState[];
   projectiles: ProjectileState[];
+  damageNumbers: DamageNumberState[];
+  levelUpTexts: LevelUpTextState[];
   wave: WaveState;
   victoryAt?: number;
   timerEndAt?: number;

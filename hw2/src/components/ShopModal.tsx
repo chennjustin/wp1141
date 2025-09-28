@@ -1,11 +1,22 @@
 import React from 'react';
 import { useGame, WeaponType } from '@game/GameContext';
-import { playPurchase } from '@game/audio';
+import { playPurchase, playUpgrade, playActionClick, playReadyToClick, setUnderwaterEffect } from '@game/audio';
 import { nextWave } from '@game/GameContext';
 import { GameConfig } from '@game/config/GameConfig';
 
 export const ShopModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const { ui, buyUpgrade, worldRef, setPhase } = useGame();
+  
+  // 商店水中效果管理
+  React.useEffect(() => {
+    // 進入商店時啟用水中效果
+    setUnderwaterEffect(true);
+    
+    return () => {
+      // 離開商店時關閉水中效果
+      setUnderwaterEffect(false);
+    };
+  }, []);
   
   // Get current player weapons
   const playerWeapons = worldRef.current.player.weapons;
@@ -15,14 +26,26 @@ export const ShopModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const config = GameConfig.getWeaponConfig(weaponType);
     const existingWeapon = playerWeapons.find(w => w.type === weaponType);
     const isOwned = !!existingWeapon;
-    const canAfford = worldRef.current.player.money >= config.COST;
+    const weaponLevel = existingWeapon ? existingWeapon.level : 0;
+    const dynamicCost = config.COST + (weaponLevel * 20); // 動態升級費用
+    const canAfford = worldRef.current.player.money >= dynamicCost;
     const canBuy = playerWeapons.length < 6 || isOwned;
     
+    // 武器顯示名稱映射
+    const getWeaponDisplayName = (weaponType: string): string => {
+      switch (weaponType) {
+        case 'weapon_R1': return 'Pistol';
+        case 'weapon_R2': return 'Machine Gun';
+        case 'weapon_R3': return 'Shotgun';
+        default: return weaponType;
+      }
+    };
+
     return {
       key: weaponType,
-      title: isOwned ? `${weaponType.replace('weapon', 'Weapon ')} Lv.${existingWeapon?.level + 1 || 1}` : `${weaponType.replace('weapon', 'Weapon ')}`,
-      desc: isOwned ? `升級武器：傷害+3，射速+50ms，射程+20` : `傷害:${config.DAMAGE} 射速:${Math.round(1000/config.ATTACK_INTERVAL_MS)}/s 射程:${config.RANGE}`,
-      cost: config.COST,
+      title: isOwned ? `${getWeaponDisplayName(weaponType)} Lv.${weaponLevel}` : getWeaponDisplayName(weaponType),
+      upgradeInfo: isOwned ? `升級後：傷害+3，射速-50ms，射程+20` : `傷害:${config.DAMAGE} 射速:${Math.round(1000/config.ATTACK_INTERVAL_MS)}/s 射程:${config.RANGE}`,
+      cost: dynamicCost,
       disabled: !canAfford || !canBuy,
       isWeapon: true,
       owned: isOwned
@@ -30,43 +53,87 @@ export const ShopModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   });
 
   return (
-    <div className="shop-backdrop">
-      <div className="shop">
-        <h2 className="typing">Neon Workshop</h2>
-        <div className="credits-display">
-          <span className="credit-icon">⟐</span>
-          <span className="credit-amount">{ui.money}</span>
+    <div className="workshop-backdrop">
+      <div className="workshop-container">
+        {/* Header Section */}
+        <div className="workshop-header">
+          <h1 className="workshop-title">Neon Workshop</h1>
+          <div className="credits-panel">
+            <div className="credit-icon">⟐</div>
+            <div className="credit-amount">{ui.money}</div>
+          </div>
         </div>
-        <div className="grid">
+
+        {/* Weapon Cards Grid */}
+        <div className="weapons-grid">
           {items.map((it) => (
-            <div key={it.key} className={`card ${it.disabled ? 'disabled' : ''} ${it.isWeapon ? 'weapon-card' : ''}`}>
-              <div className="card-header">
-                <h3>{it.title}</h3>
-                <div className="price-tag">{it.cost === 0 ? 'FREE' : it.cost}</div>
-              </div>
-              <div className="card-desc" style={{ opacity: it.disabled ? 0.6 : 1 }}>{it.desc}</div>
-              {it.isWeapon && it.owned && (
-                <div className="weapon-preview">
+            <div key={it.key} className={`weapon-card ${it.disabled ? 'disabled' : ''}`}>
+              {/* Weapon Icon */}
+              <div className="weapon-icon-container">
+                {it.isWeapon && it.owned && (
                   <img 
                     src={`/src/asset/${it.key.replace('_', '')}.png`} 
                     alt={it.key}
-                    style={{ width: '40px', height: '40px', imageRendering: 'pixelated' }}
+                    className="weapon-icon-image"
                   />
+                )}
+              </div>
+
+              {/* Weapon Info */}
+              <div className="weapon-info">
+                <h3 className="weapon-name">{it.title}</h3>
+                <div className="upgrade-details">
+                  <div className="detail-item">
+                    <span className="detail-label">升級效果:</span>
+                    <span className="detail-value">{it.upgradeInfo}</span>
+                  </div>
                 </div>
-              )}
+              </div>
+
+              {/* Upgrade Button */}
               <button
-                className="btn-tech"
+                className="upgrade-button"
                 disabled={it.disabled}
-                onClick={() => { buyUpgrade(it.key as any); playPurchase(); }}
+                onMouseEnter={() => playReadyToClick()}
+                onClick={() => { 
+                  buyUpgrade(it.key as any); 
+                  if (it.isWeapon && it.owned) {
+                    playUpgrade();
+                  } else {
+                    playPurchase();
+                  }
+                }}
               >
-                {it.isWeapon && it.owned ? '升級' : '購買'}
+                <span className="button-text">{it.isWeapon && it.owned ? '升級' : '購買'}</span>
+                <span className="button-cost">{it.cost === 0 ? 'FREE' : it.cost}</span>
               </button>
             </div>
           ))}
         </div>
-        <div className="footer">
-          <button className="btn-tech" onClick={() => { nextWave(worldRef.current); setPhase('playing'); }}>Start Next Wave (Enter)</button>
-          <button className="btn-tech" onClick={() => { setPhase('menu'); }}>Back to Lobby</button>
+
+        {/* Footer Buttons */}
+        <div className="workshop-footer">
+          <button 
+            className="footer-button primary" 
+            onMouseEnter={() => playReadyToClick()}
+            onClick={() => { 
+              nextWave(worldRef.current); 
+              setPhase('playing'); 
+              playActionClick();
+            }}
+          >
+            Start Next Wave (Enter)
+          </button>
+          <button 
+            className="footer-button secondary" 
+            onMouseEnter={() => playReadyToClick()}
+            onClick={() => { 
+              setPhase('menu'); 
+              playActionClick();
+            }}
+          >
+            Back to Lobby
+          </button>
         </div>
       </div>
     </div>

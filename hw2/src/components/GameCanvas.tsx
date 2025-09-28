@@ -1,7 +1,18 @@
 import React, { useEffect, useRef } from 'react';
 import { useGame } from '@game/GameContext';
 import { nextWave, stepWorld } from '@game/GameContext';
-import { playShoot, playHit, playBgm } from '@game/audio';
+import { 
+  playWeaponR1, 
+  playWeaponR2, 
+  playWeaponR3, 
+  playPlayerHit, 
+  playEnemyDeath, 
+  playDash, 
+  playVictory, 
+  playGameOver, 
+  playGameStart,
+  playBgm 
+} from '@game/audio';
 import { GameConfig } from '@game/config/GameConfig';
 import { now } from '@game/utils';
 
@@ -85,7 +96,7 @@ export const GameCanvas: React.FC = () => {
       const beforeHp = world.player.hp;
       stepWorld(world, inputRef.current);
       if (world.player.hp < beforeHp) {
-        playHit();
+        playPlayerHit();
         const canvas = canvasRef.current; if (canvas) {
           canvas.classList.remove('shake');
           void canvas.offsetWidth; // reflow to restart animation
@@ -301,7 +312,7 @@ export const GameCanvas: React.FC = () => {
         }
       }
 
-      const size = 32; // smaller enemies
+      const size = 48; // 增大敵人圖檔顯示大小
       const dw = size;
       const dh = size;
       const dx = e.position.x - dw / 2;
@@ -312,33 +323,65 @@ export const GameCanvas: React.FC = () => {
       // 閃光效果渲染
       if (isFlashing && flashProgress < 1) {
         // 閃光階段：只顯示fancy閃光效果，不顯示敵人
-        const flashSize = 40 + Math.sin(now() * 0.02) * 10; // 閃爍大小
-        const flashAlpha = 0.8 + Math.sin(now() * 0.03) * 0.2; // 閃爍透明度
-        
-        // 外圈閃光
-        const outerGradient = ctx.createRadialGradient(e.position.x, e.position.y, 0, e.position.x, e.position.y, flashSize);
-        outerGradient.addColorStop(0, `rgba(255, 255, 255, ${flashAlpha * 0.3})`);
-        outerGradient.addColorStop(0.5, `rgba(0, 255, 255, ${flashAlpha * 0.2})`);
-        outerGradient.addColorStop(1, `rgba(0, 255, 255, 0)`);
-        ctx.fillStyle = outerGradient;
-        ctx.beginPath();
-        ctx.arc(e.position.x, e.position.y, flashSize, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // 內圈閃光
-        const innerGradient = ctx.createRadialGradient(e.position.x, e.position.y, 0, e.position.x, e.position.y, flashSize * 0.6);
-        innerGradient.addColorStop(0, `rgba(255, 255, 255, ${flashAlpha * 0.8})`);
-        innerGradient.addColorStop(1, `rgba(0, 255, 255, 0)`);
-        ctx.fillStyle = innerGradient;
-        ctx.beginPath();
-        ctx.arc(e.position.x, e.position.y, flashSize * 0.6, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // 中心點
-        ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha})`;
-        ctx.beginPath();
-        ctx.arc(e.position.x, e.position.y, 4, 0, Math.PI * 2);
-        ctx.fill();
+        if (e.type === 'pink_man') {
+          // pink_man 特殊閃光效果：紅色/粉色系
+          const flashSize = 50 + Math.sin(now() * 0.03) * 15; // 更大的閃爍
+          const flashAlpha = 0.9 + Math.sin(now() * 0.04) * 0.3; // 更強烈的閃爍
+          
+          // 外圈閃光 - 紅色系
+          const outerGradient = ctx.createRadialGradient(e.position.x, e.position.y, 0, e.position.x, e.position.y, flashSize);
+          outerGradient.addColorStop(0, `rgba(255, 100, 100, ${flashAlpha * 0.4})`);
+          outerGradient.addColorStop(0.5, `rgba(255, 0, 150, ${flashAlpha * 0.3})`);
+          outerGradient.addColorStop(1, `rgba(255, 0, 150, 0)`);
+          ctx.fillStyle = outerGradient;
+          ctx.beginPath();
+          ctx.arc(e.position.x, e.position.y, flashSize, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // 內圈閃光 - 粉色系
+          const innerGradient = ctx.createRadialGradient(e.position.x, e.position.y, 0, e.position.x, e.position.y, flashSize * 0.7);
+          innerGradient.addColorStop(0, `rgba(255, 150, 200, ${flashAlpha * 0.9})`);
+          innerGradient.addColorStop(1, `rgba(255, 0, 150, 0)`);
+          ctx.fillStyle = innerGradient;
+          ctx.beginPath();
+          ctx.arc(e.position.x, e.position.y, flashSize * 0.7, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // 中心點 - 亮粉色
+          ctx.fillStyle = `rgba(255, 200, 255, ${flashAlpha})`;
+          ctx.beginPath();
+          ctx.arc(e.position.x, e.position.y, 6, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          // 其他敵人的閃光效果：青色系
+          const flashSize = 40 + Math.sin(now() * 0.02) * 10; // 閃爍大小
+          const flashAlpha = 0.8 + Math.sin(now() * 0.03) * 0.2; // 閃爍透明度
+          
+          // 外圈閃光
+          const outerGradient = ctx.createRadialGradient(e.position.x, e.position.y, 0, e.position.x, e.position.y, flashSize);
+          outerGradient.addColorStop(0, `rgba(255, 255, 255, ${flashAlpha * 0.3})`);
+          outerGradient.addColorStop(0.5, `rgba(0, 255, 255, ${flashAlpha * 0.2})`);
+          outerGradient.addColorStop(1, `rgba(0, 255, 255, 0)`);
+          ctx.fillStyle = outerGradient;
+          ctx.beginPath();
+          ctx.arc(e.position.x, e.position.y, flashSize, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // 內圈閃光
+          const innerGradient = ctx.createRadialGradient(e.position.x, e.position.y, 0, e.position.x, e.position.y, flashSize * 0.6);
+          innerGradient.addColorStop(0, `rgba(255, 255, 255, ${flashAlpha * 0.8})`);
+          innerGradient.addColorStop(1, `rgba(0, 255, 255, 0)`);
+          ctx.fillStyle = innerGradient;
+          ctx.beginPath();
+          ctx.arc(e.position.x, e.position.y, flashSize * 0.6, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // 中心點
+          ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha})`;
+          ctx.beginPath();
+          ctx.arc(e.position.x, e.position.y, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
       } else {
         // 正常階段：顯示敵人
         if (!e.dying && e.facing === 'left') {
@@ -369,6 +412,46 @@ export const GameCanvas: React.FC = () => {
       ctx.shadowBlur = 10;
       ctx.beginPath(); ctx.arc(pr.position.x, pr.position.y, pr.radius, 0, Math.PI * 2); ctx.fill();
       ctx.shadowBlur = 0;
+    }
+
+    // draw damage numbers
+    for (const dn of world.damageNumbers) {
+      const age = now() - dn.startTime;
+      const alpha = Math.max(0, 1 - age / 2000); // 2秒淡出
+      const scale = 1 + Math.sin(age * 0.01) * 0.1; // 輕微脈動效果
+      
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.font = `bold ${16 * scale}px monospace`;
+      ctx.fillStyle = '#ff6b6b';
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 2;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      // 描邊
+      ctx.strokeText(dn.damage.toString(), dn.position.x, dn.position.y);
+      // 填充
+      ctx.fillText(dn.damage.toString(), dn.position.x, dn.position.y);
+      
+      ctx.restore();
+    }
+
+    // draw level up text - 簡約設計
+    for (const lt of world.levelUpTexts) {
+      const age = now() - lt.startTime;
+      const alpha = Math.max(0, 1 - age / 2000); // 2秒淡出
+      
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.font = `bold 16px 'Orbitron', monospace`;
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      ctx.fillText('LEVEL UP!', lt.position.x, lt.position.y);
+      
+      ctx.restore();
     }
 
     if (world.phase === 'gameover') {

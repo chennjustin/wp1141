@@ -1,16 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useGame, WeaponType } from '../game/GameContext';
 import { GameConfig } from '../game/config/GameConfig';
+import { playActionClick, playReadyToClick, playTalking, playGameStart, playLobbyBgm, setUnderwaterEffect, stopAllBgm, playPlayingBgm } from '../game/audio';
 
 export const WeaponSelect: React.FC = () => {
   const { selectWeapon } = useGame();
   const [selectedWeapon, setSelectedWeapon] = useState<WeaponType | null>(null);
   const [showReady, setShowReady] = useState(false);
   const [particles, setParticles] = useState<Array<{id: number, x: number, y: number, vx: number, vy: number}>>([]);
+  const [characterFrame, setCharacterFrame] = useState(0);
+  const [displayedText, setDisplayedText] = useState('');
+  const [isTyping, setIsTyping] = useState(true);
 
   const handleWeaponSelect = (weaponType: WeaponType) => {
     setSelectedWeapon(weaponType);
     setShowReady(true);
+    // 播放點擊音效
+    playActionClick();
     
     // 創建粒子效果
     const newParticles = Array.from({ length: 20 }, (_, i) => ({
@@ -26,6 +32,11 @@ export const WeaponSelect: React.FC = () => {
   const handleStartGame = () => {
     if (selectedWeapon) {
       selectWeapon(selectedWeapon);
+      // 播放遊戲開始音效
+      playGameStart();
+      // 停止大廳背景音樂，開始遊戲背景音樂
+      stopAllBgm();
+      playPlayingBgm();
     }
   };
 
@@ -41,6 +52,56 @@ export const WeaponSelect: React.FC = () => {
       return () => clearInterval(interval);
     }
   }, [particles]);
+
+  // 背景音樂管理
+  useEffect(() => {
+    // 進入武器選擇頁面時播放大廳背景音樂
+    playLobbyBgm();
+    
+    return () => {
+      // 組件卸載時不停止背景音樂，因為可能切換到遊戲
+    };
+  }, []);
+
+  // 水中效果管理
+  useEffect(() => {
+    if (showReady) {
+      // 顯示準備開始模態時啟用水中效果
+      setUnderwaterEffect(true);
+    } else {
+      // 關閉準備開始模態時關閉水中效果
+      setUnderwaterEffect(false);
+    }
+  }, [showReady]);
+
+  // 主角動畫循環
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCharacterFrame(prev => (prev + 1) % 8);
+    }, 200); // 每200ms切換一幀
+    return () => clearInterval(interval);
+  }, []);
+
+  // 打字機效果
+  useEffect(() => {
+    const fullText = '請從以下武器中選擇一個作為初始武器。之後每過一關，你可以使用金錢來升級或購買其他武器。';
+    let currentIndex = 0;
+    
+    // 播放對話音效
+    playTalking();
+    
+    const typingInterval = setInterval(() => {
+      if (currentIndex < fullText.length) {
+        setDisplayedText(fullText.slice(0, currentIndex + 1));
+        currentIndex++;
+      } else {
+        setIsTyping(false);
+        clearInterval(typingInterval);
+      }
+    }, 50); // 每50ms打一個字
+
+    return () => clearInterval(typingInterval);
+  }, []);
 
 
   return (
@@ -72,7 +133,7 @@ export const WeaponSelect: React.FC = () => {
                   />
                 </div>
                 <h1 className="ready-title typing">WEAPON SELECTED</h1>
-                <h2 className="weapon-name-glow">{selectedWeapon.replace('weapon', 'Weapon ')}</h2>
+                <h2 className="weapon-name-glow">{getWeaponType(selectedWeapon)}</h2>
               </div>
               
               <div className="ready-stats">
@@ -101,11 +162,22 @@ export const WeaponSelect: React.FC = () => {
               </div>
               
               <div className="ready-actions">
-                <button className="btn-ready pulse" onClick={handleStartGame}>
+                <button 
+                  className="btn-ready pulse" 
+                  onClick={handleStartGame}
+                  onMouseEnter={() => playReadyToClick()}
+                >
                   <span className="btn-text">BEGIN MISSION</span>
                   <span className="btn-glow"></span>
                 </button>
-                <button className="btn-back" onClick={() => setShowReady(false)}>
+                <button 
+                  className="btn-back" 
+                  onMouseEnter={() => playReadyToClick()}
+                  onClick={() => {
+                    setShowReady(false);
+                    playActionClick();
+                  }}
+                >
                   BACK TO SELECTION
                 </button>
               </div>
@@ -142,7 +214,7 @@ export const WeaponSelect: React.FC = () => {
                 </div>
                 
                 <div className="weapon-info">
-                  <h3 className="weapon-name">{weaponType.replace('weapon', 'Weapon ')}</h3>
+                  <h3 className="weapon-name">{getWeaponType(weaponType)}</h3>
                   <div className="weapon-type">{getWeaponType(weaponType)}</div>
                 </div>
                 
@@ -167,6 +239,7 @@ export const WeaponSelect: React.FC = () => {
                 <button 
                   className="btn-select"
                   onClick={() => handleWeaponSelect(weaponType as WeaponType)}
+                  onMouseEnter={() => playReadyToClick()}
                 >
                   <span className="btn-text">SELECT</span>
                   <div className="btn-effect"></div>
@@ -176,14 +249,41 @@ export const WeaponSelect: React.FC = () => {
           })}
         </div>
       </div>
+
+      {/* 主角吉祥物 */}
+      <div className="character-mascot">
+        <div className="speech-bubble">
+          <div className="speech-bubble-content">
+            <p className="typing-text">
+              {displayedText}
+              {isTyping && <span className="typing-cursor">|</span>}
+            </p>
+          </div>
+          <div className="speech-bubble-tail"></div>
+        </div>
+        
+        <div className="character-container">
+          <div className="character-glow"></div>
+          <img 
+            src={`/src/asset/main_character/character_${25 + characterFrame}.png`}
+            alt="Character"
+            className="character-sprite"
+          />
+          <div className="character-particles">
+            {Array.from({ length: 12 }, (_, i) => (
+              <div key={i} className="character-particle" style={{ '--i': i } as React.CSSProperties} />
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
 
 const getWeaponType = (weaponType: string): string => {
   switch (weaponType) {
-    case 'weapon_R1': return 'Assault Rifle';
-    case 'weapon_R2': return 'Submachine Gun';
+    case 'weapon_R1': return 'Pistol';
+    case 'weapon_R2': return 'Machine Gun';
     case 'weapon_R3': return 'Shotgun';
     default: return 'Unknown';
   }

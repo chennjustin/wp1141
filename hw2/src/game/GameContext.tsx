@@ -2,6 +2,19 @@ import React, { createContext, useContext, useEffect, useMemo, useRef, useState 
 import { GameConfig } from './config/GameConfig';
 import { EnemyState, GamePhase, PlayerState, ProjectileState, UIState, WaveState, WorldState } from './types';
 import { distance, normalize, now, randomEdgeSpawn } from './utils';
+import { 
+  playWeaponR1, 
+  playWeaponR2, 
+  playWeaponR3, 
+  playEnemyDeath, 
+  playDash, 
+  playVictory, 
+  playGameOver, 
+  playGameStart,
+  playPlayingBgm,
+  setUnderwaterEffect,
+  stopAllBgm
+} from './audio';
 
 // 武器類型定義
 export type WeaponType = 'weapon_R1' | 'weapon_R2' | 'weapon_R3';
@@ -27,6 +40,10 @@ function createInitialWorld(): WorldState {
     hp: GameConfig.PLAYER.MAX_HP,
     maxHp: GameConfig.PLAYER.MAX_HP,
     money: 0,
+    // 經驗值系統初始化
+    experience: 0,
+    level: 1,
+    experienceToNext: GameConfig.EXPERIENCE.BASE_EXP_PER_LEVEL,
     facing: 'right',
     anim: 'idle',
     frame: 0,
@@ -56,17 +73,36 @@ function createInitialWorld(): WorldState {
     player,
     enemies: [],
     projectiles: [],
+    damageNumbers: [],
+    levelUpTexts: [],
     wave,
   };
 }
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const worldRef = useRef<WorldState>(createInitialWorld());
-  const [ui, setUi] = useState<UIState>({ hp: worldRef.current.player.hp, money: 0, waveIndex: worldRef.current.wave.index, phase: 'menu', timeLeftSec: 30 });
+  const [ui, setUi] = useState<UIState>({ 
+    hp: worldRef.current.player.hp, 
+    money: 0, 
+    waveIndex: worldRef.current.wave.index, 
+    phase: 'menu', 
+    timeLeftSec: 30,
+    experience: worldRef.current.player.experience,
+    level: worldRef.current.player.level,
+    experienceToNext: worldRef.current.player.experienceToNext
+  });
 
   const syncUi = () => {
     const w = worldRef.current;
-    setUi({ hp: w.player.hp, money: w.player.money, waveIndex: w.wave.index, phase: w.phase });
+    setUi({ 
+      hp: w.player.hp, 
+      money: w.player.money, 
+      waveIndex: w.wave.index, 
+      phase: w.phase,
+      experience: w.player.experience,
+      level: w.player.level,
+      experienceToNext: w.player.experienceToNext
+    });
   };
 
   const setPhase = (p: GamePhase) => {
@@ -83,6 +119,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const w = worldRef.current;
       // start 30s timer each time playing starts
       w.timerEndAt = now() + 30_000;
+      // 開始遊戲背景音樂
+      playPlayingBgm();
       syncUi();
     } else {
       worldRef.current.phase = p;
@@ -92,7 +130,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const reset = () => {
     worldRef.current = createInitialWorld();
-    setUi({ hp: worldRef.current.player.hp, money: 0, waveIndex: 1, phase: 'menu' });
+    setUi({ 
+      hp: worldRef.current.player.hp, 
+      money: 0, 
+      waveIndex: 1, 
+      phase: 'menu',
+      experience: worldRef.current.player.experience,
+      level: worldRef.current.player.level,
+      experienceToNext: worldRef.current.player.experienceToNext
+    });
   };
 
   const buyUpgrade = (type: WeaponType) => {
@@ -100,11 +146,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const p = w.player;
     
     const config = GameConfig.getWeaponConfig(type);
-    if (p.money < config.COST) return;
-    p.money -= config.COST;
+    
+    // 計算動態升級費用：隨武器等級增加
+    const existingWeapon = p.weapons.find(w => w.type === type);
+    const weaponLevel = existingWeapon ? existingWeapon.level : 0;
+    const dynamicCost = config.COST + (weaponLevel * 20); // 每級增加20點費用
+    
+    if (p.money < dynamicCost) return;
+    p.money -= dynamicCost;
     
     // Check if player already has this weapon
-    const existingWeapon = p.weapons.find(w => w.type === type);
     if (existingWeapon) {
       // Upgrade existing weapon with traits
       existingWeapon.level += 1;
@@ -207,9 +258,20 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           prev.money === w.player.money &&
           prev.waveIndex === w.wave.index &&
           prev.phase === w.phase &&
+          prev.experience === w.player.experience &&
+          prev.level === w.player.level &&
           Math.floor((Math.max(0, (w.timerEndAt ?? now()) - now())) / 1000) === (prev.timeLeftSec ?? 0)
         ) return prev;
-        return { hp: w.player.hp, money: w.player.money, waveIndex: w.wave.index, phase: w.phase, timeLeftSec: Math.floor((Math.max(0, (w.timerEndAt ?? now()) - now())) / 1000) };
+        return { 
+          hp: w.player.hp, 
+          money: w.player.money, 
+          waveIndex: w.wave.index, 
+          phase: w.phase, 
+          timeLeftSec: Math.floor((Math.max(0, (w.timerEndAt ?? now()) - now())) / 1000),
+          experience: w.player.experience,
+          level: w.player.level,
+          experienceToNext: w.player.experienceToNext
+        };
       });
     }, 120);
     return () => clearInterval(id);
@@ -241,6 +303,8 @@ export function stepWorld(world: WorldState, input: { up: boolean; down: boolean
     const start = world.victoryAt;
     if (start && t - start > 1800) {
       world.phase = 'shop';
+      // 進入商店時啟用水中效果
+      setUnderwaterEffect(true);
     }
     return;
   }
@@ -300,18 +364,26 @@ export function stepWorld(world: WorldState, input: { up: boolean; down: boolean
       const enemyType = type as 'mask_dude' | 'ninja_frog' | 'pink_man' | 'virtual_guy';
       const cfg = GameConfig.getEnemyConfig(enemyType);
       
-      // 檢查場上該類型敵人數量是否已達上限
+      // 檢查場上該類型敵人數量是否已達上限 - 隨著關卡變高而增加上限
       const currentTypeCount = world.enemies.filter(e => e.type === enemyType && !e.dying).length;
       
-      if (currentTypeCount < cfg.MAX_ON_SCREEN) {
-        // 檢查該類型的生成間隔
+      // 計算動態最大數量：隨著關卡變高而增加
+      const maxCountMultiplier = 1 + (w.index - 1) * 0.2; // 每關增加20%
+      const dynamicMaxOnScreen = Math.floor(cfg.MAX_ON_SCREEN * maxCountMultiplier);
+      
+      if (currentTypeCount < dynamicMaxOnScreen) {
+        // 檢查該類型的生成間隔 - 隨著關卡變高而縮短
         const lastSpawnKey = `lastSpawnAt_${enemyType}`;
         const lastSpawnAt = (w as any)[lastSpawnKey] || 0;
         const timeSinceLastSpawn = t - lastSpawnAt;
         
-        console.log(`檢查 ${enemyType}：場上數量 ${currentTypeCount}/${cfg.MAX_ON_SCREEN}，間隔 ${timeSinceLastSpawn}ms/${cfg.SPAWN_INTERVAL_MS}ms`);
+        // 計算動態生成間隔：隨著關卡變高而縮短
+        const spawnRateMultiplier = Math.max(0.3, 1 - (w.index - 1) * 0.1); // 每關減少10%，最低30%
+        const dynamicSpawnInterval = Math.floor(cfg.SPAWN_INTERVAL_MS * spawnRateMultiplier);
         
-        if (timeSinceLastSpawn >= cfg.SPAWN_INTERVAL_MS) {
+        console.log(`檢查 ${enemyType}：場上數量 ${currentTypeCount}/${dynamicMaxOnScreen} (原始${cfg.MAX_ON_SCREEN})，間隔 ${timeSinceLastSpawn}ms/${dynamicSpawnInterval}ms (原始${cfg.SPAWN_INTERVAL_MS}ms)`);
+        
+        if (timeSinceLastSpawn >= dynamicSpawnInterval) {
           // 更新該類型的生成時間
           (w as any)[lastSpawnKey] = t;
           w.spawned += 1;
@@ -393,23 +465,33 @@ export function stepWorld(world: WorldState, input: { up: boolean; down: boolean
     
     // 特殊移動邏輯
     if (e.type === 'pink_man') {
-      // pink_man: 衝刺行為
+      // pink_man: 鎖定-衝刺行為
       if (e.dashTarget) {
-        // 正在衝刺
+        // 正在衝刺：以超快速度直線衝向鎖定位置
         const toTarget = normalize({ x: e.dashTarget.x - e.position.x, y: e.dashTarget.y - e.position.y });
-        e.position.x += toTarget.x * e.speed * 2; // 衝刺速度加倍
-        e.position.y += toTarget.y * e.speed * 2;
+        e.position.x += toTarget.x * e.speed * 8; // 衝刺速度是正常速度的8倍（加快）
+        e.position.y += toTarget.y * e.speed * 8;
         
-        // 檢查是否到達目標
+        // 檢查是否到達目標或超出邊界
         const distToTarget = Math.hypot(e.dashTarget.x - e.position.x, e.dashTarget.y - e.position.y);
-        if (distToTarget < 20) {
+        const isOutOfBounds = e.position.x < 0 || e.position.x > world.width || e.position.y < 0 || e.position.y > world.height;
+        
+        if (distToTarget < 30 || isOutOfBounds) {
+          // 衝刺結束，停止並重置
           e.dashTarget = null;
           e.lastDashAt = t;
+          // 確保不超出邊界
+          e.position.x = Math.max(0, Math.min(world.width, e.position.x));
+          e.position.y = Math.max(0, Math.min(world.height, e.position.y));
         }
-      } else if (e.lastDashAt && e.dashCooldown && t - e.lastDashAt >= e.dashCooldown) {
-        // 可以進行下一次衝刺
+      } else if (e.dashCooldown && (e.lastDashAt === undefined || e.lastDashAt === 0 || t - e.lastDashAt >= e.dashCooldown)) {
+        // 可以進行下一次衝刺：鎖定玩家當前位置
         e.dashTarget = { x: player.position.x, y: player.position.y };
+        // 播放衝刺音效
+        playDash();
+        console.log(`pink_man 鎖定玩家位置: (${player.position.x}, ${player.position.y})`);
       }
+      // 如果不在衝刺且冷卻中，pink_man 保持靜止
     } else {
       // 其他敵人：正常追蹤玩家
       const toPlayer = normalize({ x: player.position.x - e.position.x, y: player.position.y - e.position.y });
@@ -448,6 +530,7 @@ export function stepWorld(world: WorldState, input: { up: boolean; down: boolean
         let nearestDist = Infinity;
         for (const e of world.enemies) {
           if (e.dying) continue;
+          // 移除閃光階段的攻擊限制 - 閃光階段也可以被攻擊
           const dist = Math.hypot(e.position.x - weaponX, e.position.y - weaponY);
           if (dist <= weapon.range && dist < nearestDist) {
             nearest = e;
@@ -460,7 +543,7 @@ export function stepWorld(world: WorldState, input: { up: boolean; down: boolean
           
           // 應用升級效果
           const upgrades = player.upgrades || {};
-          const finalDamage = weapon.damage * (1 + (upgrades.attackDamage || 0));
+          const finalDamage = Math.floor(weapon.damage * (1 + (upgrades.attackDamage || 0)));
           
           // 使用與渲染完全相同的武器方向計算邏輯
           const dx = nearest.position.x - weaponX;
@@ -502,6 +585,15 @@ export function stepWorld(world: WorldState, input: { up: boolean; down: boolean
           // 獲取武器配置
           const weaponConfig = GameConfig.getWeaponConfig(weapon.type);
           const pelletCount = weaponConfig.PELLETS || 1;
+          
+          // 播放武器射擊音效
+          if (weapon.type === 'weapon_R1') {
+            playWeaponR1();
+          } else if (weapon.type === 'weapon_R2') {
+            playWeaponR2();
+          } else if (weapon.type === 'weapon_R3') {
+            playWeaponR3();
+          }
           
           // 發射多個彈丸
           for (let i = 0; i < pelletCount; i++) {
@@ -550,20 +642,79 @@ export function stepWorld(world: WorldState, input: { up: boolean; down: boolean
       const d = distance(pr.position, e.position);
       if (d <= pr.radius + e.radius) {
         e.hp -= pr.damage;
+        
+        // 創建傷害數字
+        world.damageNumbers.push({
+          id: Math.random(),
+          position: { x: e.position.x, y: e.position.y - 20 },
+          damage: pr.damage,
+          startTime: t,
+          velocity: { x: (Math.random() - 0.5) * 2, y: -2 }
+        });
+        
         pr.position.x = -9999; // mark for removal
         break;
       }
     }
   }
   world.projectiles = world.projectiles.filter(p => p.position.x > -1000 && p.position.y > -1000 && p.position.x < world.width + 1000 && p.position.y < world.height + 1000);
+  
+  // 更新傷害數字
+  for (const dn of world.damageNumbers) {
+    dn.position.x += dn.velocity.x;
+    dn.position.y += dn.velocity.y;
+    dn.velocity.y += 0.1; // 重力效果
+  }
+  
+  // 移除過期的傷害數字（2秒後）
+  world.damageNumbers = world.damageNumbers.filter(dn => t - dn.startTime < 2000);
+  
+  // 更新升級文字 - 跟隨主角
+  for (const lt of world.levelUpTexts) {
+    lt.position.x = player.position.x;
+    lt.position.y = player.position.y - 15;
+  }
+  
+  // 移除過期的升級文字（3秒後）
+  world.levelUpTexts = world.levelUpTexts.filter(lt => t - lt.startTime < 3000);
   // award money for kills and trigger dying animation (do not remove immediately)
   for (const e of world.enemies) {
     if (e.hp <= 0 && !e.dying) {
       const enemyConfig = GameConfig.getEnemyConfig(e.type);
       player.money += enemyConfig.REWARD;
+      
+      // 添加經驗值（根據敵人類型）
+      const expReward = GameConfig.ENEMY_EXP[e.type as keyof typeof GameConfig.ENEMY_EXP] || 8;
+      player.experience += expReward;
+      
+      // 檢查是否升級
+      while (player.experience >= player.experienceToNext) {
+        player.experience -= player.experienceToNext;
+        player.level += 1;
+        
+        // 升級獎勵
+        const hpRestore = Math.floor(player.maxHp * GameConfig.EXPERIENCE.LEVEL_UP_HP_RESTORE);
+        player.hp = Math.min(player.maxHp, player.hp + hpRestore);
+        player.maxHp += GameConfig.EXPERIENCE.LEVEL_UP_HP_BONUS;
+        player.speed += GameConfig.EXPERIENCE.LEVEL_UP_SPEED_BONUS;
+        
+        // 創建升級文字 - 簡約設計，跟隨主角
+        world.levelUpTexts.push({
+          id: Math.random(),
+          position: { x: player.position.x, y: player.position.y - 15 },
+          startTime: t,
+          velocity: { x: 0, y: 0 }
+        });
+        
+        // 計算下一級經驗需求
+        player.experienceToNext = Math.floor(GameConfig.EXPERIENCE.BASE_EXP_PER_LEVEL * Math.pow(GameConfig.EXPERIENCE.EXP_SCALING, player.level - 1));
+      }
+      
       e.dying = true;
       e.disappearFrame = 0; // 0..4 -> dis_1..dis_5
       e.lastDisappearAtMs = t;
+      // 播放敵人死亡音效
+      playEnemyDeath();
     }
   }
   // advance dying animation very fast; remove after last frame
@@ -582,6 +733,7 @@ export function stepWorld(world: WorldState, input: { up: boolean; down: boolean
   let touching = false;
   let touchingEnemy: EnemyState | null = null;
   for (const e of world.enemies) {
+    if (e.dying) continue; // 死亡中的敵人不造成傷害
     const d = distance(player.position, e.position);
     if (d <= e.radius + player.radius) { 
       touching = true; 
@@ -614,6 +766,8 @@ export function stepWorld(world: WorldState, input: { up: boolean; down: boolean
     player.anim = 'victory';
     player.frame = 0;
     player.lastFrameAtMs = t;
+    // 播放勝利音效
+    playVictory();
   }
 
   // victory animation timing: loop 33..36, then after delay -> shop
@@ -630,12 +784,16 @@ export function stepWorld(world: WorldState, input: { up: boolean; down: boolean
       world.enemies = [];
       world.projectiles = [];
       world.phase = 'shop';
+      // 進入商店時啟用水中效果
+      setUnderwaterEffect(true);
     }
   }
 
   // if dead animation reached final frame, end game
   if (player.anim === 'die' && player.frame >= 3) {
     world.phase = 'gameover';
+    // 播放遊戲結束音效
+    playGameOver();
   }
 }
 
