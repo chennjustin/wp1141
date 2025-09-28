@@ -34,6 +34,7 @@ let currentBgm: HTMLAudioElement | null = null;
 let bgmContext: AudioContext | null = null;
 let bgmGainNode: GainNode | null = null;
 let underwaterFilter: BiquadFilterNode | null = null;
+let currentBgmType: 'lobby' | 'playing' | null = null;
 
 // Helper function to play audio with volume control
 function playAudio(src: string, volume: number = 0.7): HTMLAudioElement | null {
@@ -88,7 +89,18 @@ export function stopTalking() {
 // 背景音樂控制
 export function playLobbyBgm() {
   console.log('🎵 Attempting to play lobby BGM...');
-  stopAllBgm();
+  
+  // 如果已經在播放大廳背景音樂，就不重新開始
+  if (currentBgmType === 'lobby' && currentBgm && !currentBgm.paused) {
+    console.log('🎵 Lobby BGM already playing, skipping...');
+    return;
+  }
+  
+  // 如果正在播放其他類型的背景音樂，先停止
+  if (currentBgmType !== 'lobby') {
+    stopAllBgm();
+  }
+  
   if (!audioEnabled) {
     console.log('🎵 Audio disabled, skipping BGM');
     return;
@@ -100,6 +112,7 @@ export function playLobbyBgm() {
     currentBgm.loop = true;
     currentBgm.volume = 1;
     currentBgm.preload = 'auto';
+    currentBgmType = 'lobby';
     
     // 添加載入事件監聽
     currentBgm.addEventListener('loadstart', () => console.log('🎵 BGM load started'));
@@ -140,6 +153,7 @@ export function playPlayingBgm() {
     currentBgm.loop = true;
     currentBgm.volume = 1;
     currentBgm.preload = 'auto';
+    currentBgmType = 'playing';
     currentBgm.play().catch((error) => {
       console.warn('Playing BGM autoplay blocked:', error);
       // 如果自動播放被阻止，嘗試在用戶第一次互動後播放
@@ -166,6 +180,8 @@ export function stopAllBgm() {
     currentBgm.currentTime = 0;
     currentBgm = null;
   }
+  
+  currentBgmType = null;
   
   // 清理音頻上下文
   if (bgmContext) {

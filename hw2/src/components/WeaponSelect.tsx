@@ -55,7 +55,7 @@ export const WeaponSelect: React.FC = () => {
 
   // 背景音樂管理
   useEffect(() => {
-    // 進入武器選擇頁面時播放大廳背景音樂
+    // 進入武器選擇頁面時播放大廳背景音樂（如果沒有在播放的話）
     playLobbyBgm();
     
     return () => {

@@ -76,7 +76,7 @@ export const StartScreen: React.FC = () => {
   // 大廳背景音樂管理
   useEffect(() => {
     console.log('🎵 Screens component mounted, attempting to play lobby BGM...');
-    // 進入大廳時播放大廳背景音樂
+    // 進入大廳時播放大廳背景音樂（如果沒有在播放的話）
     playLobbyBgm();
     
     return () => {
