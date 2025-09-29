@@ -26,7 +26,7 @@ export class GameConfig {
       BASE_HP: 25,
       HP_PER_WAVE: 8,
       BASE_SPEED: 2,
-      SPEED_PER_WAVE: 0.15,
+      SPEED_PER_WAVE: 0.1,
       DAMAGE: 10,
       REWARD: 15,
       RADIUS: 30,
@@ -56,29 +56,36 @@ export class GameConfig {
       RADIUS: 30,        // 增大敵人外觀
       UNLOCK_WAVE: 4,
       SPAWN_INTERVAL_MS: 6000,  // 減少生成頻率
-      MAX_ON_SCREEN: 2          // 減少場上數量
+      MAX_ON_SCREEN: 2,          // 減少場上數量
+      // 分身系統配置
+      CLONE_SPAWN_HP_THRESHOLD: 0.5, // 血量低於 50% 時生成分身
+      CLONE_COUNT: 2,              // 生成分身數量
+      CLONE_HP_RATIO: 0.2,         // 分身血量為本體的 30%
+      CLONE_DAMAGE_RATIO: 0.1,     // 分身傷害為本體的 50%
+      CLONE_LIFETIME_MS: 4000,     // 分身存活時間 8 秒
+      CLONE_SPEED_RATIO: 1       // 分身速度為本體的 120%
     }
   };
 
   // 武器配置
   static readonly WEAPONS = {
     weapon_R1: {
-      DAMAGE: 8,
-      ATTACK_INTERVAL_MS: 400,
+      DAMAGE: 10,
+      ATTACK_INTERVAL_MS: 600,
       RANGE: 200,
       COST: 100,
       PELLETS: 1
     },
     weapon_R2: {
       DAMAGE: 4,
-      ATTACK_INTERVAL_MS: 150,
+      ATTACK_INTERVAL_MS: 200,
       RANGE: 200,
       COST: 100,
       PELLETS: 1
     },
     weapon_R3: {
-      DAMAGE: 6,
-      ATTACK_INTERVAL_MS: 500,
+      DAMAGE: 2,
+      ATTACK_INTERVAL_MS: 600,
       RANGE: 600,
       COST: 100,
       PELLETS: 3
@@ -164,15 +171,17 @@ export class GameConfig {
   // 升級系統配置
   static readonly UPGRADES = {
     TRAITS: {
-      ATTACK_DAMAGE: { name: 'Attack Damage', value: 0.4 },   // +30% 傷害
-      ATTACK_SPEED: { name: 'Attack Speed', value: 0.25 },    // +25% 攻速
-      MAX_HP: { name: 'Max HP', value: 0.2 },                 // +20% HP
-      MOVE_SPEED: { name: 'Move Speed', value: 0.15 }         // +15% 移速
+      ATTACK_DAMAGE1: { name: 'Attack Damage', value: 0.6 },
+      ATTACK_SPEED1: { name: 'Attack Speed', value: 0.3 },
+      ATTACK_DAMAGE2: { name: 'Attack Damage', value: 0.4 },
+      ATTACK_SPEED2: { name: 'Attack Speed', value: 0.45 },
+      ATTACK_DAMAGE3: { name: 'Attack Damage', value: 0.5 },
+      ATTACK_SPEED3: { name: 'Attack Speed', value: 0.35 }
     },
     WEAPON_TRAITS: {
-      weapon_R1: ['ATTACK_DAMAGE', 'ATTACK_SPEED'],  // R1 → 攻擊力+40% / 攻速+25%
-      weapon_R2: ['ATTACK_DAMAGE', 'MOVE_SPEED'],    // R2 → 攻擊力+15% / 移速+8%
-      weapon_R3: ['ATTACK_DAMAGE', 'MAX_HP']         // R3 → 攻擊力+15% / HP+10%
+      weapon_R1: ['ATTACK_DAMAGE1', 'ATTACK_SPEED1'],  // R1 → 攻擊力+50% / 攻速+30%
+      weapon_R2: ['ATTACK_DAMAGE2', 'ATTACK_SPEED2'],  // R2 → 攻擊力+50% / 攻速+30%
+      weapon_R3: ['ATTACK_DAMAGE3', 'ATTACK_SPEED3']   // R3 → 攻擊力+50% / 攻速+30%
     }
   };
 

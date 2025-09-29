@@ -52,9 +52,7 @@ function createInitialWorld(): WorldState {
     selectedWeaponIndex: 0,
     upgrades: {
       attackDamage: 0,
-      attackSpeed: 0,
-      maxHp: 0,
-      moveSpeed: 0
+      attackSpeed: 0
     }
   };
   const wave: WaveState = {
@@ -177,19 +175,23 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const traitConfig = GameConfig.UPGRADES.TRAITS[randomTrait as keyof typeof GameConfig.UPGRADES.TRAITS];
           if (traitConfig) {
             switch (randomTrait) {
-              case 'ATTACK_DAMAGE':
+              case 'ATTACK_DAMAGE1':
                 p.upgrades!.attackDamage = (p.upgrades!.attackDamage || 0) + traitConfig.value;
                 break;
-              case 'ATTACK_SPEED':
+              case 'ATTACK_SPEED1':
                 p.upgrades!.attackSpeed = (p.upgrades!.attackSpeed || 0) + traitConfig.value;
                 break;
-                case 'MAX_HP':
-                  p.upgrades!.maxHp = (p.upgrades!.maxHp || 0) + traitConfig.value;
-                  p.maxHp = Math.floor(GameConfig.PLAYER.MAX_HP * (1 + p.upgrades!.maxHp));
-                  p.hp = Math.min(p.hp, p.maxHp); // 確保生命值不超過最大值
-                  break;
-              case 'MOVE_SPEED':
-                p.upgrades!.moveSpeed = (p.upgrades!.moveSpeed || 0) + traitConfig.value;
+              case 'ATTACK_DAMAGE2':
+                p.upgrades!.attackDamage = (p.upgrades!.attackDamage || 0) + traitConfig.value;
+                break;
+              case 'ATTACK_SPEED2':
+                p.upgrades!.attackSpeed = (p.upgrades!.attackSpeed || 0) + traitConfig.value;
+                break;
+              case 'ATTACK_DAMAGE3':
+                p.upgrades!.attackDamage = (p.upgrades!.attackDamage || 0) + traitConfig.value;
+                break;
+              case 'ATTACK_SPEED3':
+                p.upgrades!.attackSpeed = (p.upgrades!.attackSpeed || 0) + traitConfig.value;
                 break;
             }
           }
@@ -311,9 +313,8 @@ export function stepWorld(world: WorldState, input: { up: boolean; down: boolean
 
   if (world.phase !== 'playing') return;
 
-  // movement with upgrade effects
-  const upgrades = player.upgrades || {};
-  const moveSpeed = player.speed * (1 + (upgrades.moveSpeed || 0));
+  // movement
+  const moveSpeed = player.speed;
   const dir = { x: (input.right ? 1 : 0) - (input.left ? 1 : 0), y: (input.down ? 1 : 0) - (input.up ? 1 : 0) };
   const n = normalize(dir);
   player.position.x = Math.max(0, Math.min(world.width, player.position.x + n.x * moveSpeed));
@@ -497,6 +498,40 @@ export function stepWorld(world: WorldState, input: { up: boolean; down: boolean
       const toPlayer = normalize({ x: player.position.x - e.position.x, y: player.position.y - e.position.y });
       e.position.x += toPlayer.x * e.speed;
       e.position.y += toPlayer.y * e.speed;
+      
+      // 分身分離動畫 - 只在本體附近左右分離
+      if (e.isClone && e.separationAngle !== undefined && e.separationDistance !== undefined && e.separationSpeed !== undefined) {
+        const maxSeparationDistance = 40; // 較小的最大分離距離，讓分身更靠近本體
+        if (e.separationDistance < maxSeparationDistance) {
+          e.separationDistance += e.separationSpeed;
+          
+          // 找到本體並計算相對位置
+          const originalEnemy = world.enemies.find(orig => orig.id === e.originalId);
+          if (originalEnemy) {
+            const offsetX = Math.cos(e.separationAngle) * e.separationDistance;
+            const offsetY = Math.sin(e.separationAngle) * e.separationDistance;
+            e.position.x = originalEnemy.position.x + offsetX;
+            e.position.y = originalEnemy.position.y + offsetY;
+          }
+        }
+      }
+      
+      // 所有敵人的拖尾效果（包括 pink_man）
+      if (e.dashTarget) {
+        e.dashTrail = e.dashTrail || [];
+        e.maxTrailLength = e.maxTrailLength || 8;
+        
+        // 添加當前位置到軌跡
+        e.dashTrail.push({ x: e.position.x, y: e.position.y });
+        
+        // 限制軌跡長度
+        if (e.dashTrail.length > e.maxTrailLength) {
+          e.dashTrail.shift();
+        }
+      } else {
+        // 不在衝刺時清空軌跡
+        e.dashTrail = [];
+      }
     }
     
     // 更新面向方向
@@ -509,6 +544,70 @@ export function stepWorld(world: WorldState, input: { up: boolean; down: boolean
     if (t - e.lastFrameAtMs >= interval) {
       e.lastFrameAtMs = t;
       e.frame = (e.frame + 1) % 12;
+    }
+  }
+
+  // Virtual Guy 分身系統
+  for (const e of world.enemies) {
+    if (e.dying || e.isClone) continue; // 死亡中的敵人和分身不處理分身生成
+    
+    if (e.type === 'virtual_guy' && !e.hasSpawnedClones) {
+      const config = GameConfig.ENEMIES.virtual_guy;
+      const hpThreshold = e.maxHp * config.CLONE_SPAWN_HP_THRESHOLD;
+      
+      // 檢查血量是否低於閾值
+      if (e.hp <= hpThreshold) {
+        e.hasSpawnedClones = true;
+        
+        // 生成分身 - 從本體位置開始左右分離
+        for (let i = 0; i < config.CLONE_COUNT; i++) {
+          const cloneId = Math.random() * 1000000; // 生成唯一 ID
+          // 左右分離：第一個分身向左，第二個分身向右
+          const angle = i === 0 ? Math.PI : 0; // 左邊是 π，右邊是 0
+          
+          const clone: EnemyState = {
+            id: cloneId,
+            position: {
+              x: e.position.x, // 從本體位置開始
+              y: e.position.y
+            },
+            radius: e.radius,
+            speed: e.speed * config.CLONE_SPEED_RATIO,
+            hp: Math.floor(e.maxHp * config.CLONE_HP_RATIO),
+            maxHp: Math.floor(e.maxHp * config.CLONE_HP_RATIO),
+            type: 'virtual_guy',
+            damage: Math.floor(e.damage * config.CLONE_DAMAGE_RATIO),
+            frame: e.frame,
+            lastFrameAtMs: t,
+            facing: e.facing,
+            // 分身特有屬性
+            isClone: true,
+            originalId: e.id,
+            cloneLifetime: config.CLONE_LIFETIME_MS,
+            cloneStartTime: t,
+            // 分離動畫屬性
+            separationAngle: angle,
+            separationDistance: 0, // 初始距離為0
+            separationSpeed: 1.5 // 較慢的分離速度
+          };
+          
+          world.enemies.push(clone);
+          console.log(`Virtual Guy 生成分身 ${i + 1}, 血量: ${clone.hp}, 傷害: ${clone.damage}`);
+        }
+      }
+    }
+  }
+
+  // 處理分身生命週期
+  for (const e of world.enemies) {
+    if (e.isClone && e.cloneStartTime && e.cloneLifetime) {
+      if (t - e.cloneStartTime >= e.cloneLifetime) {
+        // 分身時間到，標記為死亡
+        e.dying = true;
+        e.disappearFrame = 0;
+        e.lastDisappearAtMs = t;
+        console.log(`Virtual Guy 分身 ${e.id} 時間到，消失`);
+      }
     }
   }
 
@@ -530,7 +629,14 @@ export function stepWorld(world: WorldState, input: { up: boolean; down: boolean
         let nearestDist = Infinity;
         for (const e of world.enemies) {
           if (e.dying) continue;
-          // 移除閃光階段的攻擊限制 - 閃光階段也可以被攻擊
+          
+          // 檢查是否在閃爍階段 - 閃爍階段無法被攻擊
+          const isFlashing = e.flashPosition && e.flashStartTime && e.type !== 'mask_dude';
+          const flashDuration = 1000; // 1秒閃光
+          const isInFlashPhase = isFlashing && (t - (e.flashStartTime || 0)) < flashDuration;
+          
+          if (isInFlashPhase) continue; // 閃爍階段跳過攻擊
+          
           const dist = Math.hypot(e.position.x - weaponX, e.position.y - weaponY);
           if (dist <= weapon.range && dist < nearestDist) {
             nearest = e;
@@ -680,12 +786,15 @@ export function stepWorld(world: WorldState, input: { up: boolean; down: boolean
   // award money for kills and trigger dying animation (do not remove immediately)
   for (const e of world.enemies) {
     if (e.hp <= 0 && !e.dying) {
-      const enemyConfig = GameConfig.getEnemyConfig(e.type);
-      player.money += enemyConfig.REWARD;
-      
-      // 添加經驗值（根據敵人類型）
-      const expReward = GameConfig.ENEMY_EXP[e.type as keyof typeof GameConfig.ENEMY_EXP] || 8;
-      player.experience += expReward;
+      // 分身不給予獎勵
+      if (!e.isClone) {
+        const enemyConfig = GameConfig.getEnemyConfig(e.type);
+        player.money += enemyConfig.REWARD;
+        
+        // 添加經驗值（根據敵人類型）
+        const expReward = GameConfig.ENEMY_EXP[e.type as keyof typeof GameConfig.ENEMY_EXP] || 8;
+        player.experience += expReward;
+      }
       
       // 檢查是否升級
       while (player.experience >= player.experienceToNext) {

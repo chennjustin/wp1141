@@ -227,15 +227,15 @@ export function setUnderwaterEffect(enabled: boolean) {
 
 // Weapon Sound Effects
 export function playWeaponR1() {
-  playAudio(AUDIO_FILES.sniper_shot, 0.2);
+  playAudio(AUDIO_FILES.sniper_shot, 0.3);
 }
 
 export function playWeaponR2() {
-  playAudio(AUDIO_FILES.gunshot_silencer, 0.5);
+  playAudio(AUDIO_FILES.gunshot_silencer, 0.7);
 }
 
 export function playWeaponR3() {
-  playAudio(AUDIO_FILES.synthetic_gunshot, 0.5);
+  playAudio(AUDIO_FILES.synthetic_gunshot, 0.9);
 }
 
 // Enemy Sound Effects

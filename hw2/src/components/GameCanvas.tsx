@@ -317,6 +317,54 @@ export const GameCanvas: React.FC = () => {
       const dh = size;
       const dx = e.position.x - dw / 2;
       const dy = e.position.y - dh / 2;
+
+      // 分身視覺效果：半透明和發光效果
+      if (e.isClone) {
+        ctx.save();
+        // 設置半透明效果
+        ctx.globalAlpha = 0.7;
+        
+        // 添加發光效果
+        ctx.shadowColor = '#00ffff';
+        ctx.shadowBlur = 15;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+      }
+      
+      // pink_man 衝刺拖尾效果
+      if (e.type === 'pink_man' && e.dashTrail && e.dashTrail.length > 1) {
+        ctx.save();
+        
+        // 外層發光效果
+        ctx.shadowColor = 'rgba(255, 100, 200, 0.8)';
+        ctx.shadowBlur = 15;
+        ctx.strokeStyle = 'rgba(255, 100, 200, 0.9)';
+        ctx.lineWidth = 8;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        ctx.beginPath();
+        for (let i = 0; i < e.dashTrail.length - 1; i++) {
+          const alpha = (i + 1) / e.dashTrail.length; // 漸變透明度
+          ctx.globalAlpha = alpha * 0.8;
+          
+          if (i === 0) {
+            ctx.moveTo(e.dashTrail[i].x, e.dashTrail[i].y);
+          } else {
+            ctx.lineTo(e.dashTrail[i].x, e.dashTrail[i].y);
+          }
+        }
+        ctx.stroke();
+        
+        // 內層核心線條
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = 'rgba(255, 150, 255, 1.0)';
+        ctx.lineWidth = 4;
+        ctx.globalAlpha = 1.0;
+        ctx.stroke();
+        
+        ctx.restore();
+      }
       
       ctx.save();
       
@@ -395,6 +443,11 @@ export const GameCanvas: React.FC = () => {
           ctx.globalAlpha = 1;
         }
         // 圖片未載入完成時不顯示任何東西（包括紅色圓圈）
+      }
+      
+      // 恢復分身視覺效果
+      if (e.isClone) {
+        ctx.restore();
       }
       
       ctx.restore();

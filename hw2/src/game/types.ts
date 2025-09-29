@@ -39,8 +39,6 @@ export interface PlayerState {
   upgrades?: {
     attackDamage?: number; // 攻擊傷害加成
     attackSpeed?: number;  // 攻擊速度加成
-    maxHp?: number;        // 最大生命值加成
-    moveSpeed?: number;    // 移動速度加成
   };
 }
 
@@ -66,6 +64,19 @@ export interface EnemyState {
   dashTarget?: Vector2 | null;
   dashCooldown?: number;
   lastDashAt?: number;
+  // Virtual Guy 分身系統
+  isClone?: boolean; // 是否為分身
+  originalId?: number; // 本體 ID（僅分身有此屬性）
+  cloneLifetime?: number; // 分身存活時間
+  cloneStartTime?: number; // 分身生成時間
+  hasSpawnedClones?: boolean; // 是否已經生成過分身
+  // 分離動畫屬性
+  separationAngle?: number; // 分離角度
+  separationDistance?: number; // 當前分離距離
+  separationSpeed?: number; // 分離速度
+  // pink_man 衝刺拖尾
+  dashTrail?: Vector2[]; // 衝刺軌跡點
+  maxTrailLength?: number; // 最大軌跡長度
 }
 
 export interface ProjectileState {
