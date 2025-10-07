@@ -1,0 +1,4 @@
+﻿hall_id,hall_name,capacity,seatmap_id
+A,Hall A,120,SMALL_12x10
+B,Hall B,80,MEDIUM_10x8
+C,Hall C (IMAX),200,LARGE_16x14

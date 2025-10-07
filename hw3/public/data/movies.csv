@@ -1,0 +1,11 @@
+﻿movie_id,title,year,genres,runtime_min,audio_language,age_rating_tw,poster_url,synopsis
+1001,Skydrift,2024,Action|Sci‑Fi,118,EN,保護級,https://picsum.photos/seed/skydrift/400/600,A rogue pilot uncovers an orbital conspiracy.
+1002,Neon Harbor,2025,Thriller|Crime,106,EN,輔12,https://picsum.photos/seed/neonharbor/400/600,A dockworker gets pulled into a cyber‑heist along the waterfront.
+1003,Echoes of Tomorrow,2023,Drama|Sci‑Fi,124,EN,保護級,https://picsum.photos/seed/echoes/400/600,A physicist faces the fallout of messages sent to her younger self.
+1004,The Last Station,2022,Mystery|Drama,121,EN,輔15,https://picsum.photos/seed/laststation/400/600,Strangers stranded overnight unravel a decades‑old disappearance.
+1005,Moonlight Sonata,2021,Romance|Music,109,EN,普遍級,https://picsum.photos/seed/moonsonata/400/600,A pianist reconnects with a first love on the eve of a competition.
+1006,Quantum Heist,2025,Action|Heist|Sci‑Fi,132,EN,輔12,https://picsum.photos/seed/quantumheist/400/600,Thieves use entanglement to rob vaults in parallel timelines.
+1007,Paper Planets,2020,Animation|Family,97,JP,普遍級,https://picsum.photos/seed/paperplanets/400/600,Two siblings fold a universe that comes to life.
+1008,Silent Circuit,2024,Tech Noir|Thriller,105,EN,輔15,https://picsum.photos/seed/silentcircuit/400/600,An audio engineer discovers a deadly frequency hidden in the grid.
+1009,After the Typhoon,2023,Drama,129,ZH,保護級,https://picsum.photos/seed/aftertyphoon/400/600,A coastal town rebuilds while a family confronts old wounds.
+1010,Starflower,2022,Fantasy|Adventure,95,EN,普遍級,https://picsum.photos/seed/starflower/400/600,A botanist quests for a mythic bloom that blooms once each century.
