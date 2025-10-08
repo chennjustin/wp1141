@@ -23,11 +23,12 @@ export async function loadCSV<T>(path: string): Promise<T[]> {
         complete: (results) => {
           // 過濾掉空白物件
           const filteredData = results.data.filter((row) => {
-            return Object.values(row).some((val) => val !== '')
+            if (!row || typeof row !== 'object') return false
+            return Object.values(row as Record<string, unknown>).some((val) => val !== '')
           })
           resolve(filteredData)
         },
-        error: (error) => {
+        error: (error: Error) => {
           reject(error)
         },
       })

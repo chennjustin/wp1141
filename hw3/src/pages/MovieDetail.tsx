@@ -1,6 +1,7 @@
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Clock, Calendar, Languages, Film } from 'lucide-react'
-import { useMovieContext } from '@/context/MovieContext'
+import { ArrowLeft, Clock, Calendar, Languages, Film, Ticket, Check } from 'lucide-react'
+import { useMovieContext, Screening } from '@/context/MovieContext'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -9,6 +10,9 @@ export default function MovieDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { movies, screenings, halls, loading } = useMovieContext()
+  
+  // 選中的場次
+  const [selectedScreening, setSelectedScreening] = useState<Screening | null>(null)
 
   // 找到對應的電影
   const movie = movies.find((m) => m.movie_id === id)
@@ -27,6 +31,24 @@ export default function MovieDetail() {
 
   // 排序日期
   const sortedDates = Object.keys(screeningsByDate).sort()
+
+  // 找到選中場次的影廳
+  const selectedHall = selectedScreening
+    ? halls.find((h) => h.hall_id === selectedScreening.hall_id)
+    : null
+
+  // 處理選擇座位
+  const handleSelectSeats = () => {
+    if (!selectedScreening || !movie || !selectedHall) return
+
+    navigate(`/movie/${id}/select-seat`, {
+      state: {
+        screening: selectedScreening,
+        movie: movie,
+        hall: selectedHall,
+      },
+    })
+  }
 
   if (loading) {
     return (
@@ -47,7 +69,7 @@ export default function MovieDetail() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24">
       {/* 返回按鈕 */}
       <Button variant="ghost" onClick={() => navigate('/movies')}>
         <ArrowLeft className="mr-2 h-4 w-4" />
@@ -61,7 +83,7 @@ export default function MovieDetail() {
           <img
             src={movie.poster_url}
             alt={movie.title}
-            className="w-full rounded-lg shadow-lg"
+            className="w-full rounded-lg shadow-lg sticky top-20"
           />
         </div>
 
@@ -105,11 +127,19 @@ export default function MovieDetail() {
         </div>
       </div>
 
-      {/* 場次資訊 */}
+      {/* 場次選擇 */}
       <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Calendar className="h-5 w-5" />
-          <h2 className="text-2xl font-bold">場次時刻表</h2>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            <h2 className="text-2xl font-bold">選擇場次</h2>
+          </div>
+          {selectedScreening && (
+            <Button onClick={handleSelectSeats} size="lg">
+              <Ticket className="mr-2 h-5 w-5" />
+              選擇座位
+            </Button>
+          )}
         </div>
 
         {movieScreenings.length === 0 ? (
@@ -135,16 +165,18 @@ export default function MovieDetail() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                       {dayScreenings.map((screening) => {
                         const hall = halls.find((h) => h.hall_id === screening.hall_id)
+                        const isSelected = selectedScreening?.screening_id === screening.screening_id
+                        
                         return (
                           <Card
                             key={screening.screening_id}
-                            className="hover:shadow-md transition-shadow cursor-pointer"
-                            onClick={() =>
-                              navigate(`/screening/${screening.screening_id}`)
-                            }
+                            className={`cursor-pointer transition-all hover:shadow-md ${
+                              isSelected ? 'ring-2 ring-primary shadow-md' : ''
+                            }`}
+                            onClick={() => setSelectedScreening(screening)}
                           >
                             <CardContent className="p-4">
                               <div className="flex justify-between items-start mb-2">
@@ -168,13 +200,19 @@ export default function MovieDetail() {
                               </div>
                               <div className="text-sm text-gray-600 space-y-1">
                                 <p>📍 {hall?.hall_name || screening.hall_id}</p>
-                                <p>
+                                <p className="text-xs">
                                   🎧 {screening.audio_language} / {screening.subtitle_language}
                                 </p>
                                 <p className="font-semibold text-primary pt-1">
                                   NT$ {screening.price_TWD}
                                 </p>
                               </div>
+                              {isSelected && (
+                                <div className="mt-3 flex items-center text-primary text-sm font-medium">
+                                  <Check className="h-4 w-4 mr-1" />
+                                  已選擇
+                                </div>
+                              )}
                             </CardContent>
                           </Card>
                         )
@@ -187,6 +225,29 @@ export default function MovieDetail() {
           </div>
         )}
       </div>
+
+      {/* 底部固定選擇座位按鈕 */}
+      {selectedScreening && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-40">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm text-gray-600">已選場次</p>
+                <p className="text-lg font-bold">
+                  {selectedScreening.date} {selectedScreening.start_time}
+                </p>
+                <p className="text-sm text-gray-600">
+                  {selectedHall?.hall_name} • {selectedScreening.format}
+                </p>
+              </div>
+              <Button onClick={handleSelectSeats} size="lg" className="px-8">
+                <Ticket className="mr-2 h-5 w-5" />
+                選擇座位
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,11 +1,19 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Film, ShoppingCart } from 'lucide-react'
+import { Film, ShoppingCart, History, RefreshCw } from 'lucide-react'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
 import { useMovieContext } from '@/context/MovieContext'
 
 export default function Navbar() {
-  const { cart } = useMovieContext()
+  const { cart, reloadData, loading } = useMovieContext()
+  const [isReloading, setIsReloading] = useState(false)
+
+  const handleReload = async () => {
+    setIsReloading(true)
+    await reloadData()
+    setIsReloading(false)
+  }
 
   return (
     <nav className="bg-white shadow-md sticky top-0 z-50">
@@ -20,8 +28,27 @@ export default function Navbar() {
           </Link>
           
           <div className="flex items-center space-x-2 sm:space-x-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleReload}
+              disabled={loading || isReloading}
+              title="重新載入資料"
+              className="hidden sm:flex"
+            >
+              <RefreshCw className={`h-4 w-4 ${isReloading ? 'animate-spin' : ''}`} />
+            </Button>
             <Link to="/movies">
               <Button variant="ghost">電影列表</Button>
+            </Link>
+            <Link to="/history">
+              <Button variant="ghost" className="hidden sm:flex items-center space-x-2">
+                <History className="h-4 w-4" />
+                <span>歷史訂單</span>
+              </Button>
+              <Button variant="ghost" size="icon" className="sm:hidden">
+                <History className="h-4 w-4" />
+              </Button>
             </Link>
             <Link to="/cart">
               <Button variant="outline" className="flex items-center space-x-2 relative">

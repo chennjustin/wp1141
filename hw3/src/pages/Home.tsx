@@ -2,10 +2,13 @@ import { Link } from 'react-router-dom'
 import { Film, Calendar, ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import PopularMovies from '@/components/PopularMovies'
 
 export default function Home() {
   return (
     <div className="space-y-8">
+      {/* 熱門電影統計 */}
+      <PopularMovies />
       <section className="text-center space-y-4 py-12">
         <h1 className="text-4xl font-bold text-gray-900">
           歡迎來到 Cinema Booking System

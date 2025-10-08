@@ -50,7 +50,9 @@ interface MovieContextType {
   error: string | null
   addToCart: (item: CartItem) => void
   removeFromCart: (id: string) => void
+  updateCartItem: (id: string, updates: Partial<CartItem>) => void
   clearCart: () => void
+  reloadData: () => Promise<void>
 }
 
 const MovieContext = createContext<MovieContextType | undefined>(undefined)
@@ -63,32 +65,39 @@ export function MovieProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // 載入所有 CSV 資料
-  useEffect(() => {
-    const loadAllData = async () => {
-      try {
-        setLoading(true)
-        setError(null)
+  // 載入所有 CSV 資料的函數
+  const loadAllData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
 
-        const [moviesData, hallsData, screeningsData] = await Promise.all([
-          loadCSV<Movie>('/data/movies.csv'),
-          loadCSV<Hall>('/data/halls.csv'),
-          loadCSV<Screening>('/data/screenings.csv'),
-        ])
+      const [moviesData, hallsData, screeningsData] = await Promise.all([
+        loadCSV<Movie>('/data/movies.csv'),
+        loadCSV<Hall>('/data/halls.csv'),
+        loadCSV<Screening>('/data/screenings.csv'),
+      ])
 
-        setMovies(moviesData)
-        setHalls(hallsData)
-        setScreenings(screeningsData)
-      } catch (err) {
-        console.error('Error loading data:', err)
-        setError('無法載入資料，請稍後再試')
-      } finally {
-        setLoading(false)
-      }
+      setMovies(moviesData)
+      setHalls(hallsData)
+      setScreenings(screeningsData)
+    } catch (err) {
+      console.error('Error loading data:', err)
+      setError('無法載入資料，請稍後再試')
+    } finally {
+      setLoading(false)
     }
+  }
 
+  // 初次載入
+  useEffect(() => {
     loadAllData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // 重新載入資料
+  const reloadData = async () => {
+    await loadAllData()
+  }
 
   const addToCart = (item: CartItem) => {
     setCart((prev) => [...prev, item])
@@ -96,6 +105,14 @@ export function MovieProvider({ children }: { children: ReactNode }) {
 
   const removeFromCart = (id: string) => {
     setCart((prev) => prev.filter((item) => item.id !== id))
+  }
+
+  const updateCartItem = (id: string, updates: Partial<CartItem>) => {
+    setCart((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, ...updates } : item
+      )
+    )
   }
 
   const clearCart = () => {
@@ -113,7 +130,9 @@ export function MovieProvider({ children }: { children: ReactNode }) {
         error,
         addToCart,
         removeFromCart,
+        updateCartItem,
         clearCart,
+        reloadData,
       }}
     >
       {children}
