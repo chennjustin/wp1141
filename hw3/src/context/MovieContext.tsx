@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { loadCSV } from '@/utils/csvLoader'
 
 export interface Movie {
   movie_id: string
@@ -45,9 +46,8 @@ interface MovieContextType {
   halls: Hall[]
   screenings: Screening[]
   cart: CartItem[]
-  setMovies: (movies: Movie[]) => void
-  setHalls: (halls: Hall[]) => void
-  setScreenings: (screenings: Screening[]) => void
+  loading: boolean
+  error: string | null
   addToCart: (item: CartItem) => void
   removeFromCart: (id: string) => void
   clearCart: () => void
@@ -60,6 +60,35 @@ export function MovieProvider({ children }: { children: ReactNode }) {
   const [halls, setHalls] = useState<Hall[]>([])
   const [screenings, setScreenings] = useState<Screening[]>([])
   const [cart, setCart] = useState<CartItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // 載入所有 CSV 資料
+  useEffect(() => {
+    const loadAllData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+
+        const [moviesData, hallsData, screeningsData] = await Promise.all([
+          loadCSV<Movie>('/data/movies.csv'),
+          loadCSV<Hall>('/data/halls.csv'),
+          loadCSV<Screening>('/data/screenings.csv'),
+        ])
+
+        setMovies(moviesData)
+        setHalls(hallsData)
+        setScreenings(screeningsData)
+      } catch (err) {
+        console.error('Error loading data:', err)
+        setError('無法載入資料，請稍後再試')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadAllData()
+  }, [])
 
   const addToCart = (item: CartItem) => {
     setCart((prev) => [...prev, item])
@@ -80,9 +109,8 @@ export function MovieProvider({ children }: { children: ReactNode }) {
         halls,
         screenings,
         cart,
-        setMovies,
-        setHalls,
-        setScreenings,
+        loading,
+        error,
         addToCart,
         removeFromCart,
         clearCart,

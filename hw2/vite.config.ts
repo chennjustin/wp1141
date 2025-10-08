@@ -15,6 +15,13 @@ export default defineConfig({
       '@utils': r('src/utils'),
     },
   },
+  server: {
+    host: true,
+    allowedHosts: [
+      //用cloudflare的網址
+      'buddy-prescribed-respectively-rings.trycloudflare.com',
+    ],
+  },
 });
 
 
