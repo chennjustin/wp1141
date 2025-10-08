@@ -18,10 +18,10 @@ export default function SeatMap({
   // 根據 seatmap_id 決定座位配置
   const { rows, cols } = useMemo(() => {
     switch (seatmapId) {
-      case 'SMALL_12x10':
-        return { rows: 12, cols: 10 }
-      case 'MEDIUM_10x8':
+      case 'SMALL_10x8':
         return { rows: 10, cols: 8 }
+      case 'MEDIUM_12x10':
+        return { rows: 12, cols: 10 }
       case 'LARGE_16x14':
         return { rows: 16, cols: 14 }
       default:
@@ -66,8 +66,9 @@ export default function SeatMap({
     <div className="space-y-6">
       {/* 銀幕 */}
       <div className="relative">
-        <div className="w-full h-3 bg-gradient-to-b from-gray-800 to-gray-600 rounded-t-3xl shadow-lg"></div>
-        <p className="text-center text-sm text-gray-500 mt-2">銀幕</p>
+        <div className="mx-auto w-full max-w-3xl h-4 bg-gradient-to-b from-gray-900 via-gray-700 to-gray-500 rounded-t-[24px] shadow-[0_8px_24px_rgba(0,0,0,0.25)]"></div>
+        <div className="mx-auto w-[92%] max-w-3xl h-1 bg-gradient-to-r from-transparent via-white/40 to-transparent rounded-full -mt-1"></div>
+        <p className="text-center text-sm text-gray-600 mt-2 tracking-widest">銀幕</p>
       </div>
 
       {/* 座位圖 */}

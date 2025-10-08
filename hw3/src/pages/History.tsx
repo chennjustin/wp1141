@@ -47,6 +47,14 @@ export default function History() {
     }
   }, [])
 
+  // 清除所有歷史紀錄
+  const clearAllHistory = () => {
+    if (window.confirm('確定要清除所有歷史訂單嗎？此操作無法復原。')) {
+      localStorage.removeItem('cinema_orders')
+      setOrders([])
+    }
+  }
+
   const formatDate = (timestamp: string) => {
     const date = new Date(timestamp)
     return date.toLocaleDateString('zh-TW', {
@@ -75,12 +83,23 @@ export default function History() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       {/* 標題 */}
-      <div className="flex items-center gap-3">
-        <HistoryIcon className="h-8 w-8 text-primary" />
-        <div>
-          <h1 className="text-3xl font-bold">歷史訂單</h1>
-          <p className="text-gray-600 mt-1">共 {orders.length} 筆訂單</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <HistoryIcon className="h-8 w-8 text-primary" />
+          <div>
+            <h1 className="text-3xl font-bold">歷史訂單</h1>
+            <p className="text-gray-600 mt-1">共 {orders.length} 筆訂單</p>
+          </div>
         </div>
+        {orders.length > 0 && (
+          <Button 
+            variant="outline" 
+            onClick={clearAllHistory}
+            className="text-red-600 border-red-300 hover:bg-red-50"
+          >
+            🗑️ 清除所有紀錄
+          </Button>
+        )}
       </div>
 
       {/* 訂單列表 */}

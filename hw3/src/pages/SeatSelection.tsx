@@ -1,17 +1,16 @@
-import { useState, useEffect } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { ArrowLeft, Calendar, Clock, MapPin, ShoppingCart, Check } from 'lucide-react'
-import { useMovieContext, Movie, Screening, Hall } from '@/context/MovieContext'
+import { useState, useEffect, useMemo } from 'react'
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
+import { ArrowLeft, Calendar, Clock, MapPin, ShoppingCart, Check, AlertCircle } from 'lucide-react'
+import { useMovieContext } from '@/context/MovieContext'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import SeatMap from '@/components/SeatMap'
 import { useSoldSeats } from '@/hooks/useSoldSeats'
+import AddToCartModal from '@/components/feedback/AddToCartModal'
+import { useToast } from '@/components/feedback/Toaster'
 
 interface LocationState {
-  screening?: Screening
-  movie?: Movie
-  hall?: Hall
   editMode?: boolean
   editItemId?: string
   editSeats?: string[]
@@ -21,27 +20,39 @@ export default function SeatSelection() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const location = useLocation()
-  const { addToCart, updateCartItem } = useMovieContext()
+  const [searchParams] = useSearchParams()
+  const { movies, screenings, halls, addToCart, updateCartItem } = useMovieContext()
+  const { addToast } = useToast()
   
   const [selectedSeats, setSelectedSeats] = useState<string[]>([])
   const [isAdding, setIsAdding] = useState(false)
+  const [showAddToCartModal, setShowAddToCartModal] = useState(false)
 
-  // 從 location.state 獲取資料
+  // 從 URL Query 讀取 screening_id
+  const screeningId = searchParams.get('screening')
+
+  // 從 location.state 獲取編輯模式資料
   const state = location.state as LocationState | null
-  const screening = state?.screening
-  const movie = state?.movie
-  const hall = state?.hall
   const isEditMode = state?.editMode || false
   const editItemId = state?.editItemId
   const editSeats = state?.editSeats
 
-  // 如果沒有必要資料，導回電影詳情頁（只執行一次）
-  useEffect(() => {
-    if (!screening || !movie || !hall) {
-      navigate(`/movie/${id}`, { replace: true })
+  // 根據 screening_id 從 context 找到對應資料
+  const { screening, movie, hall } = useMemo(() => {
+    if (!screeningId) return { screening: null, movie: null, hall: null }
+
+    const foundScreening = screenings.find((s) => s.screening_id === screeningId)
+    if (!foundScreening) return { screening: null, movie: null, hall: null }
+
+    const foundMovie = movies.find((m) => m.movie_id === foundScreening.movie_id)
+    const foundHall = halls.find((h) => h.hall_id === foundScreening.hall_id)
+
+    return {
+      screening: foundScreening,
+      movie: foundMovie || null,
+      hall: foundHall || null,
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // 只在首次載入時檢查
+  }, [screeningId, screenings, movies, halls])
 
   // 編輯模式：預載原有座位
   useEffect(() => {
@@ -50,11 +61,20 @@ export default function SeatSelection() {
     }
   }, [isEditMode, editSeats])
 
-  // 如果資料不完整，顯示載入中（在導航前的短暫顯示）
-  if (!screening || !movie || !hall) {
+  // 如果缺少 screening_id 或找不到資料，顯示提示
+  if (!screeningId || !screening || !movie || !hall) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <p className="text-gray-500">載入中...</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <AlertCircle className="h-16 w-16 text-yellow-500" />
+        <h2 className="text-2xl font-bold text-gray-600">缺少場次資訊</h2>
+        <p className="text-gray-500 text-center max-w-md">
+          {!screeningId
+            ? '請從電影詳情頁選擇場次'
+            : '找不到該場次資料，可能已下架或不存在'}
+        </p>
+        <Button onClick={() => navigate(id ? `/movie/${id}` : '/movies')}>
+          {id ? '返回電影詳情' : '返回電影列表'}
+        </Button>
       </div>
     )
   }
@@ -92,8 +112,19 @@ export default function SeatSelection() {
       
       setTimeout(() => {
         setIsAdding(false)
-        alert('✅ 座位已更新！')
-        navigate('/cart')
+        
+        // 顯示更新成功 Toast
+        addToast({
+          variant: 'success',
+          duration: 3000,
+          title: '✅ 座位已更新！',
+          description: '您的座位選擇已成功更新',
+        })
+        
+        // 延遲導航，讓用戶看到 Toast
+        setTimeout(() => {
+          navigate('/cart')
+        }, 300)
       }, 500)
     } else {
       // 新增模式：加入新項目
@@ -109,8 +140,8 @@ export default function SeatSelection() {
 
       setTimeout(() => {
         setIsAdding(false)
-        alert('✅ 已加入購物車！')
-        navigate('/cart')
+        // 顯示加入購物車 Modal
+        setShowAddToCartModal(true)
       }, 500)
     }
   }
@@ -233,6 +264,16 @@ export default function SeatSelection() {
           </div>
         </div>
       )}
+
+      {/* 加入購物車成功 Modal */}
+      <AddToCartModal
+        isOpen={showAddToCartModal}
+        onClose={() => setShowAddToCartModal(false)}
+        movie={movie}
+        screening={screening}
+        hall={hall}
+        seats={selectedSeats}
+      />
     </div>
   )
 }

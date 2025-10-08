@@ -9,7 +9,7 @@ export default function Breadcrumb() {
 
   const pathSegments = location.pathname.split('/').filter(Boolean)
 
-  // 根據路徑生成麵包屑
+  // 根據路徑生成 breadcrumbs
   const getBreadcrumbs = () => {
     const breadcrumbs = [{ label: '首頁', path: '/' }]
 
@@ -58,14 +58,14 @@ export default function Breadcrumb() {
 
   const breadcrumbs = getBreadcrumbs()
 
-  // 首頁不顯示麵包屑
+  // 首頁不顯示 breadcrumb
   if (location.pathname === '/') {
     return null
   }
 
   return (
-    <nav className="bg-white border-b">
-      <div className="container mx-auto px-4 py-3">
+    <nav>
+      <div>
         <ol className="flex items-center space-x-2 text-sm">
           {breadcrumbs.map((crumb, index) => (
             <li key={index} className="flex items-center">

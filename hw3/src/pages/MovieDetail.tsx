@@ -1,53 +1,94 @@
-import { useState } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Clock, Calendar, Languages, Film, Ticket, Check } from 'lucide-react'
-import { useMovieContext, Screening } from '@/context/MovieContext'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ArrowLeft, Clock, Languages, Film, ChevronLeft, ChevronRight } from 'lucide-react'
+import RatingIcon from '@/components/common/RatingIcon'
+import { useMovieContext } from '@/context/MovieContext'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import TagChip from '@/components/movies/TagChip'
 
 export default function MovieDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { movies, screenings, halls, loading } = useMovieContext()
+  const dateTabsRef = useRef<HTMLDivElement>(null)
   
-  // 選中的場次
-  const [selectedScreening, setSelectedScreening] = useState<Screening | null>(null)
-
   // 找到對應的電影
   const movie = movies.find((m) => m.movie_id === id)
 
-  // 找到這部電影的所有場次
-  const movieScreenings = screenings.filter((s) => s.movie_id === id)
+  // 找到這部電影的所有場次並按日期分組
+  const { dates, screeningsByDate } = useMemo(() => {
+    const movieScreenings = screenings.filter((s) => s.movie_id === id)
+    const grouped = movieScreenings.reduce((acc, screening) => {
+      if (!acc[screening.date]) {
+        acc[screening.date] = []
+      }
+      acc[screening.date].push(screening)
+      return acc
+    }, {} as Record<string, typeof screenings>)
 
-  // 按日期分組場次
-  const screeningsByDate = movieScreenings.reduce((acc, screening) => {
-    if (!acc[screening.date]) {
-      acc[screening.date] = []
+    // 排序日期
+    const sortedDates = Object.keys(grouped).sort()
+    
+    return {
+      dates: sortedDates,
+      screeningsByDate: grouped,
     }
-    acc[screening.date].push(screening)
-    return acc
-  }, {} as Record<string, typeof screenings>)
+  }, [screenings, id])
 
-  // 排序日期
-  const sortedDates = Object.keys(screeningsByDate).sort()
+  // 選中的日期（預設今天或第一個可用日期）
+  const today = new Date().toISOString().split('T')[0]
+  const defaultDate = dates.includes(today) ? today : dates[0]
+  const [selectedDate, setSelectedDate] = useState<string>(defaultDate || '')
 
-  // 找到選中場次的影廳
-  const selectedHall = selectedScreening
-    ? halls.find((h) => h.hall_id === selectedScreening.hall_id)
-    : null
+  // 當前日期的場次
+  const currentScreenings = selectedDate ? screeningsByDate[selectedDate] || [] : []
 
-  // 處理選擇座位
-  const handleSelectSeats = () => {
-    if (!selectedScreening || !movie || !selectedHall) return
+  // 解析類型標籤
+  const genres = useMemo(() => {
+    if (!movie) return []
+    return movie.genres
+      .split(',')
+      .map((g) => g.trim())
+      .filter(Boolean)
+  }, [movie])
 
-    navigate(`/movie/${id}/select-seat`, {
-      state: {
-        screening: selectedScreening,
-        movie: movie,
-        hall: selectedHall,
-      },
-    })
+  // 橫向捲動日期標籤
+  const scrollDates = (direction: 'left' | 'right') => {
+    if (dateTabsRef.current) {
+      const scrollAmount = 200
+      dateTabsRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      })
+    }
+  }
+
+  // 格式化日期顯示
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr)
+    const month = date.getMonth() + 1
+    const day = date.getDate()
+    const weekdays = ['日', '一', '二', '三', '四', '五', '六']
+    const weekday = weekdays[date.getDay()]
+    
+    return {
+      monthDay: `${month}/${day}`,
+      weekday: `週${weekday}`,
+      isToday: dateStr === today,
+    }
+  }
+
+  // 處理場次點擊 - 直接導向選位頁
+  const handleScreeningClick = (screeningId: string) => {
+    navigate(`/movie/${id}/select-seat?screening=${screeningId}`)
+  }
+
+  // 取得格式 Badge 樣式
+  const getFormatVariant = (format: string) => {
+    if (format === 'IMAX') return 'default'
+    if (format === '3D') return 'secondary'
+    return 'outline'
   }
 
   if (loading) {
@@ -69,186 +110,199 @@ export default function MovieDetail() {
   }
 
   return (
-    <div className="space-y-6 pb-24">
+    <div className="space-y-8 pb-8">
       {/* 返回按鈕 */}
       <Button variant="ghost" onClick={() => navigate('/movies')}>
         <ArrowLeft className="mr-2 h-4 w-4" />
         返回電影列表
       </Button>
 
-      {/* 電影資訊 */}
-      <div className="grid md:grid-cols-3 gap-6">
-        {/* 海報 */}
-        <div className="md:col-span-1">
-          <img
-            src={movie.poster_url}
-            alt={movie.title}
-            className="w-full rounded-lg shadow-lg sticky top-20"
-          />
-        </div>
+      {/* Header - 大圖視覺 + 資訊欄 */}
+      <div className="relative rounded-lg overflow-hidden">
+        {/* 背景：海報模糊鋪底 */}
+        <div
+          className="absolute inset-0 bg-cover bg-center blur-2xl opacity-30"
+          style={{ backgroundImage: `url(${movie.poster_url})` }}
+        />
+        
+        {/* 前景內容 */}
+        <div className="relative bg-white/90 backdrop-blur-sm">
+          <div className="container mx-auto p-6 md:p-8">
+            <div className="flex flex-col md:flex-row gap-6 md:gap-8">
+              {/* 左側：大海報 */}
+              <div className="flex-shrink-0 mx-auto md:mx-0">
+                <img
+                  src={movie.poster_url}
+                  alt={movie.title}
+                  className="w-full max-w-[280px] md:max-w-[360px] rounded-lg shadow-2xl"
+                />
+              </div>
 
-        {/* 電影詳細資訊 */}
-        <div className="md:col-span-2 space-y-4">
-          <div>
-            <h1 className="text-4xl font-bold mb-2">{movie.title}</h1>
-            <div className="flex items-center gap-2 text-gray-600">
-              <Badge variant="secondary">{movie.age_rating_tw}</Badge>
-              <span>•</span>
-              <span>{movie.year}</span>
+              {/* 右側：資訊 */}
+              <div className="flex-1 space-y-4">
+                {/* 標題與分級 */}
+                <div>
+                  <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2 leading-tight">
+                    {movie.title}
+                  </h1>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <RatingIcon rating={movie.age_rating_tw} />
+                    <span className="text-gray-600">{movie.year}</span>
+                  </div>
+                </div>
+
+                {/* 類型標籤 */}
+                <div className="flex flex-wrap gap-2">
+                  {genres.map((genre, idx) => (
+                    <TagChip key={idx}>{genre}</TagChip>
+                  ))}
+                </div>
+
+                {/* 基本資訊 */}
+                <div className="flex flex-wrap gap-x-6 gap-y-2 text-gray-700">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    <span>{movie.runtime_min} 分鐘</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Languages className="h-4 w-4" />
+                    <span>{movie.audio_language}</span>
+                  </div>
+                </div>
+
+                {/* 劇情簡介 */}
+                <div className="pt-2">
+                  <h3 className="text-lg font-semibold mb-2 text-gray-900">劇情簡介</h3>
+                  <p className="text-gray-700 leading-relaxed">{movie.synopsis}</p>
+                </div>
+              </div>
             </div>
-          </div>
-
-          {/* 類型標籤 */}
-          <div className="flex flex-wrap gap-2">
-            {movie.genres.split('|').map((genre) => (
-              <Badge key={genre} variant="outline">
-                {genre}
-              </Badge>
-            ))}
-          </div>
-
-          {/* 基本資訊 */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center gap-2 text-gray-700">
-              <Clock className="h-4 w-4" />
-              <span>{movie.runtime_min} 分鐘</span>
-            </div>
-            <div className="flex items-center gap-2 text-gray-700">
-              <Languages className="h-4 w-4" />
-              <span>{movie.audio_language}</span>
-            </div>
-          </div>
-
-          {/* 劇情簡介 */}
-          <div>
-            <h3 className="text-xl font-semibold mb-2">劇情簡介</h3>
-            <p className="text-gray-700 leading-relaxed">{movie.synopsis}</p>
           </div>
         </div>
       </div>
 
-      {/* 場次選擇 */}
+      {/* 場次選擇區 */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            <h2 className="text-2xl font-bold">選擇場次</h2>
-          </div>
-          {selectedScreening && (
-            <Button onClick={handleSelectSeats} size="lg">
-              <Ticket className="mr-2 h-5 w-5" />
-              選擇座位
-            </Button>
-          )}
-        </div>
+        <h2 className="text-2xl font-bold text-gray-900">選擇場次</h2>
 
-        {movieScreenings.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center text-gray-500">
-              目前沒有可用場次
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {sortedDates.map((date) => {
-              const dayScreenings = screeningsByDate[date]
-              return (
-                <Card key={date}>
-                  <CardHeader>
-                    <CardTitle className="text-lg">
-                      {new Date(date).toLocaleDateString('zh-TW', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        weekday: 'long',
-                      })}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                      {dayScreenings.map((screening) => {
-                        const hall = halls.find((h) => h.hall_id === screening.hall_id)
-                        const isSelected = selectedScreening?.screening_id === screening.screening_id
-                        
-                        return (
-                          <Card
-                            key={screening.screening_id}
-                            className={`cursor-pointer transition-all hover:shadow-md ${
-                              isSelected ? 'ring-2 ring-primary shadow-md' : ''
-                            }`}
-                            onClick={() => setSelectedScreening(screening)}
-                          >
-                            <CardContent className="p-4">
-                              <div className="flex justify-between items-start mb-2">
-                                <div>
-                                  <p className="font-bold text-lg">
-                                    {screening.start_time}
-                                  </p>
-                                  <p className="text-sm text-gray-500">
-                                    {screening.end_time} 結束
-                                  </p>
-                                </div>
-                                <Badge
-                                  variant={
-                                    screening.format === 'IMAX'
-                                      ? 'default'
-                                      : 'secondary'
-                                  }
-                                >
-                                  {screening.format}
-                                </Badge>
-                              </div>
-                              <div className="text-sm text-gray-600 space-y-1">
-                                <p>📍 {hall?.hall_name || screening.hall_id}</p>
-                                <p className="text-xs">
-                                  🎧 {screening.audio_language} / {screening.subtitle_language}
-                                </p>
-                                <p className="font-semibold text-primary pt-1">
-                                  NT$ {screening.price_TWD}
-                                </p>
-                              </div>
-                              {isSelected && (
-                                <div className="mt-3 flex items-center text-primary text-sm font-medium">
-                                  <Check className="h-4 w-4 mr-1" />
-                                  已選擇
-                                </div>
-                              )}
-                            </CardContent>
-                          </Card>
-                        )
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
+        {dates.length === 0 ? (
+          <div className="bg-white rounded-lg border p-8 text-center text-gray-500">
+            目前沒有可用場次
           </div>
+        ) : (
+          <>
+            {/* 日期 Tab - 橫向捲動 */}
+            <div className="relative bg-white rounded-lg border shadow-sm p-2">
+              {/* 左箭頭 */}
+              <button
+                onClick={() => scrollDates('left')}
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white rounded-full p-1 shadow-md"
+                aria-label="向左捲動"
+              >
+                <ChevronLeft className="h-5 w-5 text-gray-600" />
+              </button>
+
+              {/* 日期標籤 */}
+              <div
+                ref={dateTabsRef}
+                className="flex gap-2 overflow-x-auto scrollbar-hide px-8"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              >
+                {dates.map((date) => {
+                  const { monthDay, weekday, isToday } = formatDate(date)
+                  const isSelected = date === selectedDate
+
+                  return (
+                    <button
+                      key={date}
+                      onClick={() => setSelectedDate(date)}
+                      className={`flex-shrink-0 px-4 py-3 rounded-lg text-center transition-all min-w-[80px] ${
+                        isSelected
+                          ? 'bg-primary text-white shadow-md'
+                          : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      <div className="text-sm font-medium">{monthDay}</div>
+                      <div className="text-xs mt-1">
+                        {isToday ? '今天' : weekday}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* 右箭頭 */}
+              <button
+                onClick={() => scrollDates('right')}
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white rounded-full p-1 shadow-md"
+                aria-label="向右捲動"
+              >
+                <ChevronRight className="h-5 w-5 text-gray-600" />
+              </button>
+            </div>
+
+            {/* 時間膠囊清單 */}
+            <div className="bg-white rounded-lg border shadow-sm p-6">
+              {currentScreenings.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">
+                  此日期沒有可用場次
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {currentScreenings.map((screening) => {
+                    const hall = halls.find((h) => h.hall_id === screening.hall_id)
+
+                    return (
+                      <button
+                        key={screening.screening_id}
+                        onClick={() => handleScreeningClick(screening.screening_id)}
+                        className="group relative bg-gradient-to-br from-gray-50 to-gray-100 hover:from-primary/10 hover:to-primary/5 border border-gray-200 hover:border-primary rounded-lg p-4 text-left transition-all hover:shadow-md"
+                      >
+                        {/* 時間 */}
+                        <div className="text-2xl font-bold text-gray-900 mb-2">
+                          {screening.start_time}
+                        </div>
+
+                        {/* 格式與廳別 */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant={getFormatVariant(screening.format)}>
+                            {screening.format}
+                          </Badge>
+                          <span className="text-sm text-gray-600">
+                            {hall?.hall_name || screening.hall_id}
+                          </span>
+                        </div>
+
+                        {/* 語言 */}
+                        <div className="text-xs text-gray-500 mb-2">
+                          {screening.audio_language} / {screening.subtitle_language}
+                        </div>
+
+                        {/* 價格 */}
+                        <div className="text-lg font-semibold text-primary">
+                          NT$ {screening.price_TWD}
+                        </div>
+
+                        {/* Hover 提示 */}
+                        <div className="absolute inset-0 flex items-center justify-center bg-primary/90 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                          <span className="text-sm font-medium">點擊選位 →</span>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
 
-      {/* 底部固定選擇座位按鈕 */}
-      {selectedScreening && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-40">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm text-gray-600">已選場次</p>
-                <p className="text-lg font-bold">
-                  {selectedScreening.date} {selectedScreening.start_time}
-                </p>
-                <p className="text-sm text-gray-600">
-                  {selectedHall?.hall_name} • {selectedScreening.format}
-                </p>
-              </div>
-              <Button onClick={handleSelectSeats} size="lg" className="px-8">
-                <Ticket className="mr-2 h-5 w-5" />
-                選擇座位
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 隱藏 scrollbar 的 CSS */}
+      <style>{`
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
     </div>
   )
 }
-

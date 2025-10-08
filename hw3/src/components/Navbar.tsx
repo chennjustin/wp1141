@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Film, ShoppingCart, History, RefreshCw } from 'lucide-react'
+import { Film, ShoppingCart, History, RefreshCw, HelpCircle } from 'lucide-react'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
 import { useMovieContext } from '@/context/MovieContext'
+import { useModal } from '@/context/ModalContext'
 
 export default function Navbar() {
   const { cart, reloadData, loading } = useMovieContext()
+  const { openUsageGuide } = useModal()
   const [isReloading, setIsReloading] = useState(false)
 
   const handleReload = async () => {
@@ -37,6 +39,14 @@ export default function Navbar() {
               className="hidden sm:flex"
             >
               <RefreshCw className={`h-4 w-4 ${isReloading ? 'animate-spin' : ''}`} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={openUsageGuide}
+              title="使用教學"
+            >
+              <HelpCircle className="h-4 w-4" />
             </Button>
             <Link to="/movies">
               <Button variant="ghost">電影列表</Button>
