@@ -24,7 +24,7 @@ export default function Navbar() {
           <Link to="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
             <Film className="h-6 w-6 text-white" />
             <span className="text-xl font-bold text-white hidden sm:inline">
-              Cinema Booking System
+              CHCCCinema
             </span>
             <span className="text-xl font-bold text-white sm:hidden">CBS</span>
           </Link>

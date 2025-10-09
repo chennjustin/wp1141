@@ -5,7 +5,6 @@ import RatingIcon from '@/components/common/RatingIcon'
 import { useMovieContext } from '@/context/MovieContext'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import TagChip from '@/components/movies/TagChip'
 
 export default function MovieDetail() {
   const { id } = useParams<{ id: string }>()
@@ -155,7 +154,9 @@ export default function MovieDetail() {
                 {/* 類型標籤 */}
                 <div className="flex flex-wrap gap-2">
                   {genres.map((genre, idx) => (
-                    <TagChip key={idx}>{genre}</TagChip>
+                    <Badge key={idx} variant="secondary" className="bg-blue-100 text-blue-800 hover:bg-blue-200">
+                      {genre}
+                    </Badge>
                   ))}
                 </div>
 

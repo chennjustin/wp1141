@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Play, Info, Star, Pause, PlayIcon } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Play, Info, Star } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useMovieContext } from '@/context/MovieContext'
@@ -12,7 +12,6 @@ export default function HeroBanner() {
 
   // Hero 輪播狀態
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [isPaused, setIsPaused] = useState(false)
   const [direction, setDirection] = useState(0)
 
   // Hero 切換函數 - 需要在 useEffect 之前定義
@@ -28,7 +27,7 @@ export default function HeroBanner() {
 
   // Hero 自動輪播
   useEffect(() => {
-    if (isPaused || loading || movies.length === 0) return
+    if (loading || movies.length === 0) return
     
     const duration = 6000 // 延長到6秒，更符合電影院節奏
     const slideTimer = setTimeout(() => {
@@ -38,15 +37,11 @@ export default function HeroBanner() {
     return () => {
       clearTimeout(slideTimer)
     }
-  }, [currentIndex, isPaused, loading, movies.length, handleNext])
+  }, [currentIndex, loading, movies.length, handleNext])
 
   const handleDotClick = (index: number) => {
     setDirection(index > currentIndex ? 1 : -1)
     setCurrentIndex(index)
-  }
-
-  const togglePause = () => {
-    setIsPaused(!isPaused)
   }
 
   // Hero 動畫變體 - 電影院風格慢速淡入
@@ -76,8 +71,6 @@ export default function HeroBanner() {
     <motion.section 
       style={{ opacity: heroOpacity, scale: heroScale }}
       className="relative w-full h-screen overflow-hidden"
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
     >
       {loading ? (
         // 載入中骨架屏
@@ -281,25 +274,6 @@ export default function HeroBanner() {
             ))}
           </div>
 
-          {/* 電影院風格播放控制按鈕 */}
-          <motion.button
-            onClick={togglePause}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            className="absolute bottom-8 right-8 bg-black/40 backdrop-blur-md text-white rounded-full p-3 transition-all duration-300 z-20 border border-white/20 hover:border-white/40 shadow-[0_0_15px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(255,255,255,0.2)]"
-            aria-label={isPaused ? '播放' : '暫停'}
-            style={{
-              background: 'rgba(0, 0, 0, 0.4)',
-              backdropFilter: 'blur(12px)',
-              boxShadow: '0 0 15px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-            }}
-          >
-            {isPaused ? (
-              <PlayIcon className="h-6 w-6" />
-            ) : (
-              <Pause className="h-6 w-6" />
-            )}
-          </motion.button>
         </>
       )}
     </motion.section>

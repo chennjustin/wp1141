@@ -58,7 +58,7 @@ export default function Movies() {
     // 類型篩選（不渲染 chips，仍支援 URL 參數）
     if (selectedGenre) {
       result = result.filter((movie) =>
-        movie.genres.split(',').map((g) => g.trim()).includes(selectedGenre)
+        movie.genres.replace(/"/g, '').split(',').map((g) => g.trim()).includes(selectedGenre)
       )
     }
 

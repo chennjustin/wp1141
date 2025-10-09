@@ -190,7 +190,7 @@ export default function Home() {
             transition={{ delay: 0.3, duration: 0.6 }}
             className="mt-12 pt-8 border-t border-gray-800 text-center text-gray-500 text-sm"
           >
-            <p>© 2024 Cinema Booking System. All rights reserved.</p>
+            <p>© 2025.10 CHCCCinema. All rights reserved.</p>
           </motion.div>
         </div>
       </footer>
@@ -292,7 +292,7 @@ function MovieCard({ movie, isComingSoon = false }: MovieCardProps) {
                 key={idx} 
                 className="text-xs bg-white/20 text-white border border-white/30 backdrop-blur-sm px-2 py-1 rounded"
               >
-                {genre.trim()}
+                {genre.trim().replace(/"/g, '')}
               </div>
             ))}
           </div>
