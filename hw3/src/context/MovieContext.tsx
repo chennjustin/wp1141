@@ -1,45 +1,9 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { loadCSV } from '@/utils/csvLoader'
+import { Movie, Hall, Screening, CartItem } from '@/types'
 
-export interface Movie {
-  movie_id: string
-  title: string
-  year: string
-  genres: string
-  runtime_min: string
-  audio_language: string
-  age_rating_tw: string
-  poster_url: string
-  synopsis: string
-}
-
-export interface Hall {
-  hall_id: string
-  hall_name: string
-  capacity: string
-  seatmap_id: string
-}
-
-export interface Screening {
-  screening_id: string
-  date: string
-  start_time: string
-  end_time: string
-  hall_id: string
-  movie_id: string
-  format: string
-  audio_language: string
-  subtitle_language: string
-  price_TWD: string
-}
-
-export interface CartItem {
-  id: string
-  screening: Screening
-  movie: Movie
-  hall: Hall
-  seats: string[]
-}
+// 重新導出類型以供其他文件使用
+export type { Movie, Hall, Screening, CartItem }
 
 interface MovieContextType {
   movies: Movie[]
