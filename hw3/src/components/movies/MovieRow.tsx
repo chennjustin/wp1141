@@ -3,7 +3,6 @@ import { Calendar, Clock, Volume2 } from 'lucide-react'
 import { Movie } from '@/context/MovieContext'
 import { Button } from '@/components/ui/button'
 import RatingIcon from '@/components/common/RatingIcon'
-import Marquee from '@/components/common/Marquee'
 
 interface MovieRowProps {
   movie: Movie
@@ -35,12 +34,12 @@ const MovieRow = ({ movie }: MovieRowProps) => {
       <div className="flex-1 min-w-0 flex flex-col justify-between">
         {/* 標題與標籤 */}
         <div className="space-y-2">
-          {/* 標題 - 使用跑馬燈 */}
+          {/* 標題 */}
           <h3
             className="text-xl font-bold text-gray-900 cursor-pointer hover:text-primary transition-colors"
             onClick={() => navigate(`/movie/${movie.movie_id}`)}
           >
-            <Marquee className="max-w-full">{movie.title}</Marquee>
+            {movie.title}
           </h3>
 
           {/* 分級 Icon */}

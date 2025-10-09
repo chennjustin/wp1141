@@ -18,15 +18,15 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <main className="container mx-auto px-4 py-8">
+      <main>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/movies" element={<Movies />} />
-          <Route path="/movie/:id" element={<MovieDetail />} />
-          <Route path="/movie/:id/select-seat" element={<SeatSelection />} />
-          <Route path="/cart" element={<Cart />} />
-          <Route path="/checkout" element={<Checkout />} />
-          <Route path="/history" element={<History />} />
+          <Route path="/movies" element={<div className="container mx-auto px-4 py-8"><Movies /></div>} />
+          <Route path="/movie/:id" element={<div className="container mx-auto px-4 py-8"><MovieDetail /></div>} />
+          <Route path="/movie/:id/select-seat" element={<div className="container mx-auto px-4 py-8"><SeatSelection /></div>} />
+          <Route path="/cart" element={<div className="container mx-auto px-4 py-8"><Cart /></div>} />
+          <Route path="/checkout" element={<div className="container mx-auto px-4 py-8"><Checkout /></div>} />
+          <Route path="/history" element={<div className="container mx-auto px-4 py-8"><History /></div>} />
         </Routes>
       </main>
 
