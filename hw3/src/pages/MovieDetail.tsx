@@ -44,10 +44,11 @@ export default function MovieDetail() {
   // 當前日期的場次
   const currentScreenings = selectedDate ? screeningsByDate[selectedDate] || [] : []
 
-  // 解析類型標籤
+  // 解析類型標籤，要把""字樣先移除
   const genres = useMemo(() => {
     if (!movie) return []
     return movie.genres
+      .replace(/"/g, '')  // 移除所有引號
       .split(',')
       .map((g) => g.trim())
       .filter(Boolean)

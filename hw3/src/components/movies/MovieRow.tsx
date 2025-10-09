@@ -28,12 +28,6 @@ const MovieRow = ({ movie }: MovieRowProps) => {
             alt={movie.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
-          {/* 分級標籤 */}
-          {movie.age_rating_tw && (
-            <div className="absolute top-2 right-2 bg-yellow-400 text-black text-xs font-bold px-2 py-1 rounded">
-              {movie.age_rating_tw}
-            </div>
-          )}
         </div>
       </div>
 

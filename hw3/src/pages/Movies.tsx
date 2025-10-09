@@ -31,6 +31,7 @@ export default function Movies() {
     const genresSet = new Set<string>()
     movies.forEach((movie) => {
       movie.genres
+        .replace(/"/g, '')  // 移除所有引號
         .split(',')
         .map((g) => g.trim())
         .filter(Boolean)
@@ -180,25 +181,18 @@ export default function Movies() {
               最新上映
             </Button>
             <Button
-              variant={sortBy === 'year_asc' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSortBy('year_asc')}
-            >
-              最舊上映
-            </Button>
-            <Button
               variant={sortBy === 'runtime_desc' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setSortBy('runtime_desc')}
             >
-              片長長→短
+              長片優先
             </Button>
             <Button
               variant={sortBy === 'runtime_asc' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setSortBy('runtime_asc')}
             >
-              片長短→長
+              短片優先
             </Button>
           </div>
         </div>
