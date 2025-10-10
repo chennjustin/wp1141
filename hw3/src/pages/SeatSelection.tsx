@@ -196,7 +196,7 @@ export default function SeatSelection() {
                   <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200">
                     {screening.format}
                   </span>
-                  <span className="text-sm font-semibold text-gray-900">
+                  <span className="text-sm font-semibold text-red-600">
                     NT$ {screening.price_TWD}
                   </span>
                 </div>
@@ -206,15 +206,36 @@ export default function SeatSelection() {
         </div>
 
         {/* 座位選擇區域 */}
-        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-8">
-          <h3 className="text-2xl font-bold text-gray-900 text-center mb-8">
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+          <h3 className="text-2xl font-bold text-gray-900 text-center mb-6">
             {isEditMode ? '修改座位選擇' : '選擇座位'}
           </h3>
           
-          {/* 螢幕區 */}
-          <div className="text-center mb-8">
-            <div className="w-full h-3 rounded-full bg-gradient-to-b from-gray-400 to-gray-600 mx-auto shadow-lg mb-2"></div>
-            <p className="text-gray-600 text-sm">螢幕</p>
+          {/* 座位圖例 - 融入到座位選擇區域 */}
+          <div className="flex items-center justify-center gap-6 text-gray-700 mb-6">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-white border border-gray-300 rounded"></div>
+              <span className="text-sm">可選</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-gradient-to-r from-blue-600 to-blue-700 rounded shadow-sm"></div>
+              <span className="text-sm">已選</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-gray-300 border border-gray-400 rounded opacity-60"></div>
+              <span className="text-sm">售出</span>
+            </div>
+          </div>
+          
+          {/* 螢幕區 - 圖二範例樣式 */}
+          <div className="text-center mb-6">
+            <div className="relative w-full h-5 bg-gradient-to-b from-gray-200 to-gray-400 mx-auto mb-2 shadow-inner border border-gray-500">
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-gray-700 font-bold text-sm">銀幕</span>
+              </div>
+              {/* 銀幕光澤效果 */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
+            </div>
           </div>
 
           <SeatMap
@@ -225,34 +246,17 @@ export default function SeatSelection() {
           />
         </div>
 
-        {/* Legend 與確認按鈕 */}
-        <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
-          {/* Legend */}
-          <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
-            <div className="flex items-center gap-6 text-gray-700">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-gray-100 border border-gray-300 rounded"></div>
-                <span className="text-sm">可選</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-gradient-to-r from-purple-600 to-purple-700 rounded shadow-sm"></div>
-                <span className="text-sm">已選</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-red-100 border border-red-300 rounded opacity-60"></div>
-                <span className="text-sm">售出</span>
-              </div>
-            </div>
-          </div>
+        {/* 確認按鈕區域 */}
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
 
-          {/* 確認按鈕 */}
+          {/* 確認按鈕 移到右邊*/}
           {selectedSeats.length > 0 && (
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 ml-auto">
               <div className="text-right">
                 <p className="text-sm text-gray-600">
                   已選 {selectedSeats.length} 個座位
                 </p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-2xl font-bold text-red-600">
                   NT$ {totalPrice.toLocaleString()}
                 </p>
               </div>

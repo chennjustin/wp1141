@@ -128,17 +128,16 @@ export default function Movies() {
           </div>
         </div>
 
-        {/* 排序列 */}
-        <div className="bg-white border-b border-gray-200 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="text-sm text-gray-600">
+        <div className="bg-white border-b border-gray-200 py-4 flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+          <div className="text-sm text-gray-600 ml-4">
             共 {filteredAndSortedMovies.length} 部電影
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 ml-auto">
             <button
               onClick={() => setSortBy('popular')}
-              className={`px-3 py-1 rounded text-sm transition-colors ${
+              className={`px-3 py-1 text-sm transition-colors ${
                 sortBy === 'popular' 
-                  ? 'bg-purple-600 text-white' 
+                  ? 'bg-red-600 text-white' 
                   : 'hover:bg-gray-100 text-gray-700'
               }`}
             >
@@ -146,9 +145,9 @@ export default function Movies() {
             </button>
             <button
               onClick={() => setSortBy('year_desc')}
-              className={`px-3 py-1 rounded text-sm transition-colors ${
-                sortBy === 'year_desc' 
-                  ? 'bg-purple-600 text-white' 
+              className={`px-3 py-1 text-sm transition-colors ${
+                sortBy === 'year_desc'
+                  ? 'bg-red-600 text-white'
                   : 'hover:bg-gray-100 text-gray-700'
               }`}
             >
@@ -156,9 +155,9 @@ export default function Movies() {
             </button>
             <button
               onClick={() => setSortBy('runtime_desc')}
-              className={`px-3 py-1 rounded text-sm transition-colors ${
-                sortBy === 'runtime_desc' 
-                  ? 'bg-purple-600 text-white' 
+              className={`px-3 py-1 text-sm transition-colors ${
+                sortBy === 'runtime_desc'
+                  ? 'bg-red-600 text-white'
                   : 'hover:bg-gray-100 text-gray-700'
               }`}
             >

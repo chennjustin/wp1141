@@ -51,22 +51,22 @@ export default function SeatMap({
   const getSeatColor = (status: string) => {
     switch (status) {
       case 'sold':
-        return 'bg-red-100 border border-red-300 text-red-700 cursor-not-allowed opacity-60'
+        return 'bg-gray-300 border border-gray-400 text-gray-600 cursor-not-allowed opacity-60'
       case 'selected':
-        return 'bg-gradient-to-r from-purple-600 to-purple-700 text-white cursor-pointer shadow-md hover:shadow-lg border border-purple-600'
+        return 'bg-gradient-to-r from-blue-600 to-blue-700 text-white cursor-pointer shadow-md hover:shadow-lg border border-blue-600'
       case 'available':
-        return 'bg-gray-100 border border-gray-300 hover:bg-purple-100 hover:border-purple-400 cursor-pointer text-gray-700'
+        return 'bg-white border border-gray-300 hover:bg-blue-50 hover:border-blue-300 cursor-pointer text-gray-700'
       default:
-        return 'bg-gray-100 border border-gray-300 text-gray-700'
+        return 'bg-white border border-gray-300 text-gray-700'
     }
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* 座位圖 */}
       <div className="flex justify-center">
         <div
-          className="inline-grid gap-2 p-4"
+          className="inline-grid gap-1.5 p-3"
           style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
         >
           {seats.map((seatId) => {
@@ -79,9 +79,9 @@ export default function SeatMap({
                 onClick={() => !isDisabled && onSeatClick(seatId)}
                 disabled={isDisabled}
                 className={cn(
-                  'w-8 h-8 sm:w-10 sm:h-10 rounded-md flex items-center justify-center text-xs font-medium transition-all duration-200 hover:scale-105',
+                  'w-7 h-7 sm:w-8 sm:h-8 rounded-md flex items-center justify-center text-xs font-medium transition-all duration-200 hover:scale-105',
                   getSeatColor(status),
-                  status === 'selected' && 'ring-2 ring-purple-300 scale-110'
+                  status === 'selected' && 'ring-2 ring-blue-300 scale-110'
                 )}
                 title={`座位 ${seatId} - ${
                   status === 'sold' ? '已售出' : status === 'selected' ? '已選' : '可選'

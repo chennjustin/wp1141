@@ -65,7 +65,7 @@ const MovieRow = ({ movie }: MovieRowProps) => {
         <div className="mt-4">
           <button
             onClick={() => navigate(`/movie/${movie.movie_id}`)}
-            className="bg-gradient-to-r from-purple-700 to-purple-800 text-white hover:from-purple-800 hover:to-purple-900 px-6 py-2 rounded-md font-semibold transition-all duration-200"
+            className="bg-black text-white hover:bg-gray-800 px-6 py-2 font-semibold transition-all duration-200"
           >
             查看場次
           </button>

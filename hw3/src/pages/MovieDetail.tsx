@@ -245,36 +245,42 @@ export default function MovieDetail() {
                         <button
                           key={screening.screening_id}
                           onClick={() => handleScreeningClick(screening.screening_id)}
-                          className="group bg-white border border-gray-200 hover:border-purple-400 p-4 text-left transition-all duration-200 hover:shadow-md"
+                          className="group bg-white border border-gray-200 hover:border-red-400 p-6 text-left transition-all duration-200 hover:shadow-lg w-full h-32 flex flex-col justify-between"
                         >
-                          {/* 時間 */}
-                          <div className="text-2xl font-bold text-gray-900 mb-3">
-                            {screening.start_time}
+                          {/* 上半部分：時間和影廳 */}
+                          <div className="flex items-start justify-between">
+                            {/* 時間 - 最重要，最大 */}
+                            <div className="text-3xl font-black text-gray-900 leading-none">
+                              {screening.start_time}
+                            </div>
+                            
+                            {/* 影廳 - 次要資訊，較小 */}
+                            <div className="text-right">
+                              <div className="text-sm font-medium text-gray-600 mb-1">
+                                {hall?.hall_name || screening.hall_id}
+                              </div>
+                              <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5">
+                                {screening.format}
+                              </span>
+                            </div>
                           </div>
 
-                          {/* 影廳與格式 */}
-                          <div className="flex items-center gap-2 mb-3">
-                            <span className="text-sm font-medium text-gray-700">
-                              {hall?.hall_name || screening.hall_id}
-                            </span>
-                            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1">
-                              {screening.format}
-                            </span>
-                          </div>
-
-                          {/* 語言 */}
-                          <div className="text-xs text-gray-500 mb-3">
-                            {screening.audio_language} / {screening.subtitle_language}
-                          </div>
-
-                          {/* 票價 */}
-                          <div className="text-lg font-semibold text-purple-600">
-                            NT$ {screening.price_TWD}
-                          </div>
-
-                          {/* Hover 提示 */}
-                          <div className="mt-3 text-xs text-gray-400 group-hover:text-purple-500 transition-colors">
-                            點擊選位 →
+                          {/* 下半部分：價格和語言 */}
+                          <div className="flex items-end justify-between">
+                            {/* 票價 - 重要，紅色突出 */}
+                            <div className="text-xl font-bold text-red-600">
+                              NT$ {screening.price_TWD}
+                            </div>
+                            
+                            {/* 語言和提示 - 次要資訊 */}
+                            <div className="text-right">
+                              <div className="text-xs text-gray-400 mb-1">
+                                {screening.audio_language} / {screening.subtitle_language}
+                              </div>
+                              <div className="text-xs text-gray-300 group-hover:text-red-500 transition-colors">
+                                點擊選位 →
+                              </div>
+                            </div>
                           </div>
                         </button>
                       )

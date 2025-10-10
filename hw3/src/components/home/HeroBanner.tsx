@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Play, Info, Star } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Play, Star } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useMovieContext } from '@/context/MovieContext'
@@ -205,7 +205,7 @@ export default function HeroBanner() {
                          onClick={() => navigate(`/movie/${currentMovie?.movie_id}`)}
                          whileHover={{ scale: 1.05 }}
                          whileTap={{ scale: 0.98 }}
-                         className="group relative px-6 py-3 bg-gradient-to-r from-red-500 via-red-600 to-red-700 text-white font-bold text-base shadow-[0_0_20px_rgba(239,68,68,0.5)] hover:shadow-[0_0_30px_rgba(239,68,68,0.7)] transition-all duration-300 overflow-hidden border border-red-400/60 rounded-lg"
+                         className="group relative px-6 py-3 bg-gradient-to-r from-red-500 via-red-600 to-red-700 text-white font-bold text-base shadow-[0_0_20px_rgba(239,68,68,0.5)] hover:shadow-[0_0_30px_rgba(239,68,68,0.7)] transition-all duration-300 overflow-hidden border border-red-400/60 flex items-center"
                          style={{
                            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%)',
                            boxShadow: '0 0 20px rgba(239, 68, 68, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
@@ -214,18 +214,7 @@ export default function HeroBanner() {
                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
                          <Play className="h-4 w-4 fill-white mr-2" />
                          立即訂票
-                       </motion.button>
-
-                       {/* 更多資訊按鈕 - 玻璃質感 */}
-                       <motion.button
-                         onClick={() => navigate(`/movie/${currentMovie?.movie_id}`)}
-                         whileHover={{ scale: 1.05 }}
-                         whileTap={{ scale: 0.98 }}
-                         className="group px-6 py-3 bg-white/10 backdrop-blur-md text-white font-medium text-base border border-white/30 hover:bg-white/20 hover:border-white/50 transition-all duration-300 rounded-lg"
-                       >
-                         <Info className="h-4 w-4 mr-2" />
-                         更多資訊
-                       </motion.button>
+                       </motion.button>                       
                      </motion.div>
                   </div>
                 </div>
