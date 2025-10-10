@@ -2,9 +2,6 @@ import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Calendar, Clock, MapPin, ShoppingCart, Check, AlertCircle } from 'lucide-react'
 import { useMovieContext } from '@/context/MovieContext'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import SeatMap from '@/components/SeatMap'
 import { useSoldSeats } from '@/hooks/useSoldSeats'
 import AddToCartModal from '@/components/feedback/AddToCartModal'
@@ -72,9 +69,12 @@ export default function SeatSelection() {
             ? '請從電影詳情頁選擇場次'
             : '找不到該場次資料，可能已下架或不存在'}
         </p>
-        <Button onClick={() => navigate(id ? `/movie/${id}` : '/movies')}>
+        <button 
+          onClick={() => navigate(id ? `/movie/${id}` : '/movies')}
+          className="bg-purple-600 text-white px-4 py-2 hover:bg-purple-700 transition-colors"
+        >
           {id ? '返回電影詳情' : '返回電影列表'}
-        </Button>
+        </button>
       </div>
     )
   }
@@ -150,16 +150,19 @@ export default function SeatSelection() {
   const totalPrice = parseFloat(screening.price_TWD) * selectedSeats.length
 
   return (
-    <div className="space-y-6 pb-24">
-      {/* 返回按鈕 */}
-      <Button variant="ghost" onClick={() => navigate(`/movie/${id}`)}>
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        返回電影詳情
-      </Button>
+    <div className="bg-gray-50 min-h-screen">
+      <div className="max-w-6xl mx-auto py-10 px-6 space-y-10">
+        {/* 返回按鈕 */}
+        <button 
+          onClick={() => navigate(`/movie/${id}`)}
+          className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          返回電影詳情
+        </button>
 
-      {/* 場次資訊卡片 */}
-      <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
-        <CardContent className="p-6">
+        {/* 電影資訊列 */}
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <img
               src={movie.poster_url}
@@ -167,9 +170,9 @@ export default function SeatSelection() {
               className="w-20 h-28 object-cover rounded-lg shadow-md"
             />
             <div className="flex-1">
-              <h2 className="text-2xl font-bold mb-2">{movie.title}</h2>
-              <div className="grid sm:grid-cols-2 gap-2 text-sm">
-                <div className="flex items-center gap-2 text-gray-700">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">{movie.title}</h2>
+              <div className="grid sm:grid-cols-2 gap-2 text-sm text-gray-600">
+                <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
                   <span>
                     {new Date(screening.date).toLocaleDateString('zh-TW', {
@@ -179,91 +182,101 @@ export default function SeatSelection() {
                     })}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-gray-700">
+                <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4" />
                   <span>
                     {screening.start_time} - {screening.end_time}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-gray-700">
+                <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4" />
                   <span>{hall.hall_name}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant={screening.format === 'IMAX' ? 'default' : 'secondary'}>
+                  <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200">
                     {screening.format}
-                  </Badge>
-                  <span className="text-sm font-semibold text-primary">
+                  </span>
+                  <span className="text-sm font-semibold text-gray-900">
                     NT$ {screening.price_TWD}
                   </span>
                 </div>
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* 座位選擇區域 */}
-      <Card className="border-2 border-primary">
-        <CardHeader>
-          <CardTitle className="text-2xl">
+        {/* 座位選擇區域 */}
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-8">
+          <h3 className="text-2xl font-bold text-gray-900 text-center mb-8">
             {isEditMode ? '修改座位選擇' : '選擇座位'}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </h3>
+          
+          {/* 螢幕區 */}
+          <div className="text-center mb-8">
+            <div className="w-full h-3 rounded-full bg-gradient-to-b from-gray-400 to-gray-600 mx-auto shadow-lg mb-2"></div>
+            <p className="text-gray-600 text-sm">螢幕</p>
+          </div>
+
           <SeatMap
             seatmapId={hall.seatmap_id}
             selectedSeats={selectedSeats}
             onSeatClick={handleSeatClick}
             soldSeats={soldSeats}
           />
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* 底部固定的操作按鈕 */}
-      {selectedSeats.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-40">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="text-center sm:text-left">
-                <p className="text-sm text-gray-600">
-                  已選 {selectedSeats.length} 個座位
-                </p>
-                <p className="text-2xl font-bold text-primary">
-                  NT$ {totalPrice.toLocaleString()}
-                </p>
+        {/* Legend 與確認按鈕 */}
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+          {/* Legend */}
+          <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
+            <div className="flex items-center gap-6 text-gray-700">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-gray-100 border border-gray-300 rounded"></div>
+                <span className="text-sm">可選</span>
               </div>
-              <div className="flex gap-3 w-full sm:w-auto">
-                <Button
-                  variant="outline"
-                  onClick={() => setSelectedSeats([])}
-                  className="flex-1 sm:flex-none"
-                >
-                  清除座位
-                </Button>
-                <Button
-                  size="lg"
-                  onClick={handleAddToCart}
-                  disabled={isAdding}
-                  className="px-8 flex-1 sm:flex-none"
-                >
-                  {isAdding ? (
-                    <>
-                      <Check className="mr-2 h-5 w-5" />
-                      {isEditMode ? '更新中...' : '加入中...'}
-                    </>
-                  ) : (
-                    <>
-                      <ShoppingCart className="mr-2 h-5 w-5" />
-                      {isEditMode ? '更新購物車' : '加入購物車'}
-                    </>
-                  )}
-                </Button>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-gradient-to-r from-purple-600 to-purple-700 rounded shadow-sm"></div>
+                <span className="text-sm">已選</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-red-100 border border-red-300 rounded opacity-60"></div>
+                <span className="text-sm">售出</span>
               </div>
             </div>
           </div>
+
+          {/* 確認按鈕 */}
+          {selectedSeats.length > 0 && (
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-sm text-gray-600">
+                  已選 {selectedSeats.length} 個座位
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  NT$ {totalPrice.toLocaleString()}
+                </p>
+              </div>
+              <button
+                onClick={handleAddToCart}
+                disabled={isAdding}
+                className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-8 py-3 font-semibold transition-all duration-200 hover:shadow-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isAdding ? (
+                  <>
+                    <Check className="inline mr-2 h-5 w-5" />
+                    {isEditMode ? '更新中...' : '加入中...'}
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart className="inline mr-2 h-5 w-5" />
+                    {isEditMode ? '更新購物車' : '確認訂票'}
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* 加入購物車成功 Modal */}
       <AddToCartModal
