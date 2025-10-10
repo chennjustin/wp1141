@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Clock, Languages, Film, ChevronLeft, ChevronRight } from 'lucide-react'
-import RatingIcon from '@/components/common/RatingIcon'
+import AgeRating from '@/components/common/AgeRating'
 import { useMovieContext } from '@/context/MovieContext'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -146,7 +146,7 @@ export default function MovieDetail() {
                     {movie.title}
                   </h1>
                   <div className="flex items-center gap-3 flex-wrap">
-                    <RatingIcon rating={movie.age_rating_tw} />
+                    <AgeRating rating={movie.age_rating_tw} size="lg" />
                     <span className="text-gray-600">{movie.year}</span>
                   </div>
                 </div>

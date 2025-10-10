@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { Calendar, Clock, Volume2 } from 'lucide-react'
 import { Movie } from '@/context/MovieContext'
 import { Button } from '@/components/ui/button'
-import RatingIcon from '@/components/common/RatingIcon'
+import AgeRating from '@/components/common/AgeRating'
 
 interface MovieRowProps {
   movie: Movie
@@ -11,74 +11,64 @@ interface MovieRowProps {
 const MovieRow = ({ movie }: MovieRowProps) => {
   const navigate = useNavigate()
 
-  // 不再顯示 tag，僅用於可選的內部搜尋，這裡不渲染
-  // 移除標籤渲染
-
   return (
-    <div className="flex flex-col sm:flex-row gap-4 p-4 hover:bg-gray-50 transition-colors group">
+    <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 p-4 sm:p-6 hover:scale-[1.01] hover:border-gray-400 hover:shadow-sm transition-all duration-200">
       {/* 左側海報 */}
-      <div className="flex-shrink-0 w-full sm:w-40 lg:w-48">
+      <div className="flex-shrink-0 w-full sm:w-36 lg:w-40">
         <div
-          className="relative aspect-[2/3] rounded-lg overflow-hidden shadow-md cursor-pointer group-hover:shadow-xl transition-shadow"
+          className="relative aspect-[2/3] overflow-hidden cursor-pointer"
           onClick={() => navigate(`/movie/${movie.movie_id}`)}
         >
           <img
             src={movie.poster_url}
             alt={movie.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className="w-full h-full object-cover object-center"
           />
+          {/* 分級標籤 */}
+          <AgeRating rating={movie.age_rating_tw} size="md" position="bottom-right" />
         </div>
       </div>
 
       {/* 右側資訊 */}
       <div className="flex-1 min-w-0 flex flex-col justify-between">
-        {/* 標題與標籤 */}
-        <div className="space-y-2">
-          {/* 標題 */}
+        {/* 標題與資訊 */}
+        <div className="space-y-3">
+          {/* 中文片名 */}
           <h3
-            className="text-xl font-bold text-gray-900 cursor-pointer hover:text-primary transition-colors"
+            className="text-2xl font-bold text-gray-900 cursor-pointer hover:text-purple-600 transition-colors"
             onClick={() => navigate(`/movie/${movie.movie_id}`)}
           >
             {movie.title}
           </h3>
 
-          {/* 分級 Icon */}
-          <div className="flex items-center gap-2">
-            <RatingIcon rating={movie.age_rating_tw} />
-          </div>
+          {/* 英文片名 */}
+          <p className="text-gray-500 italic">
+            {movie.title} {/* 這裡可以根據實際資料調整為英文片名 */}
+          </p>
 
           {/* 電影資訊 */}
-          <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
-            <div className="flex items-center gap-1">
-              <Calendar className="h-4 w-4" />
-              <span>{movie.year}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Clock className="h-4 w-4" />
-              <span>{movie.runtime_min} 分鐘</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Volume2 className="h-4 w-4" />
-              <span>{movie.audio_language}</span>
-            </div>
+          <div className="text-gray-400 text-sm flex gap-3">
+            <span>{movie.year}</span>
+            <span>•</span>
+            <span>{movie.runtime_min} 分鐘</span>
+            <span>•</span>
+            <span>{movie.audio_language}</span>
           </div>
 
-          {/* 簡介 - 2 行截斷 */}
-          <p className="text-gray-700 text-sm line-clamp-2 leading-relaxed">
+          {/* 簡介 */}
+          <p className="text-gray-600 text-sm leading-relaxed line-clamp-2">
             {movie.synopsis}
           </p>
         </div>
 
         {/* 底部按鈕 */}
-        <div className="mt-3 flex items-center justify-between">
-          <Button
+        <div className="mt-4">
+          <button
             onClick={() => navigate(`/movie/${movie.movie_id}`)}
-            variant="default"
-            size="sm"
-            className="group-hover:bg-primary group-hover:text-white transition-colors"
+            className="bg-gradient-to-r from-purple-700 to-purple-800 text-white hover:from-purple-800 hover:to-purple-900 px-6 py-2 rounded-md font-semibold transition-all duration-200"
           >
             查看場次
-          </Button>
+          </button>
         </div>
       </div>
     </div>

@@ -1,11 +1,11 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import HeroBanner from '@/components/home/HeroBanner'
 import { useMovieContext } from '@/context/MovieContext'
 import { useModal } from '@/context/ModalContext'
+import AgeRating from '@/components/common/AgeRating'
 
 export default function Home() {
   const { movies, loading } = useMovieContext()
@@ -24,23 +24,19 @@ export default function Home() {
     }
   }, [openUsageGuide])
 
-  // 分類電影（簡單模擬：前半為熱映，後半為即將上映）
-  const nowShowingMovies = movies.slice(0, Math.ceil(movies.length / 2))
-  const comingSoonMovies = movies.slice(Math.ceil(movies.length / 2))
-
   return (
-    <div className="relative bg-gray-50">
+    <div className="relative bg-white">
       {/* ============================================ */}
       {/*  🎬 Hero Banner - 電影院風格大屏展示區塊        */}
       {/* ============================================ */}
       <HeroBanner />
 
       {/* ============================================ */}
-      {/*  2️⃣ 本週熱映 區塊                          */}
+      {/*  🎬 現正熱映 區塊 - 秀泰影城風格              */}
       {/* ============================================ */}
-      <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-24">
-        <div className="space-y-8 sm:space-y-10">
-          {/* 區塊標題 */}
+      <section className="container mx-auto px-4 py-12 sm:py-16 lg:py-20">
+        <div className="space-y-6 sm:space-y-8">
+          {/* 區塊標題 - 秀泰影城風格 */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -49,57 +45,42 @@ export default function Home() {
             className="flex items-center justify-between"
           >
             <div>
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-gray-900 mb-2">
-                本週熱映
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-gray-900 mb-3">
+                🎬 現正熱映
               </h2>
-              <div className="h-1.5 w-24 bg-gradient-to-r from-red-600 to-red-400 rounded-full" />
+              <div className="h-1 w-16 bg-gradient-to-r from-purple-600 to-purple-500 rounded-full" />
             </div>
-            <Button
-              variant="ghost"
+            <button
               onClick={() => navigate('/movies')}
-              className="text-red-600 hover:text-red-700 hover:bg-red-50 font-semibold text-base"
+              className="bg-gray-800 text-white hover:bg-gray-900 px-6 py-3 font-semibold transition-colors duration-200 border border-gray-700 hover:border-gray-600"
             >
-              查看全部 →
-            </Button>
+              查看所有電影 →
+            </button>
           </motion.div>
 
-          {/* 電影卡片列表 */}
-          <MovieSection movies={nowShowingMovies} loading={loading} />
-        </div>
-      </section>
-
-      {/* ============================================ */}
-      {/*  3️⃣ 即將上映 區塊                          */}
-      {/* ============================================ */}
-      <section className="bg-gradient-to-b from-gray-50 to-white py-16 sm:py-20 lg:py-24 border-t border-gray-200">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="space-y-8 sm:space-y-10">
-            {/* 區塊標題 */}
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true, margin: '-100px' }}
-              transition={{ duration: 0.6 }}
-              className="flex items-center justify-between"
-            >
-              <div>
-                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-gray-900 mb-2">
-                  即將上映
-                </h2>
-                <div className="h-1.5 w-24 bg-gradient-to-r from-blue-600 to-blue-400 rounded-full" />
-              </div>
-              <Button
-                variant="ghost"
-                onClick={() => navigate('/movies')}
-                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-semibold text-base"
-              >
-                查看全部 →
-              </Button>
-            </motion.div>
-
-            {/* 電影卡片列表 */}
-            <MovieSection movies={comingSoonMovies} loading={loading} isComingSoon />
-          </div>
+          {/* 電影卡片網格 - 多行平鋪展示 */}
+          {loading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+              {[...Array(12)].map((_, i) => (
+                <Skeleton key={i} className="aspect-[2/3] w-full" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 items-stretch">
+              {movies.map((movie, index) => (
+                <motion.div
+                  key={movie.movie_id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: '-50px' }}
+                  transition={{ delay: index * 0.05, duration: 0.4 }}
+                  className="group w-full h-full"
+                >
+                  <ShowtimesMovieCard movie={movie} />
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -117,8 +98,8 @@ export default function Home() {
           >
             {/* 品牌區 */}
             <div className="space-y-4">
-              <h3 className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-red-500 to-red-700 bg-clip-text text-transparent">
-                Cinema Booking
+              <h3 className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-purple-500 to-purple-700 bg-clip-text text-transparent">
+                ShowTimes Cinema
               </h3>
               <p className="text-gray-400 text-sm leading-relaxed">
                 提供最便捷的線上訂票服務，讓您輕鬆享受頂級觀影體驗。
@@ -157,7 +138,7 @@ export default function Home() {
               <h4 className="text-lg font-bold text-white">聯絡我們</h4>
               <ul className="space-y-2 text-gray-400 text-sm">
                 <li>客服專線：0800-123-456</li>
-                <li>Email：service@cinema.com</li>
+                <li>Email：service@showtimes.com</li>
                 <li className="flex gap-4 pt-2">
                   <a href="#" className="hover:text-white transition-colors duration-200">
                     <span className="sr-only">Facebook</span>
@@ -190,136 +171,78 @@ export default function Home() {
             transition={{ delay: 0.3, duration: 0.6 }}
             className="mt-12 pt-8 border-t border-gray-800 text-center text-gray-500 text-sm"
           >
-            <p>© 2025.10 CHCCCinema. All rights reserved.</p>
+            <p>© 2025 ShowTimes Cinema. All rights reserved.</p>
           </motion.div>
         </div>
       </footer>
-
-      {/* 添加隱藏滾動條的樣式 */}
-      <style>{`
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-      `}</style>
     </div>
   )
 }
 
-// 電影區塊組件
-interface MovieSectionProps {
-  movies: any[]
-  loading: boolean
-  isComingSoon?: boolean
-}
-
-function MovieSection({ movies, loading, isComingSoon = false }: MovieSectionProps) {
-  const navigate = useNavigate()
-
-  if (loading) {
-    return (
-      <div className="flex gap-4 overflow-x-auto pb-4">
-        {[...Array(5)].map((_, i) => (
-          <Skeleton key={i} className="flex-shrink-0 w-48 h-72 rounded-lg" />
-        ))}
-      </div>
-    )
-  }
-
-  return (
-    <div className="relative">
-      <div className="flex gap-5 sm:gap-6 overflow-x-auto pb-6 snap-x snap-mandatory scrollbar-hide">
-        {movies.map((movie, index) => (
-          <motion.div
-            key={movie.movie_id}
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-50px' }}
-            transition={{ delay: index * 0.1, duration: 0.5 }}
-            whileHover={{ y: -10 }}
-            className="flex-shrink-0 w-52 sm:w-60 snap-start group cursor-pointer"
-            onClick={() => navigate(`/movie/${movie.movie_id}`)}
-          >
-            <MovieCard movie={movie} isComingSoon={isComingSoon} />
-          </motion.div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// 電影卡片組件
-interface MovieCardProps {
+// 秀泰影城風格電影卡片組件
+interface ShowtimesMovieCardProps {
   movie: any
-  isComingSoon?: boolean
 }
 
-function MovieCard({ movie, isComingSoon = false }: MovieCardProps) {
+function ShowtimesMovieCard({ movie }: ShowtimesMovieCardProps) {
   const navigate = useNavigate()
 
+  // 模擬特殊場次標記（可以根據實際資料調整）
+  const isSpecial = Math.random() > 0.8 // 20% 機率顯示特別場
+
   return (
-    <div className="relative overflow-hidden rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500 group-hover:scale-[1.03]">
-      <div className="relative">
+    <div 
+      className="bg-white shadow-md hover:shadow-lg transition-all duration-300 hover:scale-[1.02] cursor-pointer overflow-hidden w-full h-full flex flex-col"
+      onClick={() => navigate(`/movie/${movie.movie_id}`)}
+    >
+      {/* 電影海報 */}
+      <div className="relative aspect-[2/3] bg-gray-200 w-full overflow-hidden flex-shrink-0">
         <img
           src={movie.poster_url}
           alt={movie.title}
-          className="w-full h-80 sm:h-[22rem] object-cover transition-transform duration-700 group-hover:scale-110"
+          className="w-full h-full object-cover object-center"
         />
         
-        {/* 即將上映標籤 */}
-        {isComingSoon && (
-          <div className="absolute top-3 right-3 z-10">
-            <div className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white border-0 shadow-xl px-3 py-1.5 text-xs font-bold animate-pulse rounded-full">
-              即將上映
+        {/* 特殊場次標記 */}
+        {isSpecial && (
+          <div className="absolute top-2 left-2 z-10">
+            <div className="bg-red-600 text-white text-xs font-bold px-2 py-1 shadow-lg">
+              特別場
             </div>
           </div>
         )}
-        
-        {/* 底部漸層覆蓋 */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-60 group-hover:opacity-90 transition-opacity duration-500" />
-        
-        {/* 懸浮時的詳細資訊 */}
-        <div className="absolute inset-0 flex flex-col justify-end p-5 opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-y-4 group-hover:translate-y-0">
-          <h3 className="text-white font-bold text-lg sm:text-xl line-clamp-2 mb-2" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>
-            {movie.title}
-          </h3>
-          <div className="flex gap-1.5 flex-wrap mb-3">
-            {movie.genres.split(',').slice(0, 2).map((genre: string, idx: number) => (
-              <div 
-                key={idx} 
-                className="text-xs bg-white/20 text-white border border-white/30 backdrop-blur-sm px-2 py-1 rounded"
-              >
-                {genre.trim().replace(/"/g, '')}
-              </div>
-            ))}
-          </div>
-          <button 
-            className={`w-full font-semibold shadow-lg text-xs py-2 rounded transition-all duration-300 ${
-              isComingSoon 
-                ? 'bg-white/15 hover:bg-white/25 text-white border-2 border-white/50 hover:border-white/80 backdrop-blur-sm'
-                : 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white border-2 border-white/20'
-            }`}
-            onClick={(e) => {
-              e.stopPropagation()
-              navigate(`/movie/${movie.movie_id}`)
-            }}
-          >
-            {isComingSoon ? '了解更多' : '立即訂票'}
-          </button>
-        </div>
 
-        {/* 常駐底部資訊（非 hover 時顯示） */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/70 to-transparent group-hover:opacity-0 transition-opacity duration-500">
-          <h3 className="text-white font-bold text-sm sm:text-base line-clamp-2" style={{ textShadow: '0 2px 6px rgba(0,0,0,0.8)' }}>
-            {movie.title}
-          </h3>
-          <p className="text-white/80 text-xs mt-1" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
-            {movie.year} • {movie.runtime_min} 分
-          </p>
-        </div>
+        {/* 分級標籤 */}
+        <AgeRating rating={movie.age_rating_tw} size="md" position="top-right" />
+      </div>
+
+      {/* 電影資訊 */}
+      <div className="p-3 bg-white flex-1 flex flex-col min-h-[120px]">
+        {/* 中文片名 */}
+        <h3 className="font-bold text-sm text-gray-900 line-clamp-2 leading-tight mb-1">
+          {movie.title || '電影標題'}
+        </h3>
+
+        {/* 英文片名 */}
+        <p className="text-xs text-gray-500 italic line-clamp-1 mb-1">
+          {movie.title || 'Movie Title'} {/* 這裡可以根據實際資料調整為英文片名 */}
+        </p>
+
+        {/* 上映日期 */}
+        <p className="text-xs text-gray-400 mb-3">
+          上映日期: {movie.year}/10/09 {/* 模擬上映日期 */}
+        </p>
+
+        {/* 線上訂票按鈕 */}
+        <button 
+          className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white text-xs font-semibold py-2 px-3 transition-all duration-200 hover:shadow-md mt-auto"
+          onClick={(e) => {
+            e.stopPropagation()
+            navigate(`/movie/${movie.movie_id}`)
+          }}
+        >
+          線上訂票
+        </button>
       </div>
     </div>
   )
