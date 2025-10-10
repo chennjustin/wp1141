@@ -1,21 +1,14 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Film, ShoppingCart, History, RefreshCw, HelpCircle } from 'lucide-react'
+import { Film, ShoppingCart, History, HelpCircle } from 'lucide-react'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
 import { useMovieContext } from '@/context/MovieContext'
 import { useModal } from '@/context/ModalContext'
 
 export default function Navbar() {
-  const { cart, reloadData, loading } = useMovieContext()
+  const { cart } = useMovieContext()
   const { openUsageGuide } = useModal()
-  const [isReloading, setIsReloading] = useState(false)
 
-  const handleReload = async () => {
-    setIsReloading(true)
-    await reloadData()
-    setIsReloading(false)
-  }
 
   return (
     <nav className="fixed top-0 left-0 w-full z-50 bg-gradient-to-b from-black/70 to-transparent text-white backdrop-blur-md shadow-md transition-all duration-500">
@@ -30,16 +23,6 @@ export default function Navbar() {
           </Link>
           
           <div className="flex items-center space-x-2 sm:space-x-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleReload}
-              disabled={loading || isReloading}
-              title="重新載入資料"
-              className="hidden sm:flex text-white hover:bg-white/20"
-            >
-              <RefreshCw className={`h-4 w-4 ${isReloading ? 'animate-spin' : ''}`} />
-            </Button>
             <Button
               variant="ghost"
               size="icon"

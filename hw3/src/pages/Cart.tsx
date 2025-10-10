@@ -2,9 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMovieContext } from '@/context/MovieContext'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { ShoppingCart, Trash2, Film, Calendar, Clock, MapPin, Edit, Info, CreditCard, FileText } from 'lucide-react'
+import { ShoppingCart, Trash2, Film, Calendar, Clock, MapPin, Info, CreditCard, FileText } from 'lucide-react'
 import TermsModal from '@/components/feedback/TermsModal'
 
 export default function Cart() {
@@ -55,51 +54,31 @@ export default function Cart() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto pb-32">
-      {/* 頁面標題 */}
+    <div className="max-w-6xl mx-auto pb-24">
+      {/* 上方資訊區 - 無框線設計 */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">購物車</h1>
-        <p className="text-gray-600 mt-1">確認您的訂單詳情</p>
-      </div>
-
-      {/* 上半部：購物車摘要 */}
-      <div className="bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 rounded-xl border-2 border-primary/20 p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {/* 訂單數量 */}
-          <div className="text-center md:text-left">
-            <p className="text-sm text-gray-600 mb-1">訂單數量</p>
-            <p className="text-2xl font-bold text-gray-900">{cart.length} 筆</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <h1 className="text-xl font-bold text-gray-900">購物車</h1>
+            <div className="flex items-center gap-4 text-sm text-gray-600">
+              <span>{cart.length} 筆訂單</span>
+              <span>•</span>
+              <span>{totalTickets} 張票</span>
+              <span>•</span>
+              <span className="font-semibold text-gray-900">NT$ {totalAmount.toLocaleString()}</span>
+            </div>
           </div>
-
-          {/* 總票數 */}
-          <div className="text-center md:text-left">
-            <p className="text-sm text-gray-600 mb-1">票券總數</p>
-            <p className="text-2xl font-bold text-gray-900">{totalTickets} 張</p>
-          </div>
-
-          {/* 總金額 */}
-          <div className="text-center md:text-left">
-            <p className="text-sm text-gray-600 mb-1">總金額</p>
-            <p className="text-3xl font-bold text-primary">
-              NT$ {totalAmount.toLocaleString()}
-            </p>
-          </div>
-
-          {/* 清空購物車按鈕 */}
-          <div className="flex items-end justify-center md:justify-end">
-            <Button 
-              variant="destructive" 
-              onClick={clearCart}
-              className="w-full md:w-auto"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              清空購物車
-            </Button>
-          </div>
+          <button 
+            onClick={clearCart}
+            className="flex items-center gap-1 px-3 py-1 text-sm text-gray-500 hover:text-red-600 transition-colors"
+          >
+            <Trash2 className="h-3 w-3" />
+            清空
+          </button>
         </div>
       </div>
 
-      {/* 中段：訂單卡片列表 */}
+      {/* 電影卡片列表 */}
       <div className="space-y-4 mb-6">
         {cart.map((item) => {
           const itemTotal = parseFloat(item.screening.price_TWD) * item.seats.length
@@ -107,115 +86,136 @@ export default function Cart() {
           return (
             <div
               key={item.id}
-              className="bg-white rounded-xl border-2 border-gray-200 hover:border-primary/50 hover:shadow-lg transition-all duration-200 overflow-hidden"
+              className="relative bg-white border-2 border-gray-300 overflow-hidden"
+              style={{
+                background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.05)'
+              }}
             >
-              <div className="flex flex-col sm:flex-row">
-                {/* 左側：電影海報 */}
-                <div className="flex-shrink-0 w-full sm:w-40 md:w-48">
-                  <img
-                    src={item.movie.poster_url}
-                    alt={item.movie.title}
-                    className="w-full h-48 sm:h-full object-cover"
-                  />
-                </div>
+              {/* 票券撕邊效果 */}
+              <div className="relative">
+                <div 
+                  className="absolute -top-2 left-0 right-0 h-4"
+                  style={{
+                    background: `url("data:image/svg+xml,%3Csvg width='100' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0,10 Q10,0 20,10 Q30,20 40,10 Q50,0 60,10 Q70,20 80,10 Q90,0 100,10 L100,20 L0,20 Z' fill='white'/%3E%3C/svg%") repeat-x`,
+                    backgroundSize: '20px 20px'
+                  }}
+                />
+                
+                {/* 內容區域 */}
+                <div className="relative z-10 p-4">
+                  {/* 關閉按鈕 */}
+                  <button
+                    onClick={() => removeFromCart(item.id)}
+                    className="absolute top-4 right-4 p-1 text-gray-400 hover:text-red-500 transition-colors z-20"
+                    title="刪除訂單"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
 
-                {/* 右側：資訊區 */}
-                <div className="flex-1 p-4 md:p-6">
-                  {/* 頂部：電影名稱 + 操作按鈕 */}
-                  <div className="flex items-start justify-between mb-4">
-                    <h3 className="text-xl font-bold text-gray-900 flex-1 pr-4">
-                      {item.movie.title}
-                    </h3>
-                    
-                    {/* 操作按鈕 */}
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() =>
-                          navigate(`/movie/${item.movie.movie_id}/select-seat?screening=${item.screening.screening_id}`, {
-                            state: {
-                              editMode: true,
-                              editItemId: item.id,
-                              editSeats: item.seats,
-                            },
-                          })
-                        }
-                        title="修改座位"
-                        className="hover:border-primary hover:text-primary"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => removeFromCart(item.id)}
-                        title="刪除訂單"
-                        className="hover:border-red-500 hover:text-red-500 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* 場次資訊 */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-                    <div className="flex items-center gap-2 text-sm text-gray-700">
-                      <Calendar className="h-4 w-4 text-gray-500" />
-                      <span>
-                        {new Date(item.screening.date).toLocaleDateString('zh-TW', {
-                          month: 'long',
-                          day: 'numeric',
-                          weekday: 'short',
-                        })}
-                      </span>
+                  <div className="flex items-start gap-4 pr-8">
+                    {/* 左側：電影海報 */}
+                    <div className="flex-shrink-0 w-20 h-28">
+                      <img
+                        src={item.movie.poster_url}
+                        alt={item.movie.title}
+                        className="w-full h-full object-cover rounded"
+                      />
                     </div>
 
-                    <div className="flex items-center gap-2 text-sm text-gray-700">
-                      <Clock className="h-4 w-4 text-gray-500" />
-                      <span>{item.screening.start_time} - {item.screening.end_time}</span>
+                    {/* 中間：電影資訊 */}
+                    <div className="flex-1 min-w-0">
+                      {/* 電影名稱 */}
+                      <h3 className="text-base font-bold text-gray-900 mb-2">
+                        {item.movie.title}
+                      </h3>
+
+                      {/* 電影資訊 Grid */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1 uppercase tracking-wide">日期</p>
+                          <div className="flex items-center gap-1 text-xs text-gray-700">
+                            <Calendar className="h-3 w-3 text-gray-400" />
+                            <span>
+                              {new Date(item.screening.date).toLocaleDateString('zh-TW', {
+                                month: 'short',
+                                day: 'numeric',
+                                weekday: 'short',
+                              })}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1 uppercase tracking-wide">時間</p>
+                          <div className="flex items-center gap-1 text-xs text-gray-700">
+                            <Clock className="h-3 w-3 text-gray-400" />
+                            <span>{item.screening.start_time}</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1 uppercase tracking-wide">影廳</p>
+                          <div className="flex items-center gap-1 text-xs text-gray-700">
+                            <MapPin className="h-3 w-3 text-gray-400" />
+                            <span>{item.hall.hall_name}</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1 uppercase tracking-wide">票種</p>
+                          <span className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium border border-gray-200">
+                            {item.screening.format}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 座位 */}
+                      <div className="mt-3">
+                        <p className="text-xs text-gray-500 mb-1 uppercase tracking-wide">座位</p>
+                        <div className="flex flex-wrap gap-1">
+                          {item.seats.map((seat) => (
+                            <span
+                              key={seat}
+                              className="inline-flex items-center justify-center w-6 h-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-xs font-semibold rounded-md shadow-sm border border-blue-600"
+                            >
+                              {seat}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2 text-sm text-gray-700">
-                      <MapPin className="h-4 w-4 text-gray-500" />
-                      <span>{item.hall.hall_name}</span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Badge 
-                        variant={item.screening.format === 'IMAX' ? 'default' : 'secondary'}
-                        className="text-xs"
-                      >
-                        {item.screening.format}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  {/* 座位 */}
-                  <div className="mb-4">
-                    <p className="text-xs text-gray-500 mb-2">已選座位</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {item.seats.map((seat) => (
-                        <span
-                          key={seat}
-                          className="inline-flex items-center px-2.5 py-1 bg-primary/10 border border-primary/30 rounded-md text-sm font-medium text-primary"
-                        >
-                          {seat}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 小計 */}
-                  <div className="flex items-center justify-between pt-4 border-t">
-                    <p className="text-sm text-gray-600">
-                      {item.seats.length} 張票 × NT$ {item.screening.price_TWD}
-                    </p>
-                    <div className="text-right">
-                      <p className="text-xs text-gray-500">小計</p>
-                      <p className="text-2xl font-bold text-primary">
+                    {/* 右側：金額 */}
+                    <div className="flex-shrink-0 text-right">
+                      <p className="text-xs text-gray-500 mb-1">小計</p>
+                      <p className="text-lg font-bold text-gray-900">
                         NT$ {itemTotal.toLocaleString()}
                       </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {item.seats.length} 張 × NT$ {item.screening.price_TWD}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 虛線分隔 */}
+                  <div className="border-b-2 border-dashed border-gray-300 my-3"></div>
+
+                  {/* 金額區塊 */}
+                  <div className="py-2 bg-gradient-to-r from-yellow-50 to-orange-50 p-3 border border-yellow-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-gray-600 font-medium">
+                          {item.seats.length} 張票 × NT$ {item.screening.price_TWD}
+                        </p>
+                        <p className="text-xs text-gray-500">單價</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-yellow-600">
+                          NT$ {itemTotal.toLocaleString()}
+                        </p>
+                        <p className="text-xs text-gray-600">總金額</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -237,41 +237,38 @@ export default function Cart() {
         </Button>
       </div>
 
-      {/* 下半部：固定結帳區 (Sticky Bottom) */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-200 shadow-2xl z-40">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            {/* 總金額 */}
-            <div className="text-center sm:text-left">
-              <p className="text-sm text-gray-600">總金額</p>
-              <p className="text-3xl font-bold text-primary">
-                NT$ {totalAmount.toLocaleString()}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                共 {cart.length} 筆訂單 • {totalTickets} 張票
-              </p>
-            </div>
+      {/* 下方固定 bar */}
+      <div className="fixed bottom-0 left-0 right-0 h-[70px] bg-white/90 backdrop-blur-sm border-t border-gray-200 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] z-40">
+        <div className="max-w-6xl mx-auto px-4 h-full flex items-center justify-between">
+          {/* 左側：總金額與票數 */}
+          <div className="text-left">
+            <p className="text-lg font-bold text-gray-900">
+              NT$ {totalAmount.toLocaleString()}
+            </p>
+            <p className="text-sm text-gray-600">
+              {totalTickets} 張票 • {cart.length} 筆訂單
+            </p>
+          </div>
 
-            {/* 按鈕組 */}
-            <div className="flex gap-3 w-full sm:w-auto">
-              <Button
-                variant="outline"
-                onClick={() => navigate('/movies')}
-                className="flex-1 sm:flex-none sm:min-w-[140px]"
-                size="lg"
-              >
-                <Film className="mr-2 h-4 w-4" />
-                繼續選購
-              </Button>
-              <Button
-                onClick={handleCheckout}
-                className="flex-1 sm:flex-none sm:min-w-[160px] bg-primary hover:bg-primary/90"
-                size="lg"
-              >
-                <CreditCard className="mr-2 h-5 w-5" />
-                前往結帳
-              </Button>
-            </div>
+          {/* 右側：按鈕組 */}
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => navigate('/movies')}
+              size="sm"
+              className="px-4 py-2"
+            >
+              <Film className="mr-1 h-3 w-3" />
+              繼續選購
+            </Button>
+            <Button
+              onClick={handleCheckout}
+              size="sm"
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700"
+            >
+              <CreditCard className="mr-1 h-3 w-3" />
+              前往結帳
+            </Button>
           </div>
         </div>
       </div>
