@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { History as HistoryIcon, Calendar, Clock, MapPin, Ticket, Film } from 'lucide-react'
+import { History as HistoryIcon, Calendar, Clock, MapPin, Film, Trash2, X } from 'lucide-react'
 
 interface OrderItem {
   id: string
@@ -55,6 +53,15 @@ export default function History() {
     }
   }
 
+  // 清除單筆訂單
+  const clearOrder = (orderId: string) => {
+    if (window.confirm('確定要刪除此筆訂單嗎？')) {
+      const updatedOrders = orders.filter(order => order.orderId !== orderId)
+      setOrders(updatedOrders)
+      localStorage.setItem('cinema_orders', JSON.stringify(updatedOrders.reverse()))
+    }
+  }
+
   const formatDate = (timestamp: string) => {
     const date = new Date(timestamp)
     return date.toLocaleDateString('zh-TW', {
@@ -85,120 +92,136 @@ export default function History() {
       {/* 標題 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <HistoryIcon className="h-8 w-8 text-primary" />
+          <HistoryIcon className="h-8 w-8 text-gray-600" />
           <div>
-            <h1 className="text-3xl font-bold">歷史訂單</h1>
+            <h1 className="text-3xl font-bold text-gray-900">歷史訂單</h1>
             <p className="text-gray-600 mt-1">共 {orders.length} 筆訂單</p>
           </div>
         </div>
         {orders.length > 0 && (
-          <Button 
-            variant="outline" 
+          <button 
             onClick={clearAllHistory}
-            className="text-red-600 border-red-300 hover:bg-red-50"
+            className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+            title="清除所有紀錄"
           >
-            🗑️ 清除所有紀錄
-          </Button>
+            <Trash2 className="h-5 w-5" />
+          </button>
         )}
       </div>
 
       {/* 訂單列表 */}
       <div className="space-y-6">
         {orders.map((order) => (
-          <Card key={order.orderId} className="hover:shadow-lg transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                <div>
-                  <CardTitle className="text-xl font-mono">
-                    訂單編號：{order.orderId}
-                  </CardTitle>
-                  <p className="text-sm text-gray-600 mt-1">
-                    訂購時間：{formatDate(order.timestamp)}
-                  </p>
-                </div>
-                <Badge variant="secondary" className="text-lg px-4 py-1">
-                  NT$ {order.total.toLocaleString()}
-                </Badge>
+          <div key={order.orderId} className="bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-2xl shadow-sm p-6 mb-6">
+            {/* 標題列 - 收據風格 */}
+            <div className="bg-gray-100 border-b border-gray-200 px-4 py-3 rounded-t-xl flex justify-between items-center mb-4">
+              <div className="flex-1">
+                <div className="font-bold text-gray-900">訂單編號：{order.orderId}</div>
+                <div className="text-sm text-gray-600 mt-1">{formatDate(order.timestamp)}</div>
               </div>
-            </CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <div className="text-lg font-bold text-[#E50914]">
+                    NT$ {order.total.toLocaleString()}
+                  </div>
+                  <div className="text-xs text-gray-500">總金額</div>
+                </div>
+                <button
+                  onClick={() => clearOrder(order.orderId)}
+                  className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                  title="刪除此筆訂單"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
 
-            <CardContent className="pt-6">
-              <div className="space-y-4">
-                {order.items.map((item, index) => (
-                  <div
-                    key={item.id}
-                    className={`flex gap-4 ${
-                      index < order.items.length - 1 ? 'pb-4 border-b' : ''
-                    }`}
-                  >
-                    {/* 電影海報 */}
-                    <img
-                      src={item.movie.poster_url}
-                      alt={item.movie.title}
-                      className="w-16 h-24 object-cover rounded-md shadow-sm"
-                    />
-
-                    {/* 訂單資訊 */}
-                    <div className="flex-1 space-y-2">
-                      <h3 className="font-bold text-lg">{item.movie.title}</h3>
-
-                      <div className="grid sm:grid-cols-2 gap-2 text-sm">
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Calendar className="h-4 w-4" />
-                          <span>
-                            {new Date(item.screening.date).toLocaleDateString('zh-TW', {
-                              month: 'long',
-                              day: 'numeric',
-                            })}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Clock className="h-4 w-4" />
-                          <span>
-                            {item.screening.start_time} - {item.screening.end_time}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <MapPin className="h-4 w-4" />
-                          <span>{item.hall.hall_name}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary">{item.screening.format}</Badge>
-                          <span className="text-sm text-gray-600">
-                            NT$ {item.screening.price_TWD}
-                          </span>
-                        </div>
+            {/* 電影票券列 */}
+            <div className="space-y-3">
+              {order.items.map((item, index) => (
+                <div key={item.id} className="space-y-2">
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+                    <div className="flex items-start gap-4">
+                      {/* 左側小海報 */}
+                      <div className="flex-shrink-0 w-16 h-24">
+                        <img
+                          src={item.movie.poster_url}
+                          alt={item.movie.title}
+                          className="w-full h-full object-cover rounded"
+                        />
                       </div>
 
-                      <div className="flex items-start gap-2 text-sm">
-                        <Ticket className="h-4 w-4 mt-0.5 text-gray-600" />
-                        <div>
-                          <span className="text-gray-600">座位：</span>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {item.seats.map((seat) => (
-                              <Badge key={seat} variant="outline" className="font-mono text-xs">
-                                {seat}
-                              </Badge>
-                            ))}
+                      {/* 電影資訊 */}
+                      <div className="flex-1 min-w-0">
+                        {/* 電影名稱 */}
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                          {item.movie.title}
+                        </h3>
+
+                        {/* 日期與場次 */}
+                        <div className="text-sm text-gray-600 space-y-1 mb-3">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-3 w-3" />
+                            <span>
+                              {new Date(item.screening.date).toLocaleDateString('zh-TW', {
+                                month: 'short',
+                                day: 'numeric',
+                                weekday: 'short',
+                              })}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-3 w-3" />
+                            <span>{item.screening.start_time}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-3 w-3" />
+                            <span>{item.hall.hall_name}</span>
                           </div>
                         </div>
+
+                        {/* 座位與票種 */}
+                        <div className="flex items-center gap-3 text-sm text-gray-600">
+                          <div className="flex items-center gap-1">
+                            <span>座位：</span>
+                            <div className="flex gap-1">
+                              {item.seats.map((seat) => (
+                                <span
+                                  key={seat}
+                                  className="bg-gray-100 text-gray-600 px-2 py-1 rounded-md text-xs"
+                                >
+                                  {seat}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          <span className="text-gray-400">•</span>
+                          <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-md text-xs">
+                            {item.screening.format}
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="text-right">
-                        <span className="text-sm text-gray-600">小計：</span>
-                        <span className="font-bold text-primary ml-2">
-                          NT${' '}
-                          {(
-                            parseFloat(item.screening.price_TWD) * item.seats.length
-                          ).toLocaleString()}
-                        </span>
+                      {/* 右側小計金額 */}
+                      <div className="flex-shrink-0 text-right">
+                        <div className="text-base font-semibold text-gray-800">
+                          NT$ {(parseFloat(item.screening.price_TWD) * item.seats.length).toLocaleString()}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {item.seats.length} 張 × NT$ {item.screening.price_TWD}
+                        </div>
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  
+                  {/* 虛線分隔線（除了最後一筆） */}
+                  {index < order.items.length - 1 && (
+                    <div className="border-b border-dashed border-gray-300"></div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
 
