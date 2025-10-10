@@ -1,5 +1,3 @@
-import React from 'react'
-
 interface AgeRatingProps {
   rating: string
   size?: 'sm' | 'md' | 'lg'
