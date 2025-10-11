@@ -13,19 +13,29 @@ const UsageGuide = ({ onClose }: UsageGuideProps) => {
 
   const steps = [
     {
-      number: '01',
+      number: '一',
       title: '在大廳瀏覽電影',
-      content: '首頁上方會展示熱門或即將上映的電影輪播。向下可以瀏覽「現正熱映」區域，點選任一部即可查看劇情與預告片。'
+      content: '最上方的輪播海報會展示近期熱門的電影。滑到下方「現正熱映」區域，你也可以瀏覽正在上映的電影，可以點選任何一部電影或是點選查看更多片單，進入完整列表'
     },
     {
-      number: '02',
+      number: '二',
       title: '使用電影列表與搜尋功能',
-      content: '進入電影列表頁面後，可以依分類篩選，或利用搜尋欄找到你想看的電影。點擊電影卡片即可查看放映時段與票價。'
+      content: '你可以透過分類或搜尋功能，快速找到想看的電影。在電影頁面中，你可以看到各場次的放映時間、影廳與票價，按下「立即訂票」即可開始選擇日期場次與座位'
     },
     {
-      number: '03',
+      number: '三',
       title: '選擇場次與座位',
-      content: '在想看的電影中選擇場次後，即可進入座位選擇畫面。白色代表可選、藍色代表已選、紅色代表售出。'
+      content: '在選位畫面中，白色座位代表可選，藍色座位代表已選取，灰色座位代表已售出。點選想要的座位後，確認無誤即可加入購物車'
+    },
+    {
+      number: '四',
+      title: '查看購物車與結帳',
+      content: '當你完成選位並加入購物車後，所有待結帳的訂單都會顯示在「購物車」頁面中。你可以在這裡再次確認電影資訊、場次與座位。確認無誤後，按下「前往結帳」即可完成購票'
+    },
+    {
+      number: '五',
+      title: '查看歷史訂單',
+      content: '結帳成功後，系統會自動將紀錄儲存在「歷史訂單」中。你可以隨時前往該頁面，查看過去的購票紀錄與詳細內容'
     }
   ]
 
@@ -62,7 +72,8 @@ const UsageGuide = ({ onClose }: UsageGuideProps) => {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-8 bg-white/80 backdrop-blur-md"
+      /* 只要把背景稍微模糊就好，不要完全遮住背景 */
+      className="fixed inset-0 z-50 flex items-center justify-center p-8 bg-white/80 backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <motion.div
@@ -99,14 +110,14 @@ const UsageGuide = ({ onClose }: UsageGuideProps) => {
             className="mb-16"
           >
             <h1 className="text-2xl font-semibold text-black mb-3" style={{ letterSpacing: '-0.02em' }}>
-              CHCCCinema 使用說明
+              歡迎來到 CHCCCinema
             </h1>
             <p className="text-sm text-gray-500 leading-relaxed">
-              歡迎使用 CHCCCinema 線上訂票系統，以下將引導你快速了解主要功能與操作步驟。
+              這份簡介將帶你快速了解網站的主要功能與訂票流程。<br/>
             </p>
           </motion.div>
 
-          {/* 三個步驟 */}
+          {/* 五個步驟 */}
           <div className="space-y-12 mb-16">
             {steps.map((step, index) => (
               <motion.div

@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMovieContext, CartItem } from '@/context/MovieContext'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Check, ShoppingCart, Calendar, Clock, MapPin, Ticket, PartyPopper } from 'lucide-react'
+import { ArrowLeft, Check, ShoppingCart, Calendar, Clock, MapPin, Ticket, X } from 'lucide-react'
+import { motion } from 'framer-motion'
 
 interface Order {
   orderId: string
@@ -64,66 +65,110 @@ export default function Checkout() {
     }, 2000)
   }
 
-  // 訂單完成頁面
+  // 訂單完成頁面 - Modal 形式
   if (isCompleted) {
     return (
-      <div className="max-w-2xl mx-auto animate-in fade-in duration-500">
-        <Card className="border-2 border-green-500 shadow-2xl">
-          <CardHeader className="text-center">
-            <div className="mx-auto w-20 h-20 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mb-4 animate-in zoom-in duration-300">
-              <Check className="h-12 w-12 text-white animate-in zoom-in duration-500" />
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.3 }}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+        onClick={(e) => e.target === e.currentTarget && navigate('/history')}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          transition={{ duration: 0.3 }}
+          className="w-full max-w-lg bg-white rounded-lg shadow-lg overflow-hidden"
+          style={{ maxHeight: '90vh' }}
+        >
+          {/* 關閉按鈕 */}
+          <div className="absolute top-4 right-4 z-10">
+            <button
+              onClick={() => navigate('/history')}
+              className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="p-8 text-center">
+            {/* 標題 */}
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold text-red-600 mb-2">訂單完成！</h1>
+              <p className="text-gray-600">
+                感謝您的訂購，祝您觀影愉快！
+              </p>
             </div>
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <PartyPopper className="h-6 w-6 text-yellow-500" />
-              <CardTitle className="text-3xl text-green-700">訂單成功！</CardTitle>
-              <PartyPopper className="h-6 w-6 text-yellow-500" />
-            </div>
-            <CardDescription className="text-lg">
-              感謝您的訂購，祝您觀影愉快！
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-lg text-center border-2 border-green-200">
-              <p className="text-gray-700 mb-2">訂單編號</p>
-              <p className="text-2xl font-bold text-green-700 font-mono">
+
+            {/* 訂單編號 */}
+            <div className="mb-8">
+              <p className="text-sm text-gray-500 mb-2">訂單編號</p>
+              <p className="text-xl font-mono font-bold text-gray-800">
                 {orderId}
               </p>
             </div>
 
-            <div className="space-y-3 text-center">
-              <div className="flex items-center justify-center gap-2 text-green-600">
-                <Check className="h-5 w-5" />
-                <p>訂單已送出</p>
+            {/* 狀態指示器 */}
+            <div className="flex justify-center items-center gap-6 mb-8">
+              <div className="flex items-center gap-2">
+                <Check className="h-5 w-5 text-green-500" />
+                <span className="text-sm text-green-600">訂單已送出</span>
               </div>
-              <div className="flex items-center justify-center gap-2 text-green-600">
-                <Check className="h-5 w-5" />
-                <p>付款已完成</p>
+              
+              <div className="flex items-center gap-2">
+                <Check className="h-5 w-5 text-red-500" />
+                <span className="text-sm text-red-600">付款已完成</span>
               </div>
-              <div className="flex items-center justify-center gap-2 text-green-600">
-                <Check className="h-5 w-5" />
-                <p>電子票券已發送至您的信箱</p>
+              
+              <div className="flex items-center gap-2">
+                <Check className="h-5 w-5 text-gray-500" />
+                <span className="text-sm text-gray-600">票券已發送</span>
               </div>
             </div>
 
-            <div className="bg-blue-50 p-4 rounded-lg text-center text-sm text-gray-600">
-              <p>🎬 正在為您跳轉至歷史訂單頁面...</p>
+            {/* 跳轉提示 */}
+            <div className="mb-8">
+              <div className="flex items-center justify-center gap-2">
+                <div className="flex space-x-1">
+                  <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce"></div>
+                  <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                  <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                </div>
+                <p className="text-sm text-gray-600">
+                  正在跳轉至歷史訂單頁面...
+                </p>
+              </div>
             </div>
 
-            <div className="pt-4 space-y-3">
-              <Button className="w-full" size="lg" onClick={() => navigate('/history')}>
+            {/* 操作按鈕 */}
+            <div className="flex gap-3">
+              <Button
+                className="flex-1"
+                onClick={() => navigate('/history')}
+              >
                 查看歷史訂單
               </Button>
+              
               <Button
                 variant="outline"
-                className="w-full"
+                className="flex-1"
                 onClick={() => navigate('/movies')}
               >
                 繼續選購
               </Button>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+
+            {/* 底部提示 */}
+            <div className="mt-6 text-xs text-gray-400">
+              <p>✓ 電子票券已發送至信箱</p>
+              <p>✓ 請提前 15 分鐘到場</p>
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
     )
   }
 
