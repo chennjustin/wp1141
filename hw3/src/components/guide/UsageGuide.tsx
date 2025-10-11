@@ -1,185 +1,189 @@
 import { motion } from 'framer-motion'
-import { Search, Calendar, ShoppingCart, CheckCircle, X, Sparkles } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { X, ChevronUp, ChevronDown } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
 
 interface UsageGuideProps {
   onClose: () => void
 }
 
 const UsageGuide = ({ onClose }: UsageGuideProps) => {
+  const [canScrollUp, setCanScrollUp] = useState(false)
+  const [canScrollDown, setCanScrollDown] = useState(false)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+
   const steps = [
     {
-      icon: Search,
-      title: '1. 瀏覽電影',
-      description: '從電影列表中找到您喜歡的電影，或使用搜尋功能快速找到想看的片子',
-      tips: ['查看電影海報、簡介、類型', '使用搜尋框快速篩選', '點擊電影卡片查看詳情'],
-      color: 'from-blue-500/20 to-blue-600/20',
-      iconBg: 'bg-blue-500/10',
-      iconColor: 'text-blue-600',
+      number: '01',
+      title: '在大廳瀏覽電影',
+      content: '首頁上方會展示熱門或即將上映的電影輪播。向下可以瀏覽「現正熱映」區域，點選任一部即可查看劇情與預告片。'
     },
     {
-      icon: Calendar,
-      title: '2. 選擇場次與座位',
-      description: '在電影詳情頁選擇適合的場次時間，然後挑選您喜歡的座位',
-      tips: ['查看不同日期和時段的場次', '支援 2D、3D、IMAX 等格式', '視覺化座位圖讓選位更輕鬆'],
-      color: 'from-purple-500/20 to-purple-600/20',
-      iconBg: 'bg-purple-500/10',
-      iconColor: 'text-purple-600',
+      number: '02',
+      title: '使用電影列表與搜尋功能',
+      content: '進入電影列表頁面後，可以依分類篩選，或利用搜尋欄找到你想看的電影。點擊電影卡片即可查看放映時段與票價。'
     },
     {
-      icon: ShoppingCart,
-      title: '3. 加入購物車並結帳',
-      description: '將選好的場次與座位加入購物車，可以一次訂購多場電影，最後前往結帳',
-      tips: ['購物車可修改座位或刪除項目', '查看訂單總金額', '完成訂票並查看歷史記錄'],
-      color: 'from-green-500/20 to-green-600/20',
-      iconBg: 'bg-green-500/10',
-      iconColor: 'text-green-600',
-    },
+      number: '03',
+      title: '選擇場次與座位',
+      content: '在想看的電影中選擇場次後，即可進入座位選擇畫面。白色代表可選、藍色代表已選、紅色代表售出。'
+    }
   ]
+
+  // 檢查滾動狀態
+  const checkScrollPosition = () => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    const { scrollTop, scrollHeight, clientHeight } = container
+    setCanScrollUp(scrollTop > 10)
+    setCanScrollDown(scrollTop + clientHeight < scrollHeight - 10)
+  }
+
+  useEffect(() => {
+    checkScrollPosition()
+    const container = scrollContainerRef.current
+    if (container) {
+      container.addEventListener('scroll', checkScrollPosition)
+      return () => container.removeEventListener('scroll', checkScrollPosition)
+    }
+  }, [])
+
+  const handleScroll = (direction: 'up' | 'down') => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    const scrollAmount = direction === 'down' ? 250 : -250
+    container.scrollBy({ top: scrollAmount, behavior: 'smooth' })
+  }
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      transition={{ duration: 0.3 }}
-      className="relative w-full max-w-4xl mx-auto"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.5, ease: 'easeOut' }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-8 bg-white/80 backdrop-blur-md"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      {/* 背景裝飾 */}
-      <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/10 rounded-full blur-3xl" />
-      <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl" />
-
-      {/* 主要內容容器 */}
-      <div className="relative bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl overflow-hidden border border-gray-200">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 20 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        className="relative w-full bg-white"
+        style={{ maxWidth: '650px', maxHeight: '85vh' }}
+      >
         {/* 關閉按鈕 */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-all z-10 hover:rotate-90 duration-300 group"
+          className="absolute top-0 right-0 p-3 text-gray-400 hover:text-gray-900 transition-colors"
           aria-label="關閉"
         >
-          <X className="h-5 w-5 text-gray-600 group-hover:text-gray-900" />
+          <X className="h-5 w-5" />
         </button>
 
-        {/* 頂部裝飾條 */}
-        <div className="h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
-
-        {/* 標題區 */}
-        <div className="text-center px-8 pt-12 pb-8">
+        {/* 可滾動容器 */}
+        <div
+          ref={scrollContainerRef}
+          className="overflow-y-auto [&::-webkit-scrollbar]:hidden px-12 py-12"
+          style={{ 
+            scrollbarWidth: 'none',
+            maxHeight: '85vh'
+          }}
+        >
+          {/* 標題區 */}
           <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-            className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-primary to-blue-600 mb-6 shadow-lg"
-          >
-            <Sparkles className="h-10 w-10 text-white" />
-          </motion.div>
-
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4"
+            transition={{ duration: 0.5, delay: 0.1, ease: 'easeOut' }}
+            className="mb-16"
           >
-            歡迎來到 Cinema Booking
-          </motion.h2>
-
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed"
-          >
-            跟著以下三個簡單步驟，輕鬆完成線上訂票，開啟您的觀影之旅 🎬
-          </motion.p>
-        </div>
-
-        {/* 步驟卡片 */}
-        <div className="px-8 pb-8 space-y-5">
-          {steps.map((step, index) => {
-            const Icon = step.icon
-            return (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, x: -30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.5 + index * 0.15 }}
-                className={`relative flex gap-5 p-6 bg-gradient-to-r ${step.color} rounded-xl border border-gray-200/50 hover:border-gray-300 transition-all duration-300 hover:shadow-lg group`}
-              >
-                {/* 步驟編號裝飾 */}
-                <div className="absolute -left-3 -top-3 w-8 h-8 rounded-full bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-lg">
-                  {index + 1}
-                </div>
-
-                {/* 圖示 */}
-                <div className="flex-shrink-0">
-                  <div className={`w-16 h-16 rounded-2xl ${step.iconBg} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
-                    <Icon className={`h-8 w-8 ${step.iconColor}`} />
-                  </div>
-                </div>
-
-                {/* 內容 */}
-                <div className="flex-1 space-y-3">
-                  <h3 className="text-xl sm:text-2xl font-bold text-gray-900">
-                    {step.title}
-                  </h3>
-                  <p className="text-gray-700 text-sm sm:text-base leading-relaxed">
-                    {step.description}
-                  </p>
-
-                  {/* 提示列表 */}
-                  <ul className="space-y-2 pt-2">
-                    {step.tips.map((tip, tipIndex) => (
-                      <motion.li
-                        key={tipIndex}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.6 + index * 0.15 + tipIndex * 0.1 }}
-                        className="flex items-start gap-2.5 text-sm text-gray-600"
-                      >
-                        <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                        <span className="leading-relaxed">{tip}</span>
-                      </motion.li>
-                    ))}
-                  </ul>
-                </div>
-              </motion.div>
-            )
-          })}
-        </div>
-
-        {/* 底部動作區 */}
-        <div className="bg-gradient-to-r from-gray-50 to-gray-100/50 px-8 py-8 border-t border-gray-200">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.2 }}
-            className="flex flex-col items-center gap-4"
-          >
-            <Button
-              onClick={onClose}
-              size="lg"
-              className="px-12 py-6 text-lg font-bold shadow-2xl hover:shadow-red-500/50 transition-all duration-300 hover:scale-105 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 border-2 border-red-500/50"
-            >
-              我了解了，開始使用
-            </Button>
-
-            <p className="text-center text-sm text-gray-500 leading-relaxed">
-              您可以隨時點擊導覽列的「
-              <span className="inline-flex items-center mx-1 text-primary font-medium">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="10" strokeWidth="2" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-                  <path d="M12 17h.01" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </span>
-              」圖示再次查看此說明
+            <h1 className="text-2xl font-semibold text-black mb-3" style={{ letterSpacing: '-0.02em' }}>
+              CHCCCinema 使用說明
+            </h1>
+            <p className="text-sm text-gray-500 leading-relaxed">
+              歡迎使用 CHCCCinema 線上訂票系統，以下將引導你快速了解主要功能與操作步驟。
             </p>
           </motion.div>
+
+          {/* 三個步驟 */}
+          <div className="space-y-12 mb-16">
+            {steps.map((step, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 + index * 0.15, ease: 'easeOut' }}
+                className="flex gap-6"
+              >
+                {/* 左側標號 */}
+                <div className="flex-shrink-0">
+                  <span className="text-2xl font-bold text-[#D61F26]" style={{ letterSpacing: '-0.03em' }}>
+                    {step.number}
+                  </span>
+                </div>
+
+                {/* 右側內容 */}
+                <div className="flex-1 pt-1">
+                  <h2 className="text-lg font-semibold text-black mb-2">
+                    {step.title}
+                  </h2>
+                  <p className="text-gray-600 leading-relaxed" style={{ color: '#555' }}>
+                    {step.content}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* 底部按鈕 */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.7, ease: 'easeOut' }}
+            className="flex justify-center"
+          >
+            <button
+              onClick={onClose}
+              className="border-2 border-[#D61F26] text-[#D61F26] hover:bg-[#D61F26] hover:text-white transition-all duration-300 px-10 py-2.5 font-semibold text-sm tracking-wide"
+            >
+              開始使用 CHCCCinema
+            </button>
+          </motion.div>
         </div>
-      </div>
+
+        {/* 右下角浮動導覽箭頭 */}
+        {(canScrollUp || canScrollDown) && (
+          <div className="fixed bottom-8 right-8 flex flex-col gap-2 z-30">
+            {canScrollUp && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+                onClick={() => handleScroll('up')}
+                className="p-2.5 bg-transparent border border-gray-300 hover:border-[#D61F26] hover:text-[#D61F26] rounded-full transition-all duration-300"
+                aria-label="向上滾動"
+              >
+                <ChevronUp className="h-4 w-4 text-gray-600" />
+              </motion.button>
+            )}
+            {canScrollDown && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+                onClick={() => handleScroll('down')}
+                className="p-2.5 bg-transparent border border-gray-300 hover:border-[#D61F26] hover:text-[#D61F26] rounded-full transition-all duration-300"
+                aria-label="向下滾動"
+              >
+                <ChevronDown className="h-4 w-4 text-gray-600" />
+              </motion.button>
+            )}
+          </div>
+        )}
+      </motion.div>
     </motion.div>
   )
 }
 
 export default UsageGuide
-
