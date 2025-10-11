@@ -55,26 +55,50 @@ export default function Cart() {
 
   return (
     <div className="max-w-6xl mx-auto pb-24">
-      {/* 上方資訊區 - 無框線設計 */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <h1 className="text-xl font-bold text-gray-900">購物車</h1>
-            <div className="flex items-center gap-4 text-sm text-gray-600">
+      {/* 上方資訊區 - 重新設計 */}
+      <div className="mb-8">
+        {/* 主要標題區 */}
+        <div className="flex items-end justify-between mb-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">購物車</h1>
+            <div className="flex items-center gap-6 text-sm text-gray-600">
               <span>{cart.length} 筆訂單</span>
-              <span>•</span>
+              <span className="text-gray-400">•</span>
               <span>{totalTickets} 張票</span>
-              <span>•</span>
-              <span className="font-semibold text-gray-900">NT$ {totalAmount.toLocaleString()}</span>
             </div>
           </div>
-          <button 
-            onClick={clearCart}
-            className="flex items-center gap-1 px-3 py-1 text-sm text-gray-500 hover:text-red-600 transition-colors"
-          >
-            <Trash2 className="h-3 w-3" />
-            清空
-          </button>
+          
+          {/* 總金額 - 突出顯示 */}
+          <div className="text-right">
+            <div className="text-2xl font-bold text-gray-900">
+              NT$ {totalAmount.toLocaleString()}
+            </div>
+            <div className="text-xs text-gray-500 mt-1">總金額</div>
+          </div>
+        </div>
+
+        {/* 操作按鈕區 */}
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-gray-500">
+            請確認您的訂單詳情
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowTermsModal(true)}
+              className="text-sm"
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              查看訂票須知與注意事項
+            </Button>
+            <button 
+              onClick={clearCart}
+              className="flex items-center gap-1 px-3 py-1 text-sm text-gray-500 hover:text-red-600 transition-colors"
+            >
+              <Trash2 className="h-4 w-4" />
+              清空
+            </button>
+          </div>
         </div>
       </div>
 
@@ -223,19 +247,7 @@ export default function Cart() {
             </div>
           )
         })}
-      </div>
-
-      {/* 注意事項按鈕 */}
-      <div className="text-center mb-6">
-        <Button
-          variant="outline"
-          onClick={() => setShowTermsModal(true)}
-          className="text-sm"
-        >
-          <FileText className="mr-2 h-4 w-4" />
-          查看訂票須知與注意事項
-        </Button>
-      </div>
+      </div>      
 
       {/* 下方固定 bar */}
       <div className="fixed bottom-0 left-0 right-0 h-[70px] bg-white/90 backdrop-blur-sm border-t border-gray-200 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] z-40">
@@ -264,7 +276,7 @@ export default function Cart() {
             <Button
               onClick={handleCheckout}
               size="sm"
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-700"
+              className="px-4 py-2 bg-red-600 hover:bg-red-700"
             >
               <CreditCard className="mr-1 h-3 w-3" />
               前往結帳

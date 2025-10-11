@@ -260,10 +260,11 @@ export default function SeatSelection() {
                   NT$ {totalPrice.toLocaleString()}
                 </p>
               </div>
+              {/* 確認按鈕 要是紅色的*/}
               <button
                 onClick={handleAddToCart}
                 disabled={isAdding}
-                className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-8 py-3 font-semibold transition-all duration-200 hover:shadow-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-8 py-3 font-semibold transition-all duration-200 hover:shadow-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isAdding ? (
                   <>

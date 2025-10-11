@@ -140,8 +140,8 @@ export default function AddToCartModal({
                    <div className="space-y-3 mb-4">
                      {/* 電影名稱 */}
                      <div>
-                       <h3 className="text-base font-bold text-gray-900 mb-1">{movie.title}</h3>
-                       <p className="text-xs text-gray-500 italic">{movie.title}</p>
+                      <h3 className="text-base font-bold text-gray-900 mb-1">{movie.title}</h3>
+                      <p className="text-xs text-gray-500 italic">{movie.eng_title}</p>
                      </div>
 
                      {/* 電影資訊 Grid */}

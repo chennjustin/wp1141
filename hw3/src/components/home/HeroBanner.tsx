@@ -124,19 +124,37 @@ export default function HeroBanner() {
                 <div className="w-full max-w-6xl mx-auto px-8 pt-20">
                   <div className="max-w-2xl">
                     {/* 電影標題 */}
-                     <motion.h1
-                       key={`title-${currentIndex}`}
-                       initial={{ opacity: 0, y: 30 }}
-                       animate={{ opacity: 1, y: 0 }}
-                       transition={{ delay: 0.4, duration: 1.2, ease: 'easeOut' }}
-                      className="text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-tight mb-4"
-                      style={{
-                        textShadow: '0 8px 32px rgba(0,0,0,0.8), 0 4px 16px rgba(0,0,0,0.9)',
-                        letterSpacing: '-0.02em',
-                      }}
-                    >
-                      {currentMovie?.title}
-                    </motion.h1>
+                    <div className="mb-4">
+                      {/* 中文標題 */}
+                      <motion.h1
+                        key={`title-${currentIndex}`}
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4, duration: 1.2, ease: 'easeOut' }}
+                        className="text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-tight mb-2"
+                        style={{
+                          textShadow: '0 8px 32px rgba(0,0,0,0.8), 0 4px 16px rgba(0,0,0,0.9)',
+                          letterSpacing: '-0.02em',
+                        }}
+                      >
+                        {currentMovie?.title}
+                      </motion.h1>
+                      
+                      {/* 英文標題 */}
+                      <motion.h2
+                        key={`eng-title-${currentIndex}`}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.6, duration: 1.0, ease: 'easeOut' }}
+                        className="text-xl sm:text-2xl lg:text-3xl font-light text-white/90 leading-tight"
+                        style={{
+                          textShadow: '0 4px 16px rgba(0,0,0,0.8)',
+                          letterSpacing: '0.02em',
+                        }}
+                      >
+                        {currentMovie?.eng_title}
+                      </motion.h2>
+                    </div>
 
                     {/* 年份、片長、評分 */}
                      <motion.div

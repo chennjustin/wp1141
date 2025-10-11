@@ -225,7 +225,7 @@ function ShowtimesMovieCard({ movie }: ShowtimesMovieCardProps) {
 
         {/* 英文片名 */}
         <p className="text-xs text-gray-500 italic line-clamp-1 mb-1">
-          {movie.title || 'Movie Title'} {/* 這裡可以根據實際資料調整為英文片名 */}
+          {movie.eng_title || 'Movie Title'}
         </p>
 
         {/* 上映日期 */}

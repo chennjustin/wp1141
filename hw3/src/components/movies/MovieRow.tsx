@@ -1,7 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Clock, Volume2 } from 'lucide-react'
 import { Movie } from '@/context/MovieContext'
-import { Button } from '@/components/ui/button'
 import AgeRating from '@/components/common/AgeRating'
 
 interface MovieRowProps {
@@ -43,7 +41,7 @@ const MovieRow = ({ movie }: MovieRowProps) => {
 
           {/* 英文片名 */}
           <p className="text-gray-500 italic">
-            {movie.title} {/* 這裡可以根據實際資料調整為英文片名 */}
+            {movie.eng_title}
           </p>
 
           {/* 電影資訊 */}

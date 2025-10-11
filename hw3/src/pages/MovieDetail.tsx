@@ -132,7 +132,7 @@ export default function MovieDetail() {
                   {movie.title}
                 </h1>
                 <p className="text-gray-500 italic text-lg mb-3">
-                  {movie.title} {/* 這裡可以根據實際資料調整為英文片名 */}
+                  {movie.eng_title}
                 </p>
                 <div className="flex items-center gap-4">
                   <span className="text-gray-600 text-lg">{movie.year}</span>
