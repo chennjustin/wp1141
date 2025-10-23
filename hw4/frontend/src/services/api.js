@@ -89,6 +89,12 @@ export const routeAPI = {
     return response.data;
   },
 
+  // 更新路線
+  updateRoute: async (id, payload) => {
+    const response = await api.patch(`/api/routes/${id}`, payload);
+    return response.data;
+  },
+
   // 刪除路線
   deleteRoute: async (id) => {
     const response = await api.delete(`/api/routes/${id}`);

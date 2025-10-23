@@ -172,6 +172,52 @@ router.get('/:id', async (req, res) => {
 });
 
 /**
+ * PATCH /api/routes/:id
+ * 更新路線名稱
+ */
+router.patch('/:id', async (req, res) => {
+  try {
+    const routeId = req.params.id;
+    const userId = req.user.userId;
+    const { name } = req.body;
+
+    // 驗證輸入
+    if (!name || typeof name !== 'string' || name.trim() === '') {
+      return res.status(400).json({ error: '路線名稱不能為空' });
+    }
+
+    // 檢查路線是否存在且屬於目前使用者
+    const existingRoute = await Route.findById(routeId);
+    if (!existingRoute) {
+      return res.status(404).json({ error: '路線不存在' });
+    }
+
+    if (existingRoute.user_id !== userId) {
+      return res.status(403).json({ error: '無權修改此路線' });
+    }
+
+    // 更新路線名稱
+    const updated = await Route.updateName(routeId, userId, name.trim());
+
+    if (!updated) {
+      return res.status(500).json({ error: '更新路線名稱失敗' });
+    }
+
+    // 回傳更新後的資料
+    res.json({
+      message: '路線名稱更新成功',
+      route: {
+        id: parseInt(routeId),
+        name: name.trim()
+      }
+    });
+  } catch (error) {
+    console.error('更新路線名稱錯誤:', error);
+    res.status(500).json({ error: '更新路線名稱失敗' });
+  }
+});
+
+/**
  * DELETE /api/routes/:id
  * 刪除路線
  */

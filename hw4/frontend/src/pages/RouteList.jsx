@@ -43,6 +43,35 @@ export default function RouteList() {
     }
   };
 
+  // 重新命名路線
+  const handleRenameRoute = async (route) => {
+    const newName = prompt('輸入新名稱', route.name);
+    
+    if (!newName || newName.trim() === '') {
+      return;
+    }
+
+    if (newName.trim() === route.name) {
+      return; // 名稱沒有改變
+    }
+
+    try {
+      await routeAPI.updateRoute(route.id, { name: newName.trim() });
+      
+      // 更新 routes state
+      setRoutes(routes.map(r => 
+        r.id === route.id ? { ...r, name: newName.trim() } : r
+      ));
+      
+      // 更新 selectedRoute 的名稱
+      if (selectedRoute?.id === route.id) {
+        setSelectedRoute({ ...selectedRoute, name: newName.trim() });
+      }
+    } catch (err) {
+      alert('重新命名失敗');
+    }
+  };
+
   // 刪除路線
   const handleDeleteRoute = async (id) => {
     if (!confirm('確定要刪除這條路線嗎？')) {
@@ -136,15 +165,26 @@ export default function RouteList() {
                   <span>⏱️ {Math.round(route.duration / 60)} min</span>
                   <span>⛰️ {route.elevationGain} m</span>
                 </div>
-                <button
-                  className="delete-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteRoute(route.id);
-                  }}
-                >
-                  刪除
-                </button>
+                <div className="route-actions">
+                  <button
+                    className="rename-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRenameRoute(route);
+                    }}
+                  >
+                    重新命名
+                  </button>
+                  <button
+                    className="delete-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteRoute(route.id);
+                    }}
+                  >
+                    刪除
+                  </button>
+                </div>
               </div>
             ))}
           </div>

@@ -127,6 +127,15 @@ export const Route = {
     return route;
   },
 
+  // 更新路線名稱
+  async updateName(id, userId, name) {
+    const result = await dbRun(
+      'UPDATE routes SET name = ? WHERE id = ? AND user_id = ?',
+      [name, id, userId]
+    );
+    return result.changes > 0;
+  },
+
   // 刪除路線
   async delete(id, userId) {
     // 確保使用者只能刪除自己的路線

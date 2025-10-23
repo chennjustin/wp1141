@@ -30,7 +30,8 @@ export async function geocodeAddress(address) {
         address: formattedAddress
       };
     } else {
-      throw new Error(`地理編碼失敗: ${response.data.status}`);
+      const errorMessage = response.data.error_message || response.data.status;
+      throw new Error(`地理編碼失敗: ${response.data.status} - ${errorMessage}`);
     }
   } catch (error) {
     console.error('地理編碼錯誤:', error);
