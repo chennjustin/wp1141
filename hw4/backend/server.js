@@ -17,10 +17,18 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 中間件
+// CORS 設定 - 支援多個來源
+const corsOrigins = process.env.CORS_ORIGINS 
+  ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
+  : ['http://localhost:5173', 'http://127.0.0.1:5173'];
+
+console.log('允許的 CORS 來源:', corsOrigins);
+
 app.use(cors({
-  origin: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : ['http://localhost:5173', 'http://127.0.0.1:5173'],
-  credentials: true
+  origin: corsOrigins,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 
@@ -54,9 +62,10 @@ async function startServer() {
     
     // 啟動 HTTP 伺服器
     app.listen(PORT, () => {
-      console.log(`🚴 BikeRoute Planner 後端伺服器執行在 http://localhost:${PORT}`);
-      console.log(`📊 資料庫: SQLite (bikeroute.db)`);
-      console.log(`🔑 Google Maps API: ${process.env.GOOGLE_MAPS_SERVER_KEY ? '已配置' : '未配置'}`);
+      console.log(`BikeRoute Planner 後端伺服器執行在 http://localhost:${PORT}`);
+      console.log(`資料庫: SQLite (bikeroute.db)`);
+      console.log(`Google Maps API: ${process.env.GOOGLE_MAPS_SERVER_KEY ? '已配置' : '未配置'}`);
+      console.log(`CORS 來源: ${corsOrigins.join(', ')}`);
     });
   } catch (error) {
     console.error('伺服器啟動失敗:', error);
