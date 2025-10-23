@@ -1,4 +1,5 @@
-﻿/**
+﻿
+/**
  * BikeRoute Planner - 後端伺服器
  * Express + SQLite + JWT 認證
  */
@@ -29,7 +30,9 @@ app.get('/health', (req, res) => {
 });
 
 // API 路由
+//所有 /auth/... 的請求交給 authRoutes 處理
 app.use('/auth', authRoutes);
+//所有 /api/routes/... 的請求交給 routeRoutes 處理
 app.use('/api/routes', routeRoutes);
 
 // 404 處理

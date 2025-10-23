@@ -1,5 +1,5 @@
 ﻿/**
- * 主?用?件
+ * 主應用程式元件
  * 配置路由
  */
 
@@ -19,11 +19,11 @@ function App() {
       <Router>
         <Layout>
           <Routes>
-            {/* 公?路由 */}
+            {/* 公共路由 */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             
-            {/* 受保?的路由 */}
+            {/* 受保護的路由 */}
             <Route
               path="/"
               element={
@@ -41,7 +41,7 @@ function App() {
               }
             />
             
-            {/* 默?重定向 */}
+            {/* 默認重定向 */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Layout>

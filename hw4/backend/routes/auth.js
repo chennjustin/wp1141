@@ -40,7 +40,7 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: '密碼長度至少為6位' });
     }
 
-    // 加密密碼
+    // 都通過前面的驗證後，開始加密密碼
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
