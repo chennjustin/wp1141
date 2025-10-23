@@ -5,7 +5,7 @@
 
 import axios from 'axios';
 
-const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_SERVER_KEY;
+const GOOGLE_MAPS_SERVER_KEY = process.env.GOOGLE_MAPS_SERVER_KEY;
 const BASE_URL = 'https://maps.googleapis.com/maps/api';
 
 /**
@@ -16,7 +16,7 @@ export async function geocodeAddress(address) {
     const response = await axios.get(`${BASE_URL}/geocode/json`, {
       params: {
         address: address,
-        key: GOOGLE_MAPS_API_KEY
+        key: GOOGLE_MAPS_SERVER_KEY
       }
     });
 
@@ -55,7 +55,7 @@ export async function getBikeRoute(startLat, startLng, endLat, endLng, waypoints
         destination: `${endLat},${endLng}`,
         waypoints: waypointsParam || undefined,
         mode: 'bicycling',
-        key: GOOGLE_MAPS_API_KEY,
+        key: GOOGLE_MAPS_SERVER_KEY,
         alternatives: false
       }
     });
@@ -123,7 +123,7 @@ export async function getElevationData(coordinates) {
       const response = await axios.get(`${BASE_URL}/elevation/json`, {
         params: {
           locations: locations,
-          key: GOOGLE_MAPS_API_KEY
+          key: GOOGLE_MAPS_SERVER_KEY
         }
       });
 
