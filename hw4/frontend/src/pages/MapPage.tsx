@@ -1,197 +1,144 @@
 import { useState } from 'react';
-import type { Folder, Place, Entry } from '../types';
-import FolderManager from '../components/FolderManager';
-import PlaceManager from '../components/PlaceManager';
-import MapView from '../components/MapView';
-import EntryManager from '../components/EntryManager';
+import type { Folder, Place } from '../types';
+import MapHeader from '../components/MapHeader';
+import MapContainer from '../components/MapContainer';
+import PlaceModal from '../components/PlaceModal';
+import FolderSidebar from '../components/FolderSidebar';
 
 function MapPage() {
-  const [selectedFolder, setSelectedFolder] = useState<Folder | null>(null);
+  const [selectedFolders, setSelectedFolders] = useState<number[]>([]);
+  const [showFolderSidebar, setShowFolderSidebar] = useState(false);
+  const [showPlaceModal, setShowPlaceModal] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
-  const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null);
-  const [activeTab, setActiveTab] = useState<'folders' | 'places' | 'entries'>('folders');
+  const [mapClickData, setMapClickData] = useState<{
+    lat: number;
+    lng: number;
+    name?: string;
+    address?: string;
+    placeId?: string;
+    rating?: number;
+    types?: string[];
+  } | null>(null);
 
-  // 處理資料夾選擇
-  const handleFolderSelect = (folder: Folder | null) => {
-    setSelectedFolder(folder);
-    setSelectedPlace(null);
-    setSelectedEntry(null);
+  // 處理地圖點擊
+  const handleMapClick = (lat: number, lng: number, placeInfo?: any) => {
+    setMapClickData({
+      lat,
+      lng,
+      name: placeInfo?.name,
+      address: placeInfo?.address,
+      placeId: placeInfo?.placeId,
+      rating: placeInfo?.rating,
+      types: placeInfo?.types
+    });
+    setShowPlaceModal(true);
   };
 
   // 處理地點選擇
-  const handlePlaceSelect = (place: Place) => {
+  const handlePlaceClick = (place: Place) => {
     setSelectedPlace(place);
-    setSelectedEntry(null);
   };
 
-  // 處理造訪紀錄選擇
-  const handleEntrySelect = (entry: Entry) => {
-    setSelectedEntry(entry);
+  // 處理地點建立完成
+  const handlePlaceCreated = (place: Place) => {
+    setSelectedPlace(place);
+    // 這裡可以觸發地圖更新
+    console.log('新地點已建立:', place);
   };
 
-  // 處理地圖點擊
-  const handleMapClick = (lat: number, lng: number) => {
-    // 這裡可以開啟新增地點的表單
-    console.log('地圖點擊:', lat, lng);
+  // 處理資料夾選擇
+  const handleFolderSelect = (folder: Folder | null) => {
+    if (folder) {
+      setSelectedFolders([folder.id]);
+    } else {
+      setSelectedFolders([]);
+    }
+  };
+
+  // 處理篩選器變更
+  const handleFoldersChange = (folderIds: number[]) => {
+    setSelectedFolders(folderIds);
+  };
+
+  // 關閉彈窗
+  const handleCloseModal = () => {
+    setShowPlaceModal(false);
+    setMapClickData(null);
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* 頂部導航 */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-800">TravelSpot Journal</h1>
-            <div className="flex items-center space-x-4">
-              <div className="flex bg-gray-100 rounded-lg p-1">
-                <button
-                  onClick={() => setActiveTab('folders')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    activeTab === 'folders'
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-800'
-                  }`}
-                >
-                  📁 資料夾
-                </button>
-                <button
-                  onClick={() => setActiveTab('places')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    activeTab === 'places'
-                      ? 'bg-white text-green-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-800'
-                  }`}
-                >
-                  📍 地點
-                </button>
-                <button
-                  onClick={() => setActiveTab('entries')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    activeTab === 'entries'
-                      ? 'bg-white text-purple-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-800'
-                  }`}
-                >
-                  ⭐ 造訪紀錄
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      <MapHeader
+        selectedFolders={selectedFolders}
+        onFoldersChange={handleFoldersChange}
+        onShowFolders={() => setShowFolderSidebar(true)}
+      />
+
+      {/* 主地圖區域 */}
+      <div className="h-[calc(100vh-80px)]">
+        <MapContainer
+          selectedFolders={selectedFolders}
+          onPlaceClick={handlePlaceClick}
+          onMapClick={handleMapClick}
+          selectedPlace={selectedPlace}
+        />
       </div>
 
-      <div className="flex h-[calc(100vh-80px)]">
-        {/* 左側面板 - 管理功能 */}
-        <div className="w-1/3 bg-white border-r border-gray-200 overflow-y-auto">
-          <div className="p-4">
-            {activeTab === 'folders' && (
-              <FolderManager 
-                onFolderSelect={handleFolderSelect}
-                selectedFolderId={selectedFolder?.id}
-              />
-            )}
-            
-            {activeTab === 'places' && (
-              <PlaceManager 
-                selectedFolderId={selectedFolder?.id}
-                onPlaceSelect={handlePlaceSelect}
-              />
-            )}
-            
-            {activeTab === 'entries' && (
-              <EntryManager 
-                selectedPlaceId={selectedPlace?.id}
-                onEntrySelect={handleEntrySelect}
-              />
-            )}
-          </div>
-        </div>
+      {/* 地點新增/編輯彈窗 */}
+      <PlaceModal
+        isOpen={showPlaceModal}
+        onClose={handleCloseModal}
+        onPlaceCreated={handlePlaceCreated}
+        initialData={mapClickData || undefined}
+      />
 
-        {/* 右側面板 - 地圖和詳細資訊 */}
-        <div className="flex-1 flex flex-col">
-          {/* 地圖區域 */}
-          <div className="flex-1 p-4">
-            <MapView
-              selectedFolderId={selectedFolder?.id}
-              onPlaceClick={handlePlaceSelect}
-              onMapClick={handleMapClick}
-              selectedPlace={selectedPlace}
-            />
-          </div>
+      {/* 資料夾管理側邊欄 */}
+      <FolderSidebar
+        isOpen={showFolderSidebar}
+        onClose={() => setShowFolderSidebar(false)}
+        selectedFolderId={selectedFolders[0]}
+        onFolderSelect={handleFolderSelect}
+      />
 
-          {/* 詳細資訊面板 */}
-          {(selectedFolder || selectedPlace || selectedEntry) && (
-            <div className="h-64 bg-white border-t border-gray-200 overflow-y-auto">
-              <div className="p-4">
-                {selectedFolder && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                      {selectedFolder.icon} {selectedFolder.name}
-                    </h3>
-                    {selectedFolder.description && (
-                      <p className="text-gray-600 mb-2">{selectedFolder.description}</p>
-                    )}
-                    <div className="text-sm text-gray-500">
-                      <p>建立時間: {new Date(selectedFolder.createdAt).toLocaleDateString()}</p>
-                      {selectedFolder._count && (
-                        <p>包含 {selectedFolder._count.places} 個地點</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {selectedPlace && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                      {selectedPlace.emoji} {selectedPlace.name}
-                    </h3>
-                    {selectedPlace.address && (
-                      <p className="text-gray-600 mb-2">{selectedPlace.address}</p>
-                    )}
-                    {selectedPlace.description && (
-                      <p className="text-gray-600 mb-2">{selectedPlace.description}</p>
-                    )}
-                    <div className="text-sm text-gray-500">
-                      <p>座標: {selectedPlace.lat.toFixed(6)}, {selectedPlace.lng.toFixed(6)}</p>
-                      {selectedPlace.folder && (
-                        <p>資料夾: {selectedPlace.folder.name}</p>
-                      )}
-                      {selectedPlace._count && (
-                        <p>造訪次數: {selectedPlace._count.entries}</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {selectedEntry && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                      {selectedEntry.emoji} 造訪紀錄
-                    </h3>
-                    {selectedEntry.rating && (
-                      <p className="text-yellow-500 mb-2">
-                        {'⭐'.repeat(selectedEntry.rating)}
-                      </p>
-                    )}
-                    {selectedEntry.note && (
-                      <p className="text-gray-600 mb-2">{selectedEntry.note}</p>
-                    )}
-                    <div className="text-sm text-gray-500">
-                      <p>造訪日期: {selectedEntry.visitedAt ? new Date(selectedEntry.visitedAt).toLocaleDateString() : '未設定'}</p>
-                      {selectedEntry.weather && (
-                        <p>天氣: {selectedEntry.weather}</p>
-                      )}
-                      {selectedEntry.photoUrl && (
-                        <p>照片: <a href={selectedEntry.photoUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">查看照片</a></p>
-                      )}
-                    </div>
-                  </div>
+      {/* 地點詳細資訊面板 */}
+      {selectedPlace && (
+        <div className="fixed bottom-4 left-4 right-4 bg-white/95 backdrop-blur-md rounded-lg shadow-lg border border-gray-200 p-4 max-w-md mx-auto">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center mb-2">
+                <span className="text-2xl mr-2">{selectedPlace.emoji}</span>
+                <div>
+                  <h3 className="font-semibold text-gray-800">{selectedPlace.name}</h3>
+                  {selectedPlace.address && (
+                    <p className="text-sm text-gray-600">{selectedPlace.address}</p>
+                  )}
+                </div>
+              </div>
+              
+              {selectedPlace.description && (
+                <p className="text-sm text-gray-700 mb-2">{selectedPlace.description}</p>
+              )}
+              
+              <div className="text-xs text-gray-500">
+                <p>座標: {selectedPlace.lat.toFixed(6)}, {selectedPlace.lng.toFixed(6)}</p>
+                {selectedPlace.folder && (
+                  <p className="text-blue-600">📁 {selectedPlace.folder.name}</p>
                 )}
               </div>
             </div>
-          )}
+            
+            <button
+              onClick={() => setSelectedPlace(null)}
+              className="ml-4 text-gray-400 hover:text-gray-600"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
