@@ -10,6 +10,7 @@ function MapPage() {
   const [showFolderSidebar, setShowFolderSidebar] = useState(false);
   const [showPlaceModal, setShowPlaceModal] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0); // 新增刷新觸發器
   const [mapClickData, setMapClickData] = useState<{
     lat: number;
     lng: number;
@@ -42,7 +43,24 @@ function MapPage() {
   // 處理地點建立完成
   const handlePlaceCreated = (place: Place) => {
     setSelectedPlace(place);
+    setRefreshTrigger(prev => prev + 1); // 觸發地圖刷新
     console.log('新地點已建立:', place);
+  };
+
+  // 處理地點刪除
+  const handlePlaceDeleted = async (place: Place) => {
+    if (window.confirm(`確定要刪除地點「${place.name}」嗎？`)) {
+      try {
+        const { placesApi } = await import('../services/data');
+        await placesApi.delete(place.id);
+        setSelectedPlace(null); // 清除選中的地點
+        setRefreshTrigger(prev => prev + 1); // 觸發地圖刷新
+        alert('地點刪除成功');
+      } catch (error) {
+        console.error('刪除地點失敗:', error);
+        alert('刪除地點失敗');
+      }
+    }
   };
 
   // 處理資料夾選擇
@@ -99,6 +117,7 @@ function MapPage() {
           onPlaceClick={handlePlaceClick}
           onMapClick={handleMapClick}
           selectedPlace={selectedPlace}
+          refreshTrigger={refreshTrigger}
         />
       </div>
 
@@ -147,14 +166,26 @@ function MapPage() {
                 </div>
               </div>
               
-              <button
-                onClick={() => setSelectedPlace(null)}
-                className="ml-4 text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              <div className="ml-4 flex space-x-2">
+                <button
+                  onClick={() => handlePlaceDeleted(selectedPlace)}
+                  className="text-red-400 hover:text-red-600 transition-colors"
+                  title="刪除地點"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setSelectedPlace(null)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  title="關閉"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>

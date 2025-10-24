@@ -18,13 +18,15 @@ interface MapContainerProps {
   onPlaceClick?: (place: Place) => void;
   onMapClick?: (lat: number, lng: number, placeInfo?: any) => void;
   selectedPlace?: Place | null;
+  refreshTrigger?: number; // 新增刷新觸發器
 }
 
 const MapContainer: React.FC<MapContainerProps> = ({
   selectedFolders = [],
   onPlaceClick,
   onMapClick,
-  selectedPlace
+  selectedPlace,
+  refreshTrigger
 }) => {
   const [places, setPlaces] = useState<Place[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -70,6 +72,13 @@ const MapContainer: React.FC<MapContainerProps> = ({
     loadPlaces();
     loadFolders();
   }, []);
+
+  // 監聽 refreshTrigger 變化，重新載入地點
+  useEffect(() => {
+    if (refreshTrigger !== undefined) {
+      loadPlaces();
+    }
+  }, [refreshTrigger]);
 
   // 地圖載入完成
   const onLoad = useCallback((map: google.maps.Map) => {

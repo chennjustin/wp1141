@@ -18,13 +18,15 @@ interface MapViewProps {
   onPlaceClick?: (place: Place) => void;
   onMapClick?: (lat: number, lng: number) => void;
   selectedPlace?: Place | null;
+  refreshTrigger?: number; // 新增刷新觸發器
 }
 
 const MapView: React.FC<MapViewProps> = ({
   selectedFolderId,
   onPlaceClick,
   onMapClick,
-  selectedPlace
+  selectedPlace,
+  refreshTrigger
 }) => {
   const [places, setPlaces] = useState<Place[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -53,6 +55,13 @@ const MapView: React.FC<MapViewProps> = ({
       setLoading(false);
     }
   };
+
+  // 監聽 refreshTrigger 變化，重新載入地點
+  useEffect(() => {
+    if (refreshTrigger !== undefined) {
+      loadPlaces();
+    }
+  }, [refreshTrigger, selectedFolderId]);
 
   // 載入造訪紀錄
   const loadEntries = async () => {
