@@ -12,17 +12,18 @@ router.use(authenticateToken);
 router.get('/', async (req, res): Promise<void> => {
   try {
     const userId = req.user!.id;
+    const { folderId } = req.query;
+
+    const whereClause: any = { userId };
+    if (folderId) {
+      whereClause.folderId = parseInt(folderId as string);
+    }
 
     const places = await prisma.place.findMany({
-      where: {
-        entries: {
-          some: {
-            userId
-          }
-        }
-      },
+      where: whereClause,
       orderBy: { createdAt: 'desc' },
       include: {
+        folder: true,
         _count: {
           select: { entries: true }
         }
@@ -45,14 +46,33 @@ router.get('/', async (req, res): Promise<void> => {
 // 新增地點
 router.post('/', async (req, res): Promise<void> => {
   try {
-    const { name, address, lat, lng } = req.body;
+    const userId = req.user!.id;
+    const { name, address, lat, lng, emoji, description, folderId } = req.body;
 
-    if (!lat || !lng) {
+    if (!name || !lat || !lng) {
       res.status(400).json({
         error: 'Bad Request',
-        message: '請提供經緯度座標'
+        message: '請提供名稱和經緯度座標'
       });
       return;
+    }
+
+    // 如果指定了資料夾，檢查是否存在且屬於該使用者
+    if (folderId) {
+      const folder = await prisma.folder.findFirst({
+        where: {
+          id: folderId,
+          userId
+        }
+      });
+
+      if (!folder) {
+        res.status(404).json({
+          error: 'Not Found',
+          message: '資料夾不存在'
+        });
+        return;
+      }
     }
 
     const place = await prisma.place.create({
@@ -60,7 +80,17 @@ router.post('/', async (req, res): Promise<void> => {
         name,
         address,
         lat: parseFloat(lat),
-        lng: parseFloat(lng)
+        lng: parseFloat(lng),
+        emoji: emoji || '📍',
+        description,
+        userId,
+        folderId: folderId || null
+      },
+      include: {
+        folder: true,
+        _count: {
+          select: { entries: true }
+        }
       }
     });
 
@@ -80,12 +110,16 @@ router.post('/', async (req, res): Promise<void> => {
 // 更新地點
 router.put('/:id', async (req, res): Promise<void> => {
   try {
+    const userId = req.user!.id;
     const placeId = parseInt(req.params.id);
-    const { name, address } = req.body;
+    const { name, address, emoji, description, folderId } = req.body;
 
-    // 檢查地點是否存在
-    const existingPlace = await prisma.place.findUnique({
-      where: { id: placeId }
+    // 檢查地點是否存在且屬於該使用者
+    const existingPlace = await prisma.place.findFirst({
+      where: {
+        id: placeId,
+        userId
+      }
     });
 
     if (!existingPlace) {
@@ -96,9 +130,39 @@ router.put('/:id', async (req, res): Promise<void> => {
       return;
     }
 
+    // 如果指定了資料夾，檢查是否存在且屬於該使用者
+    if (folderId) {
+      const folder = await prisma.folder.findFirst({
+        where: {
+          id: folderId,
+          userId
+        }
+      });
+
+      if (!folder) {
+        res.status(404).json({
+          error: 'Not Found',
+          message: '資料夾不存在'
+        });
+        return;
+      }
+    }
+
     const place = await prisma.place.update({
       where: { id: placeId },
-      data: { name, address }
+      data: {
+        name,
+        address,
+        emoji,
+        description,
+        folderId: folderId || null
+      },
+      include: {
+        folder: true,
+        _count: {
+          select: { entries: true }
+        }
+      }
     });
 
     res.json({
@@ -117,11 +181,15 @@ router.put('/:id', async (req, res): Promise<void> => {
 // 刪除地點
 router.delete('/:id', async (req, res): Promise<void> => {
   try {
+    const userId = req.user!.id;
     const placeId = parseInt(req.params.id);
 
-    // 檢查地點是否存在
-    const existingPlace = await prisma.place.findUnique({
-      where: { id: placeId }
+    // 檢查地點是否存在且屬於該使用者
+    const existingPlace = await prisma.place.findFirst({
+      where: {
+        id: placeId,
+        userId
+      }
     });
 
     if (!existingPlace) {

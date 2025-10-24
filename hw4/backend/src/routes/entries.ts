@@ -12,25 +12,18 @@ router.use(authenticateToken);
 router.get('/', async (req, res): Promise<void> => {
   try {
     const userId = req.user!.id;
-    const { collectionId } = req.query;
+    const { placeId } = req.query;
 
     const whereClause: any = { userId };
-
-    // 如果指定了 collectionId，則篩選該資料夾的紀錄
-    if (collectionId) {
-      whereClause.collections = {
-        some: {
-          id: parseInt(collectionId as string)
-        }
-      };
+    if (placeId) {
+      whereClause.placeId = parseInt(placeId as string);
     }
 
     const entries = await prisma.entry.findMany({
       where: whereClause,
       orderBy: { createdAt: 'desc' },
       include: {
-        place: true,
-        collections: true
+        place: true
       }
     });
 
@@ -53,7 +46,6 @@ router.post('/', async (req, res): Promise<void> => {
     const userId = req.user!.id;
     const {
       placeId,
-      collectionIds,
       emoji,
       rating,
       note,
@@ -70,9 +62,12 @@ router.post('/', async (req, res): Promise<void> => {
       return;
     }
 
-    // 檢查地點是否存在
-    const place = await prisma.place.findUnique({
-      where: { id: parseInt(placeId) }
+    // 檢查地點是否存在且屬於該使用者
+    const place = await prisma.place.findFirst({
+      where: {
+        id: parseInt(placeId),
+        userId
+      }
     });
 
     if (!place) {
@@ -83,48 +78,20 @@ router.post('/', async (req, res): Promise<void> => {
       return;
     }
 
-    // 檢查資料夾是否存在且屬於該使用者
-    if (collectionIds && collectionIds.length > 0) {
-      const collections = await prisma.collection.findMany({
-        where: {
-          id: { in: collectionIds.map((id: any) => parseInt(id)) },
-          userId
-        }
-      });
-
-      if (collections.length !== collectionIds.length) {
-        res.status(400).json({
-          error: 'Bad Request',
-          message: '部分資料夾不存在或無權限'
-        });
-        return;
-      }
-    }
-
     // 建立造訪紀錄
-    const entryData: any = {
-      placeId: parseInt(placeId),
-      userId,
-      emoji,
-      rating: rating ? parseInt(rating) : null,
-      note,
-      visitedAt: visitedAt ? new Date(visitedAt) : null,
-      weather,
-      photoUrl
-    };
-
-    // 如果有資料夾，則建立關聯
-    if (collectionIds && collectionIds.length > 0) {
-      entryData.collections = {
-        connect: collectionIds.map((id: any) => ({ id: parseInt(id) }))
-      };
-    }
-
     const entry = await prisma.entry.create({
-      data: entryData,
+      data: {
+        placeId: parseInt(placeId),
+        userId,
+        emoji: emoji || '⭐',
+        rating: rating ? parseInt(rating) : null,
+        note,
+        visitedAt: visitedAt ? new Date(visitedAt) : null,
+        weather,
+        photoUrl
+      },
       include: {
-        place: true,
-        collections: true
+        place: true
       }
     });
 
@@ -147,7 +114,6 @@ router.put('/:id', async (req, res): Promise<void> => {
     const userId = req.user!.id;
     const entryId = parseInt(req.params.id);
     const {
-      collectionIds,
       emoji,
       rating,
       note,
@@ -172,47 +138,19 @@ router.put('/:id', async (req, res): Promise<void> => {
       return;
     }
 
-    // 檢查資料夾是否存在且屬於該使用者
-    if (collectionIds && collectionIds.length > 0) {
-      const collections = await prisma.collection.findMany({
-        where: {
-          id: { in: collectionIds.map((id: any) => parseInt(id)) },
-          userId
-        }
-      });
-
-      if (collections.length !== collectionIds.length) {
-        res.status(400).json({
-          error: 'Bad Request',
-          message: '部分資料夾不存在或無權限'
-        });
-        return;
-      }
-    }
-
-    // 準備更新資料
-    const updateData: any = {
-      emoji,
-      rating: rating ? parseInt(rating) : null,
-      note,
-      visitedAt: visitedAt ? new Date(visitedAt) : null,
-      weather,
-      photoUrl
-    };
-
-    // 如果有資料夾，則更新關聯
-    if (collectionIds && collectionIds.length > 0) {
-      updateData.collections = {
-        set: collectionIds.map((id: any) => ({ id: parseInt(id) }))
-      };
-    }
-
+    // 更新造訪紀錄
     const entry = await prisma.entry.update({
       where: { id: entryId },
-      data: updateData,
+      data: {
+        emoji,
+        rating: rating ? parseInt(rating) : null,
+        note,
+        visitedAt: visitedAt ? new Date(visitedAt) : null,
+        weather,
+        photoUrl
+      },
       include: {
-        place: true,
-        collections: true
+        place: true
       }
     });
 

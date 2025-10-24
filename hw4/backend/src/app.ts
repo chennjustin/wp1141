@@ -7,7 +7,7 @@ dotenv.config();
 
 // 路由匯入
 import authRoutes from './routes/auth';
-import collectionRoutes from './routes/collections';
+import folderRoutes from './routes/folders';
 import placeRoutes from './routes/places';
 import entryRoutes from './routes/entries';
 import mapRoutes from './routes/maps';
@@ -39,7 +39,7 @@ app.get('/health', (_req, res) => {
 
 // API 路由
 app.use('/auth', authRoutes);
-app.use('/collections', collectionRoutes);
+app.use('/folders', folderRoutes);
 app.use('/places', placeRoutes);
 app.use('/entries', entryRoutes);
 app.use('/maps', mapRoutes);

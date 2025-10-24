@@ -1,193 +1,199 @@
-import { useState, useCallback } from 'react'
-import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from '@react-google-maps/api'
-import SpotList from '../components/SpotList'
-
-// 地圖容器樣式
-const mapContainerStyle = {
-  width: '100%',
-  height: '100%'
-}
-
-// 預設地圖中心（台北）
-const center = {
-  lat: 25.0330,
-  lng: 121.5654
-}
-
-// 地圖選項
-const options = {
-  disableDefaultUI: false,
-  zoomControl: true,
-}
-
-// 地點介面
-export interface Spot {
-  id: string
-  name: string
-  lat: number
-  lng: number
-  description?: string
-}
+import { useState } from 'react';
+import type { Folder, Place, Entry } from '../types';
+import FolderManager from '../components/FolderManager';
+import PlaceManager from '../components/PlaceManager';
+import MapView from '../components/MapView';
+import EntryManager from '../components/EntryManager';
 
 function MapPage() {
-  const [spots, setSpots] = useState<Spot[]>([])
-  const [selectedSpot, setSelectedSpot] = useState<Spot | null>(null)
-  const [map, setMap] = useState<google.maps.Map | null>(null)
+  const [selectedFolder, setSelectedFolder] = useState<Folder | null>(null);
+  const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null);
+  const [activeTab, setActiveTab] = useState<'folders' | 'places' | 'entries'>('folders');
 
-  // 載入 Google Maps API
-  const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_JS_KEY || '',
-  })
+  // 處理資料夾選擇
+  const handleFolderSelect = (folder: Folder | null) => {
+    setSelectedFolder(folder);
+    setSelectedPlace(null);
+    setSelectedEntry(null);
+  };
 
-  // 地圖載入完成
-  const onLoad = useCallback((map: google.maps.Map) => {
-    setMap(map)
-  }, [])
+  // 處理地點選擇
+  const handlePlaceSelect = (place: Place) => {
+    setSelectedPlace(place);
+    setSelectedEntry(null);
+  };
 
-  // 地圖卸載
-  const onUnmount = useCallback(() => {
-    setMap(null)
-  }, [])
+  // 處理造訪紀錄選擇
+  const handleEntrySelect = (entry: Entry) => {
+    setSelectedEntry(entry);
+  };
 
-  // 點擊地圖新增標記
-  const onMapClick = useCallback((event: google.maps.MapMouseEvent) => {
-    if (event.latLng) {
-      const lat = event.latLng.lat()
-      const lng = event.latLng.lng()
-      
-      const newSpot: Spot = {
-        id: Date.now().toString(),
-        name: `地點 ${spots.length + 1}`,
-        lat,
-        lng,
-        description: `座標: ${lat.toFixed(6)}, ${lng.toFixed(6)}`
-      }
-      
-      setSpots(prev => [...prev, newSpot])
-    }
-  }, [spots.length])
-
-  // 點擊標記
-  const onMarkerClick = useCallback((spot: Spot) => {
-    setSelectedSpot(spot)
-  }, [])
-
-  // 關閉 InfoWindow
-  const onInfoWindowClose = useCallback(() => {
-    setSelectedSpot(null)
-  }, [])
-
-  // 從列表點擊地點
-  const onSpotSelect = useCallback((spot: Spot) => {
-    setSelectedSpot(spot)
-    if (map) {
-      map.panTo({ lat: spot.lat, lng: spot.lng })
-      map.setZoom(15)
-    }
-  }, [map])
-
-  // 刪除地點
-  const onSpotDelete = useCallback((spotId: string) => {
-    setSpots(prev => prev.filter(spot => spot.id !== spotId))
-    if (selectedSpot?.id === spotId) {
-      setSelectedSpot(null)
-    }
-  }, [selectedSpot])
-
-  if (loadError) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="text-red-500 mb-4">
-            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-          </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">地圖載入失敗</h2>
-          <p className="text-gray-600 mb-4">請檢查 Google Maps API Key 是否正確設定</p>
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 max-w-md">
-            <p className="text-sm text-yellow-800">
-              請確認 .env 檔案中的 VITE_GOOGLE_MAPS_JS_KEY 已設定正確的 API Key
-            </p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (!isLoaded) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">載入地圖中...</p>
-        </div>
-      </div>
-    )
-  }
+  // 處理地圖點擊
+  const handleMapClick = (lat: number, lng: number) => {
+    // 這裡可以開啟新增地點的表單
+    console.log('地圖點擊:', lat, lng);
+  };
 
   return (
-    <div className="flex h-screen">
-      {/* 地圖區域 */}
-      <div className="flex-1 relative">
-        <GoogleMap
-          mapContainerStyle={mapContainerStyle}
-          center={center}
-          zoom={12}
-          onLoad={onLoad}
-          onUnmount={onUnmount}
-          onClick={onMapClick}
-          options={options}
-        >
-          {/* 標記 */}
-          {spots.map((spot) => (
-            <Marker
-              key={spot.id}
-              position={{ lat: spot.lat, lng: spot.lng }}
-              onClick={() => onMarkerClick(spot)}
-            />
-          ))}
-
-          {/* InfoWindow */}
-          {selectedSpot && (
-            <InfoWindow
-              position={{ lat: selectedSpot.lat, lng: selectedSpot.lng }}
-              onCloseClick={onInfoWindowClose}
-            >
-              <div className="p-2">
-                <h3 className="font-semibold text-gray-900">{selectedSpot.name}</h3>
-                <p className="text-sm text-gray-600">{selectedSpot.description}</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* 頂部導航 */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-gray-800">TravelSpot Journal</h1>
+            <div className="flex items-center space-x-4">
+              <div className="flex bg-gray-100 rounded-lg p-1">
                 <button
-                  onClick={() => onSpotDelete(selectedSpot.id)}
-                  className="mt-2 px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600"
+                  onClick={() => setActiveTab('folders')}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    activeTab === 'folders'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
                 >
-                  刪除
+                  📁 資料夾
+                </button>
+                <button
+                  onClick={() => setActiveTab('places')}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    activeTab === 'places'
+                      ? 'bg-white text-green-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  📍 地點
+                </button>
+                <button
+                  onClick={() => setActiveTab('entries')}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    activeTab === 'entries'
+                      ? 'bg-white text-purple-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  ⭐ 造訪紀錄
                 </button>
               </div>
-            </InfoWindow>
-          )}
-        </GoogleMap>
-
-        {/* 地圖說明 */}
-        <div className="absolute top-4 left-4 bg-white p-3 rounded-lg shadow-lg">
-          <p className="text-sm text-gray-600">
-            點擊地圖新增標記
-          </p>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* 地點列表 */}
-      <div className="w-80 bg-white border-l border-gray-200 overflow-y-auto">
-        <SpotList 
-          spots={spots}
-          selectedSpot={selectedSpot}
-          onSpotSelect={onSpotSelect}
-          onSpotDelete={onSpotDelete}
-        />
+      <div className="flex h-[calc(100vh-80px)]">
+        {/* 左側面板 - 管理功能 */}
+        <div className="w-1/3 bg-white border-r border-gray-200 overflow-y-auto">
+          <div className="p-4">
+            {activeTab === 'folders' && (
+              <FolderManager 
+                onFolderSelect={handleFolderSelect}
+                selectedFolderId={selectedFolder?.id}
+              />
+            )}
+            
+            {activeTab === 'places' && (
+              <PlaceManager 
+                selectedFolderId={selectedFolder?.id}
+                onPlaceSelect={handlePlaceSelect}
+              />
+            )}
+            
+            {activeTab === 'entries' && (
+              <EntryManager 
+                selectedPlaceId={selectedPlace?.id}
+                onEntrySelect={handleEntrySelect}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* 右側面板 - 地圖和詳細資訊 */}
+        <div className="flex-1 flex flex-col">
+          {/* 地圖區域 */}
+          <div className="flex-1 p-4">
+            <MapView
+              selectedFolderId={selectedFolder?.id}
+              onPlaceClick={handlePlaceSelect}
+              onMapClick={handleMapClick}
+              selectedPlace={selectedPlace}
+            />
+          </div>
+
+          {/* 詳細資訊面板 */}
+          {(selectedFolder || selectedPlace || selectedEntry) && (
+            <div className="h-64 bg-white border-t border-gray-200 overflow-y-auto">
+              <div className="p-4">
+                {selectedFolder && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                      {selectedFolder.icon} {selectedFolder.name}
+                    </h3>
+                    {selectedFolder.description && (
+                      <p className="text-gray-600 mb-2">{selectedFolder.description}</p>
+                    )}
+                    <div className="text-sm text-gray-500">
+                      <p>建立時間: {new Date(selectedFolder.createdAt).toLocaleDateString()}</p>
+                      {selectedFolder._count && (
+                        <p>包含 {selectedFolder._count.places} 個地點</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {selectedPlace && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                      {selectedPlace.emoji} {selectedPlace.name}
+                    </h3>
+                    {selectedPlace.address && (
+                      <p className="text-gray-600 mb-2">{selectedPlace.address}</p>
+                    )}
+                    {selectedPlace.description && (
+                      <p className="text-gray-600 mb-2">{selectedPlace.description}</p>
+                    )}
+                    <div className="text-sm text-gray-500">
+                      <p>座標: {selectedPlace.lat.toFixed(6)}, {selectedPlace.lng.toFixed(6)}</p>
+                      {selectedPlace.folder && (
+                        <p>資料夾: {selectedPlace.folder.name}</p>
+                      )}
+                      {selectedPlace._count && (
+                        <p>造訪次數: {selectedPlace._count.entries}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {selectedEntry && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                      {selectedEntry.emoji} 造訪紀錄
+                    </h3>
+                    {selectedEntry.rating && (
+                      <p className="text-yellow-500 mb-2">
+                        {'⭐'.repeat(selectedEntry.rating)}
+                      </p>
+                    )}
+                    {selectedEntry.note && (
+                      <p className="text-gray-600 mb-2">{selectedEntry.note}</p>
+                    )}
+                    <div className="text-sm text-gray-500">
+                      <p>造訪日期: {selectedEntry.visitedAt ? new Date(selectedEntry.visitedAt).toLocaleDateString() : '未設定'}</p>
+                      {selectedEntry.weather && (
+                        <p>天氣: {selectedEntry.weather}</p>
+                      )}
+                      {selectedEntry.photoUrl && (
+                        <p>照片: <a href={selectedEntry.photoUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">查看照片</a></p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
-  )
+  );
 }
 
-export default MapPage
+export default MapPage;
