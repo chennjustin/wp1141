@@ -93,7 +93,7 @@ const MapContainer: React.FC<MapContainerProps> = ({
       const service = new google.maps.places.PlacesService(map);
       const request = {
         location: { lat, lng },
-        radius: 50,
+        radius: 100,
         type: 'establishment'
       };
 
@@ -161,21 +161,21 @@ const MapContainer: React.FC<MapContainerProps> = ({
   const createMarkerIcon = (emoji: string, color: string = '#3B82F6') => {
     return {
       url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-        <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="20" cy="20" r="18" fill="${color}" stroke="white" stroke-width="2"/>
-          <text x="20" y="26" text-anchor="middle" fill="white" font-size="16" font-family="Arial">
+        <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="16" cy="16" r="14" fill="${color}" stroke="white" stroke-width="2"/>
+          <text x="16" y="20" text-anchor="middle" fill="white" font-size="12" font-family="Arial">
             ${emoji}
           </text>
         </svg>
       `)}`,
-      scaledSize: new google.maps.Size(40, 40),
-      anchor: new google.maps.Point(20, 20)
+      scaledSize: new google.maps.Size(32, 32),
+      anchor: new google.maps.Point(16, 16)
     };
   };
 
   if (!isLoaded) {
     return (
-      <div className="flex items-center justify-center h-full bg-gray-100 rounded-lg">
+      <div className="flex items-center justify-center h-full bg-gray-100">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">載入地圖中...</p>
@@ -186,7 +186,7 @@ const MapContainer: React.FC<MapContainerProps> = ({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full bg-gray-100 rounded-lg">
+      <div className="flex items-center justify-center h-full bg-gray-100">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-2 text-gray-600">載入地點中...</p>
@@ -241,23 +241,22 @@ const MapContainer: React.FC<MapContainerProps> = ({
             position={{ lat: selectedMarker.lat, lng: selectedMarker.lng }}
             onCloseClick={handleInfoWindowClose}
           >
-            <div className="p-3 max-w-xs">
+            <div className="p-2 max-w-xs">
               <div className="flex items-center mb-2">
-                <span className="text-2xl mr-2">{selectedMarker.emoji}</span>
+                <span className="text-xl mr-2">{selectedMarker.emoji}</span>
                 <div>
-                  <h4 className="font-semibold text-gray-800">{selectedMarker.name}</h4>
+                  <h4 className="font-semibold text-gray-800 text-sm">{selectedMarker.name}</h4>
                   {selectedMarker.address && (
-                    <p className="text-sm text-gray-600">{selectedMarker.address}</p>
+                    <p className="text-xs text-gray-600">{selectedMarker.address}</p>
                   )}
                 </div>
               </div>
               
               {selectedMarker.description && (
-                <p className="text-sm text-gray-700 mb-2">{selectedMarker.description}</p>
+                <p className="text-xs text-gray-700 mb-2">{selectedMarker.description}</p>
               )}
               
               <div className="text-xs text-gray-500">
-                <p>座標: {selectedMarker.lat.toFixed(6)}, {selectedMarker.lng.toFixed(6)}</p>
                 {selectedMarker.folder && (
                   <p className="text-blue-600">📁 {selectedMarker.folder.name}</p>
                 )}
@@ -267,7 +266,7 @@ const MapContainer: React.FC<MapContainerProps> = ({
         )}
       </GoogleMap>
 
-      {/* 地圖控制按鈕 */}
+      {/* 地圖控制按鈕 - 重新定位避免重疊 */}
       <div className="absolute top-4 right-4 flex flex-col space-y-2">
         <button
           onClick={() => {
@@ -281,7 +280,7 @@ const MapContainer: React.FC<MapContainerProps> = ({
               }
             }
           }}
-          className="px-3 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow text-sm font-medium text-gray-700"
+          className="px-3 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow text-xs font-medium text-gray-700"
           disabled={filteredPlaces.length === 0}
         >
           📍 顯示所有地點
@@ -294,15 +293,15 @@ const MapContainer: React.FC<MapContainerProps> = ({
               map.setZoom(10);
             }
           }}
-          className="px-3 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow text-sm font-medium text-gray-700"
+          className="px-3 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow text-xs font-medium text-gray-700"
         >
           🏠 重置視圖
         </button>
       </div>
 
-      {/* 地點統計 */}
+      {/* 地點統計 - 重新定位 */}
       <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg shadow-md px-3 py-2">
-        <p className="text-sm text-gray-600">
+        <p className="text-xs text-gray-600">
           顯示 {filteredPlaces.length} 個地點
         </p>
       </div>

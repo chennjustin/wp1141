@@ -11,6 +11,7 @@ import folderRoutes from './routes/folders';
 import placeRoutes from './routes/places';
 import entryRoutes from './routes/entries';
 import mapRoutes from './routes/maps';
+import searchRoutes from './routes/search';
 
 const app = express();
 
@@ -43,6 +44,7 @@ app.use('/folders', folderRoutes);
 app.use('/places', placeRoutes);
 app.use('/entries', entryRoutes);
 app.use('/maps', mapRoutes);
+app.use('/search', searchRoutes);
 
 // 404 處理
 app.use('*', (req, res) => {

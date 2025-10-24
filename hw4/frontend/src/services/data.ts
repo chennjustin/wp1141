@@ -167,6 +167,47 @@ export const mapsApi = {
   },
 };
 
+// Search API
+export const searchApi = {
+  // 文字搜尋
+  textSearch: async (
+    query: string,
+    location?: { lat: number; lng: number },
+    radius?: number,
+    type?: string
+  ): Promise<ApiResponse<PlacesSearchResult[]>> => {
+    const response = await api.post('/search/text-search', {
+      query,
+      location,
+      radius,
+      type
+    });
+    return response.data;
+  },
+
+  // 附近搜尋
+  nearbySearch: async (
+    location: { lat: number; lng: number },
+    radius?: number,
+    type?: string,
+    keyword?: string
+  ): Promise<ApiResponse<PlacesSearchResult[]>> => {
+    const response = await api.post('/search/nearby-search', {
+      location,
+      radius,
+      type,
+      keyword
+    });
+    return response.data;
+  },
+
+  // 取得地點詳細資訊
+  getPlaceDetails: async (placeId: string): Promise<ApiResponse<any>> => {
+    const response = await api.post('/search/place-details', { placeId });
+    return response.data;
+  },
+};
+
 // 為了向後相容，保留舊的 API 名稱
 export const collectionsApi = foldersApi;
 export { foldersApi as default };

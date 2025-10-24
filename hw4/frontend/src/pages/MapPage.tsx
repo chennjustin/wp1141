@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Folder, Place } from '../types';
+import type { Folder, Place, PlacesSearchResult } from '../types';
 import MapHeader from '../components/MapHeader';
 import MapContainer from '../components/MapContainer';
 import PlaceModal from '../components/PlaceModal';
@@ -42,7 +42,6 @@ function MapPage() {
   // 處理地點建立完成
   const handlePlaceCreated = (place: Place) => {
     setSelectedPlace(place);
-    // 這裡可以觸發地圖更新
     console.log('新地點已建立:', place);
   };
 
@@ -66,17 +65,35 @@ function MapPage() {
     setMapClickData(null);
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* 頂部導航 */}
-      <MapHeader
-        selectedFolders={selectedFolders}
-        onFoldersChange={handleFoldersChange}
-        onShowFolders={() => setShowFolderSidebar(true)}
-      />
+  // 處理搜尋結果
+  const handlePlaceSearch = (place: PlacesSearchResult) => {
+    // 將搜尋結果轉換為地圖點擊數據
+    setMapClickData({
+      lat: place.geometry.location.lat,
+      lng: place.geometry.location.lng,
+      name: place.name,
+      address: place.vicinity,
+      placeId: place.place_id,
+      rating: place.rating,
+      types: place.types
+    });
+    setShowPlaceModal(true);
+  };
 
-      {/* 主地圖區域 */}
-      <div className="h-[calc(100vh-80px)]">
+  return (
+    <div className="h-screen flex flex-col bg-gray-50">
+      {/* 頂部導航 - 固定高度 */}
+      <div className="flex-shrink-0">
+        <MapHeader
+          selectedFolders={selectedFolders}
+          onFoldersChange={handleFoldersChange}
+          onShowFolders={() => setShowFolderSidebar(true)}
+          onPlaceSearch={handlePlaceSearch}
+        />
+      </div>
+
+      {/* 主地圖區域 - 佔滿剩餘空間 */}
+      <div className="flex-1 relative">
         <MapContainer
           selectedFolders={selectedFolders}
           onPlaceClick={handlePlaceClick}
@@ -101,41 +118,44 @@ function MapPage() {
         onFolderSelect={handleFolderSelect}
       />
 
-      {/* 地點詳細資訊面板 */}
+      {/* 地點詳細資訊面板 - 只在有選中地點時顯示 */}
       {selectedPlace && (
-        <div className="fixed bottom-4 left-4 right-4 bg-white/95 backdrop-blur-md rounded-lg shadow-lg border border-gray-200 p-4 max-w-md mx-auto">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center mb-2">
-                <span className="text-2xl mr-2">{selectedPlace.emoji}</span>
-                <div>
-                  <h3 className="font-semibold text-gray-800">{selectedPlace.name}</h3>
-                  {selectedPlace.address && (
-                    <p className="text-sm text-gray-600">{selectedPlace.address}</p>
+        <div className="absolute bottom-4 left-4 right-4 max-w-md mx-auto">
+          <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-lg border border-gray-200 p-4">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center mb-2">
+                  <span className="text-2xl mr-3">{selectedPlace.emoji}</span>
+                  <div>
+                    <h3 className="font-semibold text-gray-800">{selectedPlace.name}</h3>
+                    {selectedPlace.address && (
+                      <p className="text-sm text-gray-600">{selectedPlace.address}</p>
+                    )}
+                  </div>
+                </div>
+                
+                {selectedPlace.description && (
+                  <p className="text-sm text-gray-700 mb-2">{selectedPlace.description}</p>
+                )}
+                
+                <div className="text-xs text-gray-500">
+                  {selectedPlace.folder && (
+                    <span className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 rounded-full mr-2">
+                      {selectedPlace.folder.icon} {selectedPlace.folder.name}
+                    </span>
                   )}
                 </div>
               </div>
               
-              {selectedPlace.description && (
-                <p className="text-sm text-gray-700 mb-2">{selectedPlace.description}</p>
-              )}
-              
-              <div className="text-xs text-gray-500">
-                <p>座標: {selectedPlace.lat.toFixed(6)}, {selectedPlace.lng.toFixed(6)}</p>
-                {selectedPlace.folder && (
-                  <p className="text-blue-600">📁 {selectedPlace.folder.name}</p>
-                )}
-              </div>
+              <button
+                onClick={() => setSelectedPlace(null)}
+                className="ml-4 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
-            
-            <button
-              onClick={() => setSelectedPlace(null)}
-              className="ml-4 text-gray-400 hover:text-gray-600"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
           </div>
         </div>
       )}

@@ -23,7 +23,7 @@ router.post('/geocode', async (req, res): Promise<void> => {
       return;
     }
 
-    const apiKey = process.env['GOOGLE_MAPS_API_KEY'];
+    const apiKey = process.env['GOOGLE_MAPS_SERVER_KEY'];
     if (!apiKey) {
       res.status(500).json({
         error: 'Internal Server Error',
@@ -39,17 +39,19 @@ router.post('/geocode', async (req, res): Promise<void> => {
       }
     });
 
-    const results = response.data.results.map(result => ({
-      formatted_address: result.formatted_address,
-      geometry: {
-        location: {
-          lat: result.geometry.location.lat,
-          lng: result.geometry.location.lng
-        }
-      },
-      place_id: result.place_id,
-      types: result.types
-    }));
+    const results = response.data.results
+      .filter(result => result.geometry && result.geometry.location)
+      .map(result => ({
+        formatted_address: result.formatted_address,
+        geometry: {
+          location: {
+            lat: result.geometry.location.lat,
+            lng: result.geometry.location.lng
+          }
+        },
+        place_id: result.place_id,
+        types: result.types
+      }));
 
     res.json({
       message: '地理編碼成功',
@@ -77,7 +79,7 @@ router.post('/reverse-geocode', async (req, res): Promise<void> => {
       return;
     }
 
-    const apiKey = process.env['GOOGLE_MAPS_API_KEY'];
+    const apiKey = process.env['GOOGLE_MAPS_SERVER_KEY'];
     if (!apiKey) {
       res.status(500).json({
         error: 'Internal Server Error',
@@ -125,7 +127,7 @@ router.post('/nearby-search', async (req, res): Promise<void> => {
       return;
     }
 
-    const apiKey = process.env['GOOGLE_MAPS_API_KEY'];
+    const apiKey = process.env['GOOGLE_MAPS_SERVER_KEY'];
     if (!apiKey) {
       res.status(500).json({
         error: 'Internal Server Error',
@@ -178,7 +180,7 @@ router.post('/directions', async (req, res): Promise<void> => {
       return;
     }
 
-    const apiKey = process.env['GOOGLE_MAPS_API_KEY'];
+    const apiKey = process.env['GOOGLE_MAPS_SERVER_KEY'];
     if (!apiKey) {
       res.status(500).json({
         error: 'Internal Server Error',
