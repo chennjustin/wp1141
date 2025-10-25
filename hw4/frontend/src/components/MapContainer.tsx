@@ -2,9 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
 import type { Place, Folder } from '../types';
 import { placesApi, foldersApi } from '../services/data';
-import PlaceInfoCard from './PlaceInfoCard';
 import AddToCollectionModal from './AddToCollectionModal';
-import SavedPlaceDetailCard from './SavedPlaceDetailCard';
 
 const mapContainerStyle = {
   width: '100%',
@@ -49,14 +47,9 @@ const MapContainer: React.FC<MapContainerProps> = ({
   const [lastSearchLocation, setLastSearchLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [lastSearchTime, setLastSearchTime] = useState<number>(0);
   
-  // 地點資訊卡相關狀態
-  const [showPlaceInfoCard, setShowPlaceInfoCard] = useState(false);
-  const [selectedPlaceInfo, setSelectedPlaceInfo] = useState<any>(null);
   const [showAddToCollection, setShowAddToCollection] = useState(false);
+  const [selectedPlaceInfo, setSelectedPlaceInfo] = useState<any>(null);
   
-  // 收藏地點詳細資訊卡狀態
-  const [showSavedPlaceDetail, setShowSavedPlaceDetail] = useState(false);
-  const [selectedSavedPlace, setSelectedSavedPlace] = useState<Place | null>(null);
   
 
   // 靜態 libraries 配置，避免重新載入警告
@@ -101,10 +94,11 @@ const MapContainer: React.FC<MapContainerProps> = ({
     loadFolders();
   }, []);
 
-  // 監聽 refreshTrigger 變化，重新載入地點
+  // 監聽 refreshTrigger 變化，重新載入地點和資料夾
   useEffect(() => {
     if (refreshTrigger !== undefined) {
       loadPlaces();
+      loadFolders();
     }
   }, [refreshTrigger]);
 
@@ -199,17 +193,7 @@ const MapContainer: React.FC<MapContainerProps> = ({
   }, []);
 
 
-  // 處理地點點擊
-  const handlePlaceClick = useCallback((place: any) => {
-    setSelectedPlaceInfo(place);
-    setShowPlaceInfoCard(true);
-  }, []);
 
-  // 處理加入收藏
-  const handleAddToCollection = useCallback(() => {
-    setShowPlaceInfoCard(false);
-    setShowAddToCollection(true);
-  }, []);
 
   // 處理收藏儲存
   const handleSaveCollection = useCallback(async (collectionData: any) => {
@@ -242,34 +226,7 @@ const MapContainer: React.FC<MapContainerProps> = ({
     }
   }, []);
 
-  // 處理收藏地點點擊
-  const handleSavedPlaceClick = useCallback((place: Place) => {
-    setSelectedSavedPlace(place);
-    setShowSavedPlaceDetail(true);
-  }, []);
 
-  // 處理收藏地點更新
-  const handleSavedPlaceUpdated = useCallback((updatedPlace: Place) => {
-    setPlaces(prev => prev.map(p => p.id === updatedPlace.id ? updatedPlace : p));
-    setSelectedSavedPlace(updatedPlace);
-  }, []);
-
-  // 處理收藏地點刪除
-  const handleSavedPlaceDeleted = useCallback((placeId: number) => {
-    setPlaces(prev => prev.filter(p => p.id !== placeId));
-    setShowSavedPlaceDetail(false);
-    setSelectedSavedPlace(null);
-  }, []);
-
-  // 處理導航
-  const handleNavigate = useCallback((lat: number, lng: number) => {
-    if (map) {
-      map.setCenter({ lat, lng });
-      map.setZoom(16);
-    }
-    setShowSavedPlaceDetail(false);
-    setSelectedSavedPlace(null);
-  }, [map]);
 
 
 
@@ -408,7 +365,7 @@ const MapContainer: React.FC<MapContainerProps> = ({
           clickableIcons: false,
           mapTypeControl: true,
           streetViewControl: true,
-          fullscreenControl: true,
+          fullscreenControl: false,
           zoomControl: true,
           styles: [
             {
@@ -429,7 +386,6 @@ const MapContainer: React.FC<MapContainerProps> = ({
               key={place.id}
               position={{ lat: place.lat, lng: place.lng }}
               onClick={() => {
-                handleSavedPlaceClick(place);
                 onPlaceClick?.(place);
               }}
               icon={createMarkerIcon(place.emoji || '📍', iconColor)}
@@ -460,8 +416,8 @@ const MapContainer: React.FC<MapContainerProps> = ({
               lng: place.geometry.location.lng
             }}
             onClick={() => {
-              // 點擊附近地點時，顯示地點資訊卡
-              handlePlaceClick({
+              // 點擊附近地點時，顯示加入收藏 Modal
+              setSelectedPlaceInfo({
                 name: place.name,
                 address: place.vicinity,
                 rating: place.rating,
@@ -471,6 +427,7 @@ const MapContainer: React.FC<MapContainerProps> = ({
                 place_id: place.place_id,
                 geometry: place.geometry
               });
+              setShowAddToCollection(true);
             }}
             icon={createMarkerIcon('📍', '#9CA3AF')}
             opacity={0.6}
@@ -518,52 +475,6 @@ const MapContainer: React.FC<MapContainerProps> = ({
           </div>
         )}
 
-      {/* 地圖控制按鈕 - 重新定位避免重疊 */}
-      <div className="absolute top-4 right-4 flex flex-col space-y-2">
-        <button
-          onClick={() => {
-            if (map) {
-              const bounds = new google.maps.LatLngBounds();
-              filteredPlaces.forEach(place => {
-                bounds.extend(new google.maps.LatLng(place.lat, place.lng));
-              });
-              if (!bounds.isEmpty()) {
-                map.fitBounds(bounds);
-              }
-            }
-          }}
-          className="px-3 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow text-xs font-medium text-gray-700 disabled:opacity-50"
-          disabled={filteredPlaces.length === 0}
-        >
-          📍 我的收藏 ({filteredPlaces.length})
-        </button>
-
-        {nearbyPlaces.length > 0 && (
-          <div className="px-3 py-2 bg-white rounded-lg shadow-md text-xs font-medium text-gray-500">
-            🔍 附近 {nearbyPlaces.length} 個地點
-          </div>
-        )}
-        
-        {/* API 配額狀態提示 */}
-        {lastSearchTime > 0 && (
-          <div className="px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-xs text-yellow-700">
-            ⏰ 下次搜尋需等待 {Math.max(0, 10 - Math.floor((Date.now() - lastSearchTime) / 1000))} 秒
-          </div>
-        )}
-        
-        <button
-          onClick={() => {
-            if (map) {
-              map.setCenter(defaultCenter);
-              map.setZoom(10);
-            }
-          }}
-          className="px-3 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow text-xs font-medium text-gray-700"
-        >
-          🏠 重置視圖
-        </button>
-      </div>
-
       {/* 地點統計 - 重新定位 */}
       <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg shadow-md px-3 py-2">
         <p className="text-xs text-gray-600">
@@ -571,19 +482,6 @@ const MapContainer: React.FC<MapContainerProps> = ({
         </p>
       </div>
 
-      {/* 地點資訊卡 */}
-      {showPlaceInfoCard && selectedPlaceInfo && (
-        <div className="absolute top-4 left-4 z-40">
-          <PlaceInfoCard
-            place={selectedPlaceInfo}
-            onAddToCollection={handleAddToCollection}
-            onClose={() => {
-              setShowPlaceInfoCard(false);
-              setSelectedPlaceInfo(null);
-            }}
-          />
-        </div>
-      )}
 
       {/* 加入收藏 Modal */}
       {showAddToCollection && selectedPlaceInfo && (
@@ -608,22 +506,6 @@ const MapContainer: React.FC<MapContainerProps> = ({
         />
       )}
 
-      {/* 收藏地點詳細資訊卡 */}
-      {showSavedPlaceDetail && selectedSavedPlace && (
-        <div className="absolute top-4 left-4 z-40">
-          <SavedPlaceDetailCard
-            place={selectedSavedPlace}
-            folders={folders}
-            onClose={() => {
-              setShowSavedPlaceDetail(false);
-              setSelectedSavedPlace(null);
-            }}
-            onPlaceUpdated={handleSavedPlaceUpdated}
-            onPlaceDeleted={handleSavedPlaceDeleted}
-            onNavigate={handleNavigate}
-          />
-        </div>
-      )}
     </div>
   );
 };

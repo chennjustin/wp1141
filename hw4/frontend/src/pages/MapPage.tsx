@@ -1,10 +1,10 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { Folder, Place, PlacesSearchResult } from '../types';
 import MapContainer from '../components/MapContainer';
-import FilterDropdown from '../components/FilterDropdown';
+import PlaceInfoCard from '../components/PlaceInfoCard';
+import FilterMenu from '../components/FilterMenu';
+import FolderDrawer from '../components/FolderDrawer';
 import PlaceModal from '../components/PlaceModal';
-import FolderSidebar from '../components/FolderSidebar';
-import FilterPanel from '../components/FilterPanel';
 import SearchBar from '../components/SearchBar';
 import { usePlaces } from '../hooks/usePlaces';
 import { useSearch } from '../hooks/useSearch';
@@ -13,14 +13,14 @@ import { useAuth } from '../contexts/AuthContext';
 function MapPage() {
   // 狀態管理
   const [selectedFolders, setSelectedFolders] = useState<number[]>([]);
-  const [showFolderSidebar, setShowFolderSidebar] = useState(false);
-  const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [showFolderDrawer, setShowFolderDrawer] = useState(false);
   const [showPlaceModal, setShowPlaceModal] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [editingPlace, setEditingPlace] = useState<Place | null>(null);
-  const [selectedFolder, setSelectedFolder] = useState<Folder | null>(null);
+  const [selectedFolder] = useState<Folder | null>(null);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [filterMode, setFilterMode] = useState<'all' | 'folders' | 'types'>('all');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [mapClickData, setMapClickData] = useState<{
     lat: number;
     lng: number;
@@ -33,7 +33,7 @@ function MapPage() {
 
   // 使用自定義 hooks
   const { user, logout } = useAuth();
-  const { folders, createPlace, updatePlace, deletePlace, loadData } = usePlaces();
+  const { places, folders, createPlace, updatePlace, deletePlace, createFolder, deleteFolder, loadData } = usePlaces();
   const { results: searchResults, search } = useSearch();
 
   // 初始化：登入後自動載入使用者資料
@@ -43,7 +43,6 @@ function MapPage() {
       loadData();
     }
   }, [user, loadData]);
-
 
   // 處理地圖點擊
   const handleMapClick = useCallback((lat: number, lng: number, placeInfo?: any) => {
@@ -59,69 +58,26 @@ function MapPage() {
     setShowPlaceModal(true);
   }, []);
 
-  // 處理地點選擇
+  // 處理地點點擊
   const handlePlaceClick = useCallback((place: Place) => {
     setSelectedPlace(place);
   }, []);
 
-  // 處理地點建立完成
-  const handlePlaceCreated = useCallback(async (placeData: any) => {
+  // 處理地點儲存
+  const handlePlaceSave = useCallback(async (place: Place, updatedData: any) => {
     try {
-      const newPlace = await createPlace(placeData);
-      setSelectedPlace(newPlace!);
-      setShowPlaceModal(false);
-      setMapClickData(null);
-    } catch (error) {
-      console.error('創建地點失敗:', error);
-      alert('創建地點失敗');
-    }
-  }, [createPlace]);
-
-  // 處理地點更新
-  const handlePlaceUpdated = useCallback(async (placeData: any) => {
-    if (!editingPlace) return;
-    
-    try {
-      await updatePlace(editingPlace.id, placeData);
-      setSelectedPlace(null);
-      setEditingPlace(null);
-      setShowPlaceModal(false);
+      await updatePlace(place.id, updatedData);
+      setSelectedPlace({ ...place, ...updatedData });
+      // 觸發重新載入
+      setRefreshTrigger(prev => prev + 1);
+      await loadData();
     } catch (error) {
       console.error('更新地點失敗:', error);
-      alert('更新地點失敗');
     }
-  }, [editingPlace, updatePlace]);
+  }, [updatePlace, loadData]);
 
-  // 處理地點刪除
-  const handlePlaceDeleted = useCallback(async (place: Place) => {
-    if (window.confirm(`確定要刪除地點「${place.name}」嗎？`)) {
-      try {
-        await deletePlace(place.id);
-        setSelectedPlace(null);
-        alert('地點刪除成功');
-      } catch (error) {
-        console.error('刪除地點失敗:', error);
-        alert('刪除地點失敗');
-      }
-    }
-  }, [deletePlace]);
-
-  // 處理搜尋結果選擇
-  const handlePlaceSearch = useCallback((place: PlacesSearchResult) => {
-    setMapClickData({
-      lat: place.geometry.location.lat,
-      lng: place.geometry.location.lng,
-      name: place.name,
-      address: place.vicinity,
-      placeId: place.place_id,
-      rating: place.rating,
-      types: place.types
-    });
-    setShowPlaceModal(true);
-  }, []);
-
-  // 處理搜尋提交
-  const handleSearchSubmit = useCallback(async (query: string) => {
+  // 處理搜尋
+  const handleSearch = useCallback(async (query: string) => {
     try {
       await search(query);
     } catch (error) {
@@ -129,13 +85,86 @@ function MapPage() {
     }
   }, [search]);
 
+  // 處理搜尋結果選擇（點擊搜尋結果標記）
+  const handlePlaceSearch = useCallback((result: PlacesSearchResult) => {
+    console.log('選擇搜尋結果:', result);
+    // 將搜尋結果轉換為地點點擊資料，打開 PlaceModal
+    if (result.geometry && result.geometry.location) {
+      setMapClickData({
+        lat: result.geometry.location.lat,
+        lng: result.geometry.location.lng,
+        name: result.name,
+        address: result.vicinity || '',
+        placeId: result.place_id,
+        rating: result.rating,
+        types: result.types
+      });
+      setShowPlaceModal(true);
+    }
+  }, []);
+
+  // 處理搜尋提交
+  const handleSearchSubmit = useCallback((query: string) => {
+    handleSearch(query);
+  }, [handleSearch]);
+
+  // 處理地點創建
+  const handlePlaceCreated = useCallback(async (placeData: any) => {
+    try {
+      const newPlace = await createPlace(placeData);
+      setSelectedPlace(newPlace!);
+      setShowPlaceModal(false);
+      setMapClickData(null);
+      // 觸發 MapContainer 重新載入
+      setRefreshTrigger(prev => prev + 1);
+      // 同時重新載入 MapPage 的資料夾列表
+      await loadData();
+    } catch (error) {
+      console.error('創建地點失敗:', error);
+    }
+  }, [createPlace, loadData]);
+
+  // 處理地點更新
+  const handlePlaceUpdated = useCallback(async (place: any) => {
+    try {
+      if (editingPlace) {
+        await updatePlace(editingPlace.id, place);
+      }
+      setShowPlaceModal(false);
+      setEditingPlace(null);
+      // 觸發 MapContainer 重新載入
+      setRefreshTrigger(prev => prev + 1);
+      // 同時重新載入 MapPage 的資料夾列表
+      await loadData();
+    } catch (error) {
+      console.error('更新地點失敗:', error);
+    }
+  }, [updatePlace, editingPlace, loadData]);
+
+  // 處理地點刪除
+  const handlePlaceDeleted = useCallback(async (place: Place) => {
+    if (!confirm(`確定要刪除「${place.name}」嗎？`)) {
+      return;
+    }
+    try {
+      await deletePlace(place.id);
+      setSelectedPlace(null);
+      // 觸發 MapContainer 重新載入
+      setRefreshTrigger(prev => prev + 1);
+      // 同時重新載入 MapPage 的資料夾列表
+      await loadData();
+    } catch (error) {
+      console.error('刪除地點失敗:', error);
+    }
+  }, [deletePlace, loadData]);
+
   // 處理編輯地點
   const handleEditPlace = useCallback((place: Place) => {
     setEditingPlace(place);
     setShowPlaceModal(true);
   }, []);
 
-  // 關閉彈窗
+  // 處理關閉 Modal
   const handleCloseModal = useCallback(() => {
     setShowPlaceModal(false);
     setMapClickData(null);
@@ -144,7 +173,6 @@ function MapPage() {
 
   // 處理資料夾選擇
   const handleFolderSelect = useCallback((folder: Folder | null) => {
-    setSelectedFolder(folder);
     if (folder) {
       setSelectedFolders([folder.id]);
     } else {
@@ -152,11 +180,6 @@ function MapPage() {
     }
   }, []);
 
-  // 處理資料夾更新
-  const handleFolderUpdate = useCallback(() => {
-    // 觸發重新載入資料
-    loadData();
-  }, [loadData]);
 
   // 處理篩選模式變更
   const handleFilterModeChange = useCallback((mode: 'all' | 'folders' | 'types') => {
@@ -183,103 +206,63 @@ function MapPage() {
   // 處理登出
   const handleLogout = useCallback(() => {
     try {
-      logout(); // 調用 AuthContext 的 logout 函數
+      logout();
       console.log('使用者已登出');
-      // 可以選擇重定向到登入頁面
-      // window.location.href = '/login';
     } catch (error) {
       console.error('登出失敗:', error);
     }
   }, [logout]);
 
-
-
     return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* 現代化頂部導航列 */}
-      <div className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          {/* 左側：Logo 和標題 */}
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-maroon to-maroon/80 rounded-xl flex items-center justify-center shadow-lg">
-                <span className="text-white text-lg">🗺️</span>
+    <div className="fixed inset-0 flex flex-col bg-cream overflow-hidden">
+      {/* 極簡頂部導覽列 */}
+      <header className="relative h-16 bg-white/80 backdrop-blur-smooth border-b border-mist/50 shadow-soft z-50">
+        <div className="h-full px-6 flex items-center justify-between">
+          {/* 左側 Logo */}
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 rounded-lg bg-slate-blue/10 flex items-center justify-center">
+              <span className="text-lg">🗺️</span>
+            </div>
+            <h1 className="text-lg font-light text-stone tracking-wide">TravelSpot Journal</h1>
           </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-800">TravelSpot Journal</h1>
-                <p className="text-sm text-gray-500">探索世界，記錄回憶</p>
+          
+          {/* 中央搜尋列 */}
+          <div className="flex-1 max-w-xl mx-8">
+            <div className="relative">
+              <SearchBar 
+                onPlaceSelect={handlePlaceSearch}
+                onSearch={handleSearchSubmit}
+              />
+            </div>
           </div>
-        </div>
-      </div>
           
-          {/* 中間：搜尋列 */}
-          <div className="flex-1 max-w-2xl mx-8">
-            <SearchBar 
-              onPlaceSelect={handlePlaceSearch}
-              onSearch={handleSearchSubmit}
-            />
-      </div>
-          
-          {/* 右側：控制按鈕和用戶資訊 */}
+          {/* 右側使用者區域 */}
           <div className="flex items-center space-x-4">
-            <FilterDropdown
-              folders={folders}
-              selectedFolders={selectedFolders}
-              selectedTypes={selectedTypes}
-              filterMode={filterMode}
-              onFilterModeChange={handleFilterModeChange}
-              onFolderSelect={setSelectedFolders}
-              onTypeFilter={handleTypeFilter}
-              onShowAllPlaces={handleShowAllPlaces}
-            />
-            
-            <button
-              onClick={() => setShowFilterPanel(!showFilterPanel)}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
-                showFilterPanel 
-                  ? 'bg-maroon text-white shadow-md' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              <span>📁</span>
-              <span className="font-medium">我的資料夾</span>
-            </button>
-            
-            <div className="flex items-center space-x-3 pl-4 border-l border-gray-200">
-              <div className="w-10 h-10 bg-gradient-to-br from-maroon/20 to-maroon/10 rounded-full flex items-center justify-center">
-                <span className="text-maroon font-bold text-lg">C</span>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-800">chccc_0824</p>
-                <button
+            <div className="group relative">
+              <button className="w-9 h-9 rounded-full bg-slate-blue/20 flex items-center justify-center hover:bg-slate-blue/30 transition-colors duration-300">
+                <span className="text-sm font-medium text-slate-blue">C</span>
+              </button>
+              {/* 使用者選單 */}
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white/90 backdrop-blur-smooth rounded-lg shadow-float opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300">
+                <div className="p-3 border-b border-mist">
+                  <p className="text-sm font-medium text-stone">chccc_0824</p>
+                </div>
+                <button 
                   onClick={handleLogout}
-                  className="text-xs text-gray-500 hover:text-maroon transition-colors cursor-pointer px-2 py-1 rounded hover:bg-maroon/10"
+                  className="w-full px-3 py-2 text-left text-sm text-warm-gray hover:text-stone hover:bg-mist/30 transition-colors"
                 >
                   登出
                 </button>
-              </div>
-            </div>
+          </div>
           </div>
         </div>
       </div>
+      </header>
 
-      {/* 主要內容區域 - 現代化佈局 */}
-      <div className="flex-1 flex relative bg-gray-50">
-        {/* 左側篩選面板 - 現代化設計 */}
-        {showFilterPanel && (
-          <div className="w-80 h-full bg-white shadow-2xl z-30 transform transition-transform duration-300 ease-in-out">
-            <FilterPanel 
-              folders={folders}
-              selectedFolders={selectedFolders}
-              onFolderSelect={setSelectedFolders}
-              onShowAllPlaces={handleShowAllPlaces}
-            />
-          </div>
-        )}
-        
-        {/* 地圖區域 - 現代化容器 */}
-        <div className="flex-1 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* 主要內容區域 */}
+      <main className="flex-1 relative">
+        {/* 地圖容器 */}
+        <div className="absolute inset-0">
           <MapContainer
             selectedFolders={selectedFolders}
             selectedTypes={selectedTypes}
@@ -289,83 +272,73 @@ function MapPage() {
             selectedPlace={selectedPlace}
             searchResults={searchResults}
             onSearchResultClick={handlePlaceSearch}
-        />
+            refreshTrigger={refreshTrigger}
+          />
       </div>
-    </div>
-        
-        {/* 右側地點資訊卡片 - 現代化設計 */}
+
+        {/* 右上角功能群 */}
+        <div className="absolute top-6 right-6 flex flex-col space-y-3 z-40">
+          <FilterMenu
+            folders={folders}
+            selectedFolders={selectedFolders}
+            selectedTypes={selectedTypes}
+            filterMode={filterMode}
+            onFilterModeChange={handleFilterModeChange}
+            onFolderSelect={setSelectedFolders}
+            onTypeFilter={handleTypeFilter}
+            onShowAllPlaces={handleShowAllPlaces}
+          />
+          
+                <button
+            onClick={() => setShowFolderDrawer(true)}
+            className="px-4 py-2.5 bg-white/90 backdrop-blur-sm text-stone rounded-xl shadow-soft hover:shadow-float transition-all duration-300"
+                >
+            <span className="text-sm font-medium">📁 資料夾</span>
+                </button>
+              </div>
+
+        {/* 地點資訊卡 - 左側固定 */}
         {selectedPlace && (
-          <div className="w-96 h-full bg-white shadow-2xl z-20 transform transition-transform duration-300 ease-in-out">
-            <div className="h-full flex flex-col">
-              {/* 標題區域 */}
-              <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-maroon to-maroon/90">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                    <span className="text-white text-xl">{selectedPlace.emoji || '📍'}</span>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-xl font-bold text-white">{selectedPlace.name}</h3>
-                    <p className="text-sm text-white/80">收藏地點詳情</p>
-                  </div>
-                </div>
-              </div>
-              
-              {/* 內容區域 */}
-              <div className="flex-1 p-6 space-y-4">
-                {selectedPlace.address && (
-                  <div className="flex items-start space-x-3">
-                    <span className="text-maroon text-lg">📍</span>
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">地址</p>
-                      <p className="text-sm text-gray-600">{selectedPlace.address}</p>
-                    </div>
-                  </div>
-                )}
-                
-                {selectedPlace.rating && (
-                  <div className="flex items-start space-x-3">
-                    <span className="text-maroon text-lg">⭐</span>
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">我的評分</p>
-                      <p className="text-sm text-gray-600">{selectedPlace.rating}/5 星</p>
-                    </div>
-                  </div>
-                )}
-                
-                {selectedPlace.description && (
-                  <div className="flex items-start space-x-3">
-                    <span className="text-maroon text-lg">📝</span>
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">心得備註</p>
-                      <p className="text-sm text-gray-600">{selectedPlace.description}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              {/* 操作按鈕區域 */}
-              <div className="p-6 border-t border-gray-200 bg-gray-50">
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => handleEditPlace(selectedPlace)}
-                    className="flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-maroon to-maroon/90 text-white rounded-xl hover:from-maroon/90 hover:to-maroon/80 transition-all duration-200 shadow-md hover:shadow-lg"
-                  >
-                    <span>✏️</span>
-                    <span className="font-medium">編輯</span>
-                  </button>
-                  <button
-                    onClick={() => handlePlaceDeleted(selectedPlace)}
-                    className="flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-md hover:shadow-lg"
-                  >
-                    <span>🗑️</span>
-                    <span className="font-medium">刪除</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <PlaceInfoCard
+            place={selectedPlace}
+            folders={folders}
+            onClose={() => setSelectedPlace(null)}
+            onEdit={handleEditPlace}
+            onDelete={handlePlaceDeleted}
+            onSave={handlePlaceSave}
+          />
         )}
-      </div>
+
+        {/* 資料夾抽屜 */}
+        <FolderDrawer
+          isOpen={showFolderDrawer}
+          onClose={() => setShowFolderDrawer(false)}
+          folders={folders}
+          places={places}
+          selectedFolder={selectedFolder}
+          onFolderSelect={handleFolderSelect}
+          onPlaceSelect={handlePlaceClick}
+           onCreateFolder={async (folderData: { name: string; icon: string; color: string }) => {
+             try {
+               await createFolder(folderData);
+               await loadData();
+               setRefreshTrigger(prev => prev + 1);
+             } catch (error) {
+               console.error('創建資料夾失敗:', error);
+             }
+           }}
+          onDeleteFolder={async (folder) => {
+            try {
+              await deleteFolder(folder.id);
+              await loadData();
+              setRefreshTrigger(prev => prev + 1);
+            } catch (error) {
+              console.error('刪除資料夾失敗:', error);
+            }
+          }}
+          onShowAllPlaces={handleShowAllPlaces}
+        />
+      </main>
 
       {/* 彈出式組件 */}
       <PlaceModal
@@ -373,19 +346,11 @@ function MapPage() {
         onClose={handleCloseModal}
         onPlaceCreated={handlePlaceCreated}
         onPlaceUpdated={handlePlaceUpdated}
-        initialData={mapClickData || undefined}
+        initialData={editingPlace || mapClickData || undefined}
         editingPlace={editingPlace}
       />
 
-      <FolderSidebar
-        isOpen={showFolderSidebar}
-        onClose={() => setShowFolderSidebar(false)}
-        folders={folders}
-        onFolderSelect={handleFolderSelect}
-        onFolderUpdate={handleFolderUpdate}
-        selectedFolder={selectedFolder}
-      />
-    </div>
+      </div>
   );
 }
 

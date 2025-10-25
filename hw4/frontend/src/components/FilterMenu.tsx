@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { Folder } from '../types';
 
-interface FilterDropdownProps {
+interface FilterMenuProps {
   folders: Folder[];
   selectedFolders: number[];
   selectedTypes: string[];
@@ -12,27 +12,28 @@ interface FilterDropdownProps {
   onShowAllPlaces: () => void;
 }
 
-const FilterDropdown: React.FC<FilterDropdownProps> = ({
+const FilterMenu: React.FC<FilterMenuProps> = ({
   folders,
   selectedFolders,
   selectedTypes,
   filterMode,
   onFilterModeChange,
   onFolderSelect,
-  onTypeFilter
+  onTypeFilter,
+  onShowAllPlaces
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   // 地點類型選項
   const placeTypeOptions = [
-    { value: 'food', label: '美食', icon: '🍴' },
-    { value: 'attraction', label: '景點', icon: '🏞️' },
-    { value: 'accommodation', label: '住宿', icon: '🏨' },
-    { value: 'shopping', label: '購物', icon: '🛍️' },
-    { value: 'hospital', label: '醫院', icon: '🏥' },
-    { value: 'school', label: '學校', icon: '🏫' },
-    { value: 'park', label: '公園', icon: '🌳' },
-    { value: 'other', label: '其他', icon: '📍' }
+    { value: 'food', label: '美食', icon: '🍴', color: 'bg-orange-50 text-orange-600' },
+    { value: 'attraction', label: '景點', icon: '🏞️', color: 'bg-green-50 text-green-600' },
+    { value: 'accommodation', label: '住宿', icon: '🏨', color: 'bg-blue-50 text-blue-600' },
+    { value: 'shopping', label: '購物', icon: '🛍️', color: 'bg-purple-50 text-purple-600' },
+    { value: 'hospital', label: '醫院', icon: '🏥', color: 'bg-red-50 text-red-600' },
+    { value: 'school', label: '學校', icon: '🏫', color: 'bg-yellow-50 text-yellow-600' },
+    { value: 'park', label: '公園', icon: '🌳', color: 'bg-emerald-50 text-emerald-600' },
+    { value: 'other', label: '其他', icon: '📍', color: 'bg-gray-50 text-gray-600' }
   ];
 
   const handleFolderToggle = (folderId: number) => {
@@ -54,13 +55,13 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
   const getFilterText = () => {
     switch (filterMode) {
       case 'all':
-        return '🌍 顯示所有';
+        return '🌍 顯示所有地點';
       case 'folders':
-        return `📁 資料夾 (${selectedFolders.length})`;
+        return `📁 依資料夾篩選 (${selectedFolders.length})`;
       case 'types':
-        return `🏷️ 類型 (${selectedTypes.length})`;
+        return `🏷️ 依類型篩選 (${selectedTypes.length})`;
       default:
-        return '🌍 顯示所有';
+        return '🌍 顯示所有地點';
     }
   };
 
@@ -69,9 +70,9 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
       {/* 觸發按鈕 */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="px-4 py-2.5 bg-white/90 backdrop-blur-smooth text-stone rounded-lg shadow-soft hover:shadow-float transition-all duration-300 flex items-center space-x-2"
+        className="px-4 py-2.5 bg-white/90 backdrop-blur-sm text-stone rounded-xl shadow-soft hover:shadow-float transition-all duration-300 flex items-center space-x-2"
       >
-        <span className="text-sm font-light">{getFilterText()}</span>
+        <span className="text-sm font-medium">{getFilterText()}</span>
         <span className={`text-xs transform transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>
           ▼
         </span>
@@ -87,27 +88,29 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
           />
           
           {/* 選單內容 */}
-          <div className="absolute top-full right-0 mt-2 w-80 bg-white/95 backdrop-blur-smooth rounded-lg shadow-float border border-mist z-50 transform transition-all duration-300">
-            <div className="p-4 space-y-4">
-              {/* 篩選模式 */}
+          <div className="absolute top-full right-0 mt-2 w-80 bg-white/95 backdrop-blur-sm rounded-xl shadow-float border border-mist/30 z-50 animate-fade-in">
+            <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto scrollbar-hide">
+              {/* 篩選模式選擇 */}
               <div>
                 <h4 className="text-xs font-medium text-warm-gray uppercase tracking-wider mb-3">篩選模式</h4>
                 <div className="space-y-2">
                   {[
                     { mode: 'all' as const, icon: '🌍', label: '顯示所有地點', desc: '查看所有收藏' },
-                    { mode: 'folders' as const, icon: '📁', label: '資料夾篩選', desc: '按資料夾分類' },
-                    { mode: 'types' as const, icon: '🏷️', label: '類型篩選', desc: '按地點類型' }
+                    { mode: 'folders' as const, icon: '📁', label: '依資料夾篩選', desc: '按資料夾分類' },
+                    { mode: 'types' as const, icon: '🏷️', label: '依類型篩選', desc: '按地點類型' }
                   ].map(({ mode, icon, label, desc }) => (
                     <button
                       key={mode}
                       onClick={() => {
                         onFilterModeChange(mode);
-                        if (mode === 'all') setIsOpen(false);
+                        if (mode === 'all') {
+                          setIsOpen(false);
+                        }
                       }}
                       className={`w-full flex items-center space-x-3 p-3 rounded-lg border transition-all duration-300 ${
                         filterMode === mode
                           ? 'bg-slate-blue/5 border-slate-blue/30'
-                          : 'border-mist hover:border-slate-blue/30'
+                          : 'border-mist/30 hover:border-slate-blue/30'
                       }`}
                     >
                       <span className="text-base">{icon}</span>
@@ -124,7 +127,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
               {filterMode === 'folders' && (
                 <div>
                   <h4 className="text-xs font-medium text-warm-gray uppercase tracking-wider mb-3">選擇資料夾</h4>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                  <div className="space-y-2">
                     {folders.map((folder) => (
                       <button
                         key={folder.id}
@@ -158,7 +161,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
                         className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-300 ${
                           selectedTypes.includes(type.value)
                             ? 'bg-slate-blue/10 text-slate-blue'
-                            : 'bg-mist/50 text-stone hover:bg-mist'
+                            : 'bg-mist/30 text-stone hover:bg-mist/50'
                         }`}
                       >
                         <span>{type.icon}</span>
@@ -168,6 +171,19 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
                   </div>
                 </div>
               )}
+
+              {/* 快速操作 */}
+              <div className="pt-4 border-t border-mist/30">
+                <button
+                  onClick={() => {
+                    onShowAllPlaces();
+                    setIsOpen(false);
+                  }}
+                  className="w-full px-4 py-2.5 bg-moss/10 text-moss rounded-lg hover:bg-moss/20 transition-colors text-sm font-medium"
+                >
+                  🌍 顯示所有收藏
+                </button>
+              </div>
             </div>
           </div>
         </>
@@ -176,4 +192,4 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
   );
 };
 
-export default FilterDropdown;
+export default FilterMenu;

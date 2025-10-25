@@ -175,7 +175,7 @@ const MapView: React.FC<MapViewProps> = ({
             clickableIcons: false,
             mapTypeControl: true,
             streetViewControl: true,
-            fullscreenControl: true,
+            fullscreenControl: false,
             zoomControl: true
           }}
         >
