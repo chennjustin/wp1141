@@ -46,39 +46,42 @@ export const foldersApi = {
   },
 };
 
-// Places API
-export const placesApi = {
+// Places API (New)
+export const placesApiNew = {
   // 取得所有地點
   getAll: async (folderId?: number): Promise<ApiResponse<Place[]>> => {
     const params = folderId ? { folderId } : {};
-    const response = await api.get('/places', { params });
+    const response = await api.get('/places-new', { params });
     return response.data;
   },
 
   // 取得單一地點
   getById: async (id: number): Promise<ApiResponse<Place>> => {
-    const response = await api.get(`/places/${id}`);
+    const response = await api.get(`/places-new/${id}`);
     return response.data;
   },
 
   // 新增地點
   create: async (data: CreatePlaceRequest): Promise<ApiResponse<Place>> => {
-    const response = await api.post('/places', data);
+    const response = await api.post('/places-new', data);
     return response.data;
   },
 
   // 更新地點
   update: async (id: number, data: UpdatePlaceRequest): Promise<ApiResponse<Place>> => {
-    const response = await api.put(`/places/${id}`, data);
+    const response = await api.put(`/places-new/${id}`, data);
     return response.data;
   },
 
   // 刪除地點
   delete: async (id: number): Promise<ApiResponse> => {
-    const response = await api.delete(`/places/${id}`);
+    const response = await api.delete(`/places-new/${id}`);
     return response.data;
   },
 };
+
+// 保持向後兼容的別名
+export const placesApi = placesApiNew;
 
 // Entries API
 export const entriesApi = {

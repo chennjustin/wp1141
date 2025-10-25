@@ -42,6 +42,7 @@ app.get('/health', (_req, res) => {
 app.use('/auth', authRoutes);
 app.use('/folders', folderRoutes);
 app.use('/places', placeRoutes);
+app.use('/places-new', placeRoutes); // 新的 API 端點
 app.use('/entries', entryRoutes);
 app.use('/maps', mapRoutes);
 app.use('/search', searchRoutes);
