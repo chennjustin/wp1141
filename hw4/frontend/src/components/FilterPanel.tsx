@@ -1,44 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import type { Folder } from '../types';
-// import { foldersApi } from '../services/data';
 
 interface FilterPanelProps {
   folders: Folder[];
   selectedFolders: number[];
   onFolderSelect: (folderIds: number[]) => void;
   onShowAllPlaces: () => void;
-  onTypeFilter?: (types: string[]) => void;
-  selectedTypes?: string[];
 }
 
 const FilterPanel: React.FC<FilterPanelProps> = ({
   folders,
   selectedFolders,
   onFolderSelect,
-  onShowAllPlaces,
-  onTypeFilter,
-  selectedTypes = []
+  onShowAllPlaces
 }) => {
   const [localFolders, setLocalFolders] = useState<Folder[]>([]);
-  const [localSelectedTypes, setLocalSelectedTypes] = useState<string[]>(selectedTypes);
 
   useEffect(() => {
     setLocalFolders(folders);
   }, [folders]);
-
-  useEffect(() => {
-    setLocalSelectedTypes(selectedTypes);
-  }, [selectedTypes]);
-
-
-  const handleTypeToggle = (type: string) => {
-    const newTypes = localSelectedTypes.includes(type)
-      ? localSelectedTypes.filter(t => t !== type)
-      : [...localSelectedTypes, type];
-    
-    setLocalSelectedTypes(newTypes);
-    onTypeFilter?.(newTypes);
-  };
 
   const handleFolderToggle = (folderId: number) => {
     if (selectedFolders.includes(folderId)) {
@@ -56,118 +36,107 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
     onFolderSelect([]);
   };
 
-  const placeTypes = [
-    { value: 'restaurant', label: '🍴 餐廳', icon: '🍴' },
-    { value: 'tourist_attraction', label: '🏛️ 景點', icon: '🏛️' },
-    { value: 'lodging', label: '🏨 住宿', icon: '🏨' },
-    { value: 'shopping_mall', label: '🛍️ 購物', icon: '🛍️' },
-    { value: 'gas_station', label: '⛽ 加油站', icon: '⛽' },
-    { value: 'hospital', label: '🏥 醫院', icon: '🏥' },
-    { value: 'school', label: '🏫 學校', icon: '🏫' },
-    { value: 'park', label: '🌳 公園', icon: '🌳' }
-  ];
-
-
   return (
-    <div className="h-full flex flex-col bg-white">
-      {/* 標題 */}
-      <div className="p-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-800">篩選與顯示</h3>
+    <div className="h-full flex flex-col bg-white shadow-xl">
+      {/* 標題區域 */}
+      <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-maroon to-maroon/90">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+            <span className="text-white text-lg">📁</span>
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-white">我的資料夾</h3>
+            <p className="text-sm text-white/80">管理您的收藏分類</p>
+          </div>
+        </div>
       </div>
 
-      {/* 內容 */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* 資料夾篩選 */}
-        <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-3">資料夾篩選</h4>
+      {/* 內容區域 */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* 顯示所有選項 */}
+        <div className="space-y-3">
+          <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">顯示選項</h4>
+          <button
+            onClick={handleSelectAll}
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+              selectedFolders.length === 0
+                ? 'bg-gradient-to-r from-maroon to-maroon/90 text-white shadow-lg'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+              <span className="text-lg">🌍</span>
+            </div>
+            <div className="flex-1 text-left">
+              <p className="font-medium">顯示所有地點</p>
+              <p className="text-xs opacity-80">查看所有收藏的地點</p>
+            </div>
+          </button>
+        </div>
+
+        {/* 資料夾列表 */}
+        <div className="space-y-3">
+          <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">資料夾分類</h4>
           <div className="space-y-2">
-            <button
-              onClick={handleSelectAll}
-              className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
-                selectedFolders.length === 0
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              🌍 顯示所有地點
-            </button>
-            
             {localFolders.map((folder) => (
               <button
                 key={folder.id}
                 onClick={() => handleFolderToggle(folder.id)}
-                className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${
                   selectedFolders.includes(folder.id)
-                    ? 'bg-blue-100 text-blue-700'
+                    ? 'bg-gradient-to-r from-maroon to-maroon/90 text-white shadow-lg'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                <div className="flex items-center space-x-2">
-                  <span>{folder.icon}</span>
-                  <span>{folder.name}</span>
+                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                  <span className="text-lg">{folder.icon}</span>
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="font-medium">{folder.name}</p>
                   {folder._count && (
-                    <span className="text-xs text-gray-500">
-                      ({folder._count.places})
-                    </span>
+                    <p className="text-xs opacity-80">{folder._count.places} 個地點</p>
                   )}
                 </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 地點類型篩選 */}
-        <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-3">地點類型</h4>
-          <div className="grid grid-cols-2 gap-2">
-            {placeTypes.map((type) => (
-              <button
-                key={type.value}
-                onClick={() => handleTypeToggle(type.value)}
-                className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  localSelectedTypes.includes(type.value)
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <span>{type.icon}</span>
-                <span>{type.label}</span>
+                {selectedFolders.includes(folder.id) && (
+                  <div className="w-2 h-2 bg-white rounded-full"></div>
+                )}
               </button>
             ))}
           </div>
         </div>
 
         {/* 快速操作 */}
-        <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-3">快速操作</h4>
-          <div className="space-y-2">
+        <div className="space-y-3">
+          <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">快速操作</h4>
+          <div className="grid grid-cols-1 gap-2">
             <button
               onClick={onShowAllPlaces}
-              className="w-full text-left px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
+              className="flex items-center space-x-3 px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-md hover:shadow-lg"
             >
-              🌍 顯示所有收藏地點
+              <span className="text-lg">🌍</span>
+              <span className="font-medium">顯示所有收藏</span>
             </button>
-            
             <button
               onClick={handleSelectNone}
-              className="w-full text-left px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              className="flex items-center space-x-3 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-md hover:shadow-lg"
             >
-              🚫 清除所有篩選
+              <span className="text-lg">❌</span>
+              <span className="font-medium">清除篩選</span>
             </button>
           </div>
         </div>
       </div>
 
       {/* 底部統計 */}
-      <div className="p-4 border-t border-gray-200 bg-gray-50">
-        <div className="text-sm text-gray-600">
-          <div className="flex justify-between">
-            <span>已選擇資料夾:</span>
-            <span>{selectedFolders.length}</span>
+      <div className="p-6 border-t border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-maroon rounded-full"></div>
+            <span className="text-sm font-medium text-gray-700">已選擇</span>
           </div>
-          <div className="flex justify-between">
-            <span>已選擇類型:</span>
-            <span>{selectedTypes.length}</span>
+          <div className="flex items-center space-x-4">
+            <span className="text-sm text-gray-600">{selectedFolders.length} 個資料夾</span>
+            <span className="text-sm text-gray-600">{localFolders.length} 個總計</span>
           </div>
         </div>
       </div>

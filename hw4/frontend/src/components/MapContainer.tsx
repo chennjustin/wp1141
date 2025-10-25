@@ -19,6 +19,7 @@ const defaultCenter = {
 interface MapContainerProps {
   selectedFolders?: number[];
   selectedTypes?: string[];
+  filterMode?: 'all' | 'folders' | 'types';
   onPlaceClick?: (place: Place) => void;
   onMapClick?: (lat: number, lng: number, placeInfo?: any) => void;
   selectedPlace?: Place | null;
@@ -30,6 +31,7 @@ interface MapContainerProps {
 const MapContainer: React.FC<MapContainerProps> = ({
   selectedFolders = [],
   selectedTypes = [],
+  filterMode = 'all',
   onPlaceClick,
   onMapClick,
   selectedPlace,
@@ -340,13 +342,18 @@ const MapContainer: React.FC<MapContainerProps> = ({
 
   // 篩選顯示的地點
   const filteredPlaces = places.filter(place => {
-    // 資料夾篩選
-    const folderMatch = selectedFolders.length === 0 || selectedFolders.includes(place.folderId || 0);
-    
-    // 類型篩選（暫時跳過，因為 Place 類型中沒有 types 欄位）
-    const typeMatch = selectedTypes.length === 0;
-    
-    return folderMatch && typeMatch;
+    // 根據篩選模式決定篩選邏輯
+    switch (filterMode) {
+      case 'all':
+        return true; // 顯示所有地點
+      case 'folders':
+        return selectedFolders.length === 0 || selectedFolders.includes(place.folderId || 0);
+      case 'types':
+        // 暫時跳過類型篩選，因為 Place 類型中沒有 types 欄位
+        return selectedTypes.length === 0;
+      default:
+        return true;
+    }
   });
 
   // 建立自訂標記圖示
