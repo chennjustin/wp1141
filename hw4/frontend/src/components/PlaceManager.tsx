@@ -158,9 +158,9 @@ const PlaceManager: React.FC<PlaceManagerProps> = ({
   };
 
   // 從地圖選擇座標
-  const handleMapClick = (lat: number, lng: number) => {
-    setFormData(prev => ({ ...prev, lat, lng }));
-  };
+  // const handleMapClick = (lat: number, lng: number) => {
+  //   setFormData(prev => ({ ...prev, lat, lng }));
+  // };
 
   if (loading) {
     return (

@@ -66,6 +66,9 @@ export interface Place {
   lng: number;
   emoji?: string;
   description?: string;
+  rating?: number;
+  visitedAt?: string;
+  weather?: string;
   userId: number;
   folderId?: number;
   folder?: Folder;
@@ -84,6 +87,9 @@ export interface CreatePlaceRequest {
   lng: number;
   emoji?: string;
   description?: string;
+  rating?: number;
+  visitedAt?: string;
+  weather?: string;
   folderId?: number;
 }
 
@@ -92,6 +98,9 @@ export interface UpdatePlaceRequest {
   address?: string;
   emoji?: string;
   description?: string;
+  rating?: number;
+  visitedAt?: string;
+  weather?: string;
   folderId?: number;
 }
 

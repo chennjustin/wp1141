@@ -1,59 +1,88 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authenticateToken } from '../middleware/auth';
+import { sendSuccess, sendError, sendNotFound, sendServerError } from '../utils/response';
+// import { authenticateToken } from '../middleware/auth';
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// 所有路由都需要認證
-router.use(authenticateToken);
+// 暫時不需要認證
+// router.use(authenticateToken);
 
-// 取得使用者的所有地點
-router.get('/', async (req, res): Promise<void> => {
+// 取得所有地點
+router.get('/', async (req, res) => {
   try {
-    const userId = req.user!.id;
-    const { folderId } = req.query;
-
-    const whereClause: any = { userId };
-    if (folderId) {
-      whereClause.folderId = parseInt(folderId as string);
-    }
-
+    const userId = req.user?.id || 1; // 暫時使用固定用戶 ID
+    
     const places = await prisma.place.findMany({
-      where: whereClause,
-      orderBy: { createdAt: 'desc' },
+      where: { userId },
       include: {
         folder: true,
         _count: {
           select: { entries: true }
         }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    sendSuccess(res, places, '取得地點成功');
+  } catch (error) {
+    console.error('取得地點失敗:', error);
+    sendServerError(res, '取得地點失敗');
+  }
+});
+
+// 取得單一地點
+router.get('/:id', async (req, res) => {
+  try {
+    const userId = req.user?.id || 1;
+    const placeId = parseInt(req.params.id);
+
+    const place = await prisma.place.findFirst({
+      where: {
+        id: placeId,
+        userId
+      },
+      include: {
+        folder: true,
+        entries: {
+          orderBy: { createdAt: 'desc' }
+        }
       }
     });
 
-    res.json({
-      message: '取得地點成功',
-      data: places
-    });
+    if (!place) {
+      sendNotFound(res, '地點不存在');
+      return;
+    }
+
+    sendSuccess(res, place, '取得地點成功');
   } catch (error) {
-    console.error('取得地點錯誤:', error);
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message: '取得地點時發生錯誤'
-    });
+    console.error('取得地點失敗:', error);
+    sendServerError(res, '取得地點失敗');
   }
 });
 
 // 新增地點
-router.post('/', async (req, res): Promise<void> => {
+router.post('/', async (req, res) => {
   try {
-    const userId = req.user!.id;
-    const { name, address, lat, lng, emoji, description, folderId } = req.body;
+    const userId = req.user?.id || 1;
+    const { 
+      name, 
+      address, 
+      lat, 
+      lng, 
+      emoji, 
+      description, 
+      rating, 
+      visitedAt, 
+      weather, 
+      folderId 
+    } = req.body;
 
+    // 驗證必填欄位
     if (!name || !lat || !lng) {
-      res.status(400).json({
-        error: 'Bad Request',
-        message: '請提供名稱和經緯度座標'
-      });
+      sendError(res, '請提供名稱和經緯度座標', 400);
       return;
     }
 
@@ -67,10 +96,7 @@ router.post('/', async (req, res): Promise<void> => {
       });
 
       if (!folder) {
-        res.status(404).json({
-          error: 'Not Found',
-          message: '資料夾不存在'
-        });
+        sendNotFound(res, '資料夾不存在');
         return;
       }
     }
@@ -83,6 +109,9 @@ router.post('/', async (req, res): Promise<void> => {
         lng: parseFloat(lng),
         emoji: emoji || '📍',
         description,
+        rating: rating ? parseInt(rating) : null,
+        visitedAt: visitedAt ? new Date(visitedAt) : null,
+        weather,
         userId,
         folderId: folderId || null
       },
@@ -94,25 +123,28 @@ router.post('/', async (req, res): Promise<void> => {
       }
     });
 
-    res.status(201).json({
-      message: '新增地點成功',
-      data: place
-    });
+    sendSuccess(res, place, '地點創建成功');
   } catch (error) {
-    console.error('新增地點錯誤:', error);
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message: '新增地點時發生錯誤'
-    });
+    console.error('創建地點失敗:', error);
+    sendServerError(res, '創建地點失敗');
   }
 });
 
 // 更新地點
-router.put('/:id', async (req, res): Promise<void> => {
+router.put('/:id', async (req, res) => {
   try {
-    const userId = req.user!.id;
+    const userId = req.user?.id || 1;
     const placeId = parseInt(req.params.id);
-    const { name, address, emoji, description, folderId } = req.body;
+    const { 
+      name, 
+      address, 
+      emoji, 
+      description, 
+      rating, 
+      visitedAt, 
+      weather, 
+      folderId 
+    } = req.body;
 
     // 檢查地點是否存在且屬於該使用者
     const existingPlace = await prisma.place.findFirst({
@@ -123,10 +155,7 @@ router.put('/:id', async (req, res): Promise<void> => {
     });
 
     if (!existingPlace) {
-      res.status(404).json({
-        error: 'Not Found',
-        message: '地點不存在'
-      });
+      sendNotFound(res, '地點不存在');
       return;
     }
 
@@ -140,10 +169,7 @@ router.put('/:id', async (req, res): Promise<void> => {
       });
 
       if (!folder) {
-        res.status(404).json({
-          error: 'Not Found',
-          message: '資料夾不存在'
-        });
+        sendNotFound(res, '資料夾不存在');
         return;
       }
     }
@@ -155,6 +181,9 @@ router.put('/:id', async (req, res): Promise<void> => {
         address,
         emoji,
         description,
+        rating: rating ? parseInt(rating) : null,
+        visitedAt: visitedAt ? new Date(visitedAt) : null,
+        weather,
         folderId: folderId || null
       },
       include: {
@@ -165,23 +194,17 @@ router.put('/:id', async (req, res): Promise<void> => {
       }
     });
 
-    res.json({
-      message: '更新地點成功',
-      data: place
-    });
+    sendSuccess(res, place, '地點更新成功');
   } catch (error) {
-    console.error('更新地點錯誤:', error);
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message: '更新地點時發生錯誤'
-    });
+    console.error('更新地點失敗:', error);
+    sendServerError(res, '更新地點失敗');
   }
 });
 
 // 刪除地點
-router.delete('/:id', async (req, res): Promise<void> => {
+router.delete('/:id', async (req, res) => {
   try {
-    const userId = req.user!.id;
+    const userId = req.user?.id || 1;
     const placeId = parseInt(req.params.id);
 
     // 檢查地點是否存在且屬於該使用者
@@ -193,26 +216,19 @@ router.delete('/:id', async (req, res): Promise<void> => {
     });
 
     if (!existingPlace) {
-      res.status(404).json({
-        error: 'Not Found',
-        message: '地點不存在'
-      });
+      sendNotFound(res, '地點不存在');
       return;
     }
 
+    // 刪除地點（會自動刪除相關的 entries）
     await prisma.place.delete({
       where: { id: placeId }
     });
 
-    res.json({
-      message: '刪除地點成功'
-    });
+    sendSuccess(res, null, '地點刪除成功');
   } catch (error) {
-    console.error('刪除地點錯誤:', error);
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message: '刪除地點時發生錯誤'
-    });
+    console.error('刪除地點失敗:', error);
+    sendServerError(res, '刪除地點失敗');
   }
 });
 

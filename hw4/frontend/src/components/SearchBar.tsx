@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { PlacesSearchResult } from '../types';
-import { searchApi } from '../services/data';
+import { useSearch } from '../hooks/useSearch';
 
 interface SearchBarProps {
   onPlaceSelect: (place: PlacesSearchResult) => void;
@@ -9,50 +9,28 @@ interface SearchBarProps {
 
 const SearchBar: React.FC<SearchBarProps> = ({ onPlaceSelect, onSearch }) => {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<PlacesSearchResult[]>([]);
   const [showResults, setShowResults] = useState(false);
-  const [loading, setLoading] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const { results, loading, search, clearResults } = useSearch();
 
-  // 搜尋地點
-  const handleSearch = async (searchQuery: string) => {
-    if (!searchQuery.trim()) {
-      setResults([]);
-      setShowResults(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      
-      // 調用後端搜尋 API
-      const response = await searchApi.textSearch(searchQuery);
-      
-      if (response.data) {
-        setResults(response.data);
+  // 防抖搜尋
+  useEffect(() => {
+    if (query.length >= 2) {
+      const timeoutId = setTimeout(() => {
+        search(query);
         setShowResults(true);
-      }
-    } catch (error) {
-      console.error('搜尋失敗:', error);
-      // 如果 API 失敗，顯示錯誤訊息
-      setResults([]);
-      setShowResults(true);
-    } finally {
-      setLoading(false);
+      }, 300);
+
+      return () => clearTimeout(timeoutId);
+    } else {
+      clearResults();
+      setShowResults(false);
     }
-  };
+  }, [query, search, clearResults]);
 
   // 處理搜尋輸入
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setQuery(value);
-    
-    // 防抖搜尋
-    const timeoutId = setTimeout(() => {
-      handleSearch(value);
-    }, 300);
-
-    return () => clearTimeout(timeoutId);
+    setQuery(e.target.value);
   };
 
   // 處理地點選擇

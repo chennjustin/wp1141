@@ -1,24 +1,64 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authenticateToken } from '../middleware/auth';
+import { sendSuccess, sendError, sendNotFound, sendServerError } from '../utils/response';
+// import { authenticateToken } from '../middleware/auth';
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// 所有路由都需要認證
-router.use(authenticateToken);
+// 暫時不需要認證
+// router.use(authenticateToken);
 
-// 取得使用者的所有資料夾（樹狀結構）
-router.get('/', async (req, res): Promise<void> => {
+// 取得所有資料夾
+router.get('/', async (req, res) => {
   try {
-    const userId = req.user!.id;
-
+    const userId = req.user?.id || 1;
+    
     const folders = await prisma.folder.findMany({
       where: { userId },
-      orderBy: { createdAt: 'asc' },
       include: {
+        parent: true,
         children: {
-          orderBy: { createdAt: 'asc' }
+          include: {
+            _count: {
+              select: { places: true }
+            }
+          }
+        },
+        _count: {
+          select: { places: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    sendSuccess(res, folders, '取得資料夾成功');
+  } catch (error) {
+    console.error('取得資料夾失敗:', error);
+    sendServerError(res, '取得資料夾失敗');
+  }
+});
+
+// 取得單一資料夾
+router.get('/:id', async (req, res) => {
+  try {
+    const userId = req.user?.id || 1;
+    const folderId = parseInt(req.params.id);
+
+    const folder = await prisma.folder.findFirst({
+      where: {
+        id: folderId,
+        userId
+      },
+      include: {
+        parent: true,
+        children: true,
+        places: {
+          include: {
+            _count: {
+              select: { entries: true }
+            }
+          }
         },
         _count: {
           select: { places: true }
@@ -26,44 +66,41 @@ router.get('/', async (req, res): Promise<void> => {
       }
     });
 
-    // 建立樹狀結構
-    const buildTree = (folders: any[], parentId: number | null = null): any[] => {
-      return folders
-        .filter((folder: any) => folder.parentId === parentId)
-        .map((folder: any) => ({
-          ...folder,
-          children: buildTree(folders, folder.id)
-        }));
-    };
+    if (!folder) {
+      sendNotFound(res, '資料夾不存在');
+      return;
+    }
 
-    const tree = buildTree(folders);
-
-    res.json({
-      message: '取得資料夾成功',
-      data: tree
-    });
+    sendSuccess(res, folder, '取得資料夾成功');
   } catch (error) {
-    console.error('取得資料夾錯誤:', error);
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message: '取得資料夾時發生錯誤'
-    });
+    console.error('取得資料夾失敗:', error);
+    sendServerError(res, '取得資料夾失敗');
   }
 });
 
 // 新增資料夾
-router.post('/', async (req, res): Promise<void> => {
+router.post('/', async (req, res) => {
   try {
-    const userId = req.user!.id;
+    const userId = req.user?.id || 1;
     const { name, description, color, icon, parentId } = req.body;
 
+    // 驗證必填欄位
     if (!name) {
-      res.status(400).json({
-        error: 'Bad Request',
-        message: '請提供資料夾名稱'
-      });
+      sendError(res, '請提供資料夾名稱', 400);
       return;
     }
+
+    // 確保用戶存在
+    await prisma.user.upsert({
+      where: { id: userId },
+      update: {},
+      create: {
+        id: userId,
+        username: `user_${userId}`,
+        email: `user${userId}@example.com`,
+        password: `temp_password_${userId}`
+      }
+    });
 
     // 如果指定了父資料夾，檢查是否存在且屬於該使用者
     if (parentId) {
@@ -75,10 +112,7 @@ router.post('/', async (req, res): Promise<void> => {
       });
 
       if (!parentFolder) {
-        res.status(404).json({
-          error: 'Not Found',
-          message: '父資料夾不存在'
-        });
+        sendNotFound(res, '父資料夾不存在');
         return;
       }
     }
@@ -94,40 +128,25 @@ router.post('/', async (req, res): Promise<void> => {
       },
       include: {
         parent: true,
-        children: true,
         _count: {
           select: { places: true }
         }
       }
     });
 
-    res.status(201).json({
-      message: '新增資料夾成功',
-      data: folder
-    });
+    sendSuccess(res, folder, '資料夾創建成功');
   } catch (error) {
-    console.error('新增資料夾錯誤:', error);
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message: '新增資料夾時發生錯誤'
-    });
+    console.error('創建資料夾失敗:', error);
+    sendServerError(res, '創建資料夾失敗');
   }
 });
 
 // 更新資料夾
-router.put('/:id', async (req, res): Promise<void> => {
+router.put('/:id', async (req, res) => {
   try {
-    const userId = req.user!.id;
+    const userId = req.user?.id || 1;
     const folderId = parseInt(req.params.id);
     const { name, description, color, icon, parentId } = req.body;
-
-    if (!name) {
-      res.status(400).json({
-        error: 'Bad Request',
-        message: '請提供資料夾名稱'
-      });
-      return;
-    }
 
     // 檢查資料夾是否存在且屬於該使用者
     const existingFolder = await prisma.folder.findFirst({
@@ -138,15 +157,12 @@ router.put('/:id', async (req, res): Promise<void> => {
     });
 
     if (!existingFolder) {
-      res.status(404).json({
-        error: 'Not Found',
-        message: '資料夾不存在'
-      });
+      sendNotFound(res, '資料夾不存在');
       return;
     }
 
-    // 如果指定了新的父資料夾，檢查是否存在且不會造成循環引用
-    if (parentId && parentId !== existingFolder.parentId) {
+    // 如果指定了父資料夾，檢查是否存在且屬於該使用者
+    if (parentId) {
       const parentFolder = await prisma.folder.findFirst({
         where: {
           id: parentId,
@@ -155,19 +171,7 @@ router.put('/:id', async (req, res): Promise<void> => {
       });
 
       if (!parentFolder) {
-        res.status(404).json({
-          error: 'Not Found',
-          message: '父資料夾不存在'
-        });
-        return;
-      }
-
-      // 檢查是否會造成循環引用
-      if (parentId === folderId) {
-        res.status(400).json({
-          error: 'Bad Request',
-          message: '不能將資料夾設為自己的子資料夾'
-        });
+        sendNotFound(res, '父資料夾不存在');
         return;
       }
     }
@@ -183,30 +187,23 @@ router.put('/:id', async (req, res): Promise<void> => {
       },
       include: {
         parent: true,
-        children: true,
         _count: {
           select: { places: true }
         }
       }
     });
 
-    res.json({
-      message: '更新資料夾成功',
-      data: folder
-    });
+    sendSuccess(res, folder, '資料夾更新成功');
   } catch (error) {
-    console.error('更新資料夾錯誤:', error);
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message: '更新資料夾時發生錯誤'
-    });
+    console.error('更新資料夾失敗:', error);
+    sendServerError(res, '更新資料夾失敗');
   }
 });
 
-// 刪除資料夾
-router.delete('/:id', async (req, res): Promise<void> => {
+// 刪除資料夾（遞歸刪除）
+router.delete('/:id', async (req, res) => {
   try {
-    const userId = req.user!.id;
+    const userId = req.user?.id || 1;
     const folderId = parseInt(req.params.id);
 
     // 檢查資料夾是否存在且屬於該使用者
@@ -214,53 +211,45 @@ router.delete('/:id', async (req, res): Promise<void> => {
       where: {
         id: folderId,
         userId
-      },
-      include: {
-        children: true,
-        places: true
       }
     });
 
     if (!existingFolder) {
-      res.status(404).json({
-        error: 'Not Found',
-        message: '資料夾不存在'
-      });
+      sendNotFound(res, '資料夾不存在');
       return;
     }
 
-    // 檢查是否有子資料夾
-    if (existingFolder.children.length > 0) {
-      res.status(400).json({
-        error: 'Bad Request',
-        message: '無法刪除包含子資料夾的資料夾'
-      });
-      return;
-    }
+    // 遞歸刪除資料夾及其內容
+    await deleteFolderRecursively(folderId);
 
-    // 檢查是否有地點
-    if (existingFolder.places.length > 0) {
-      res.status(400).json({
-        error: 'Bad Request',
-        message: '無法刪除包含地點的資料夾'
-      });
-      return;
-    }
-
-    await prisma.folder.delete({
-      where: { id: folderId }
-    });
-
-    res.json({
-      message: '刪除資料夾成功'
-    });
+    sendSuccess(res, null, '資料夾刪除成功');
   } catch (error) {
-    console.error('刪除資料夾錯誤:', error);
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message: '刪除資料夾時發生錯誤'
-    });
+    console.error('刪除資料夾失敗:', error);
+    sendServerError(res, '刪除資料夾失敗');
   }
 });
+
+// 遞歸刪除資料夾的輔助函數
+async function deleteFolderRecursively(folderId: number) {
+  // 取得所有子資料夾
+  const childFolders = await prisma.folder.findMany({
+    where: { parentId: folderId }
+  });
+
+  // 遞歸刪除所有子資料夾
+  for (const childFolder of childFolders) {
+    await deleteFolderRecursively(childFolder.id);
+  }
+
+  // 刪除資料夾內的所有地點
+  await prisma.place.deleteMany({
+    where: { folderId }
+  });
+
+  // 刪除資料夾本身
+  await prisma.folder.delete({
+    where: { id: folderId }
+  });
+}
 
 export default router;

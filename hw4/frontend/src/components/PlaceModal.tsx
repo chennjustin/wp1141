@@ -6,6 +6,7 @@ interface PlaceModalProps {
   isOpen: boolean;
   onClose: () => void;
   onPlaceCreated: (place: any) => void;
+  onPlaceUpdated?: (place: any) => void;
   initialData?: {
     lat: number;
     lng: number;
@@ -15,13 +16,16 @@ interface PlaceModalProps {
     rating?: number;
     types?: string[];
   };
+  editingPlace?: any;
 }
 
 const PlaceModal: React.FC<PlaceModalProps> = ({
   isOpen,
   onClose,
   onPlaceCreated,
-  initialData
+  onPlaceUpdated,
+  initialData,
+  editingPlace
 }) => {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(false);
@@ -54,6 +58,34 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
     }
   };
 
+  // 初始化表單數據
+  useEffect(() => {
+    if (editingPlace) {
+      setFormData({
+        name: editingPlace.name || '',
+        address: editingPlace.address || '',
+        lat: editingPlace.lat || 0,
+        lng: editingPlace.lng || 0,
+        emoji: editingPlace.emoji || '📍',
+        description: editingPlace.description || '',
+        rating: editingPlace.rating,
+        visitedAt: editingPlace.visitedAt,
+        weather: editingPlace.weather,
+        folderId: editingPlace.folderId
+      });
+    } else if (initialData) {
+      setFormData({
+        name: initialData.name || '',
+        address: initialData.address || '',
+        lat: initialData.lat,
+        lng: initialData.lng,
+        emoji: '📍',
+        description: '',
+        folderId: undefined
+      });
+    }
+  }, [editingPlace, initialData]);
+
   useEffect(() => {
     if (isOpen) {
       loadFolders();
@@ -75,30 +107,41 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
     }
   }, [initialData]);
 
-  // 建立地點
+  // 建立或更新地點
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
     try {
       setLoading(true);
-      const response = await placesApi.create(formData);
-      if (response.data) {
-        onPlaceCreated(response.data);
-        onClose();
-        // 重置表單
-        setFormData({
-          name: '',
-          address: '',
-          lat: 0,
-          lng: 0,
-          emoji: '📍',
-          description: '',
-          folderId: undefined
-        });
+      
+      if (editingPlace && onPlaceUpdated) {
+        // 更新地點
+        const response = await placesApi.update(editingPlace.id, formData);
+        if (response.data) {
+          onPlaceUpdated(response.data);
+          onClose();
+        }
+      } else {
+        // 建立新地點
+        const response = await placesApi.create(formData);
+        if (response.data) {
+          onPlaceCreated(response.data);
+          onClose();
+          // 重置表單
+          setFormData({
+            name: '',
+            address: '',
+            lat: 0,
+            lng: 0,
+            emoji: '📍',
+            description: '',
+            folderId: undefined
+          });
+        }
       }
     } catch (error) {
-      console.error('建立地點失敗:', error);
+      console.error('操作地點失敗:', error);
     } finally {
       setLoading(false);
     }
@@ -114,7 +157,7 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
         icon: '📁'
       });
       if (response.data) {
-        setFolders(prev => [...prev, response.data]);
+        setFolders(prev => [...prev, response.data!]);
         setFormData(prev => ({ ...prev, folderId: response.data!.id }));
       }
     } catch (error) {

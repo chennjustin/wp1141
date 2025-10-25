@@ -1,229 +1,236 @@
 import express from 'express';
-import { Client as GoogleMapsClient, PlaceDetailsResponse, PlacesNearbyResponse, TextSearchResponse } from '@googlemaps/google-maps-services-js';
+import axios from 'axios';
+import { sendSuccess, sendError, sendServerError } from '../utils/response';
 // import { authenticateToken } from '../middleware/auth';
 
 const router = express.Router();
 
-// 初始化 Google Maps 客戶端
-const googleMapsClient = new GoogleMapsClient({});
+// 新版 Places API (New) 基礎 URL
+const PLACES_API_BASE_URL = 'https://places.googleapis.com/v1/places';
 
 // 測試模式：暫時不需要認證
 // router.use(authenticateToken);
 
-// 文字搜尋地點
-router.post('/text-search', async (req, res): Promise<void> => {
+// 建立 HTTP 請求的輔助函數
+const makePlacesApiRequest = async (endpoint: string, data: any) => {
+  const apiKey = process.env['GOOGLE_MAPS_SERVER_KEY'];
+  
+  if (!apiKey) {
+    throw new Error('Google Maps API Key 未設定');
+  }
+
+  const response = await axios.post(`${PLACES_API_BASE_URL}${endpoint}`, data, {
+    headers: {
+      'X-Goog-Api-Key': apiKey,
+      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.photos',
+      'Content-Type': 'application/json'
+    },
+    timeout: 10000
+  });
+
+  return response.data;
+};
+
+// 文字搜尋地點 - 使用新版 Places API (New)
+router.post('/text-search', async (req, res) => {
   try {
     const { query, location, radius = 5000, type } = req.body;
 
     console.log('收到搜尋請求:', { query, location, radius, type });
 
     if (!query) {
-      res.status(400).json({
-        error: 'Bad Request',
-        message: '請提供搜尋關鍵字'
-      });
+      sendError(res, '請提供搜尋關鍵字', 400);
       return;
     }
 
-    const apiKey = process.env['GOOGLE_MAPS_SERVER_KEY'];
-    console.log('API Key 狀態:', apiKey ? '已設定' : '未設定');
+    console.log('開始調用新版 Google Places API (New)...');
     
-    if (!apiKey) {
-      res.status(500).json({
-        error: 'Internal Server Error',
-        message: 'Google Maps API Key 未設定'
-      });
-      return;
-    }
-
-    console.log('開始調用 Google Places API...');
-    
-    const searchParams: any = {
-      query: query,
-      key: apiKey
+    // 新版 Places API (New) 請求格式
+    const requestData: any = {
+      textQuery: query,
+      maxResultCount: 20,
+      languageCode: 'zh-TW'
     };
 
+    // 如果有位置資訊，加入位置偏好
     if (location && location.lat && location.lng) {
-      searchParams.location = { lat: location.lat, lng: location.lng };
-      searchParams.radius = radius;
+      requestData.locationBias = {
+        circle: {
+          center: {
+            latitude: location.lat,
+            longitude: location.lng
+          },
+          radius: radius
+        }
+      };
     }
 
+    // 如果有類型篩選
     if (type) {
-      searchParams.type = type;
+      requestData.includedType = type;
     }
 
-    const response: TextSearchResponse = await googleMapsClient.textSearch({
-      params: searchParams,
-      timeout: 10000
-    });
+    const response = await makePlacesApiRequest(':searchText', requestData);
 
-    console.log('Google Places API 回應:', response.data.results.length, '個結果');
+    console.log('新版 Places API 回應:', response.places?.length || 0, '個結果');
 
-    const places = response.data.results
-      .filter(place => place.geometry && place.geometry.location)
-      .map(place => ({
-        place_id: place.place_id,
-        name: place.name,
-        vicinity: place.vicinity,
-        geometry: {
-          location: {
-            lat: place.geometry!.location.lat,
-            lng: place.geometry!.location.lng
-          }
-        },
-        rating: place.rating,
-        user_ratings_total: place.user_ratings_total,
-        types: place.types,
-        photos: place.photos?.slice(0, 1) // 只取第一張照片
-      }));
+    const places = (response.places || []).map((place: any) => ({
+      place_id: place.id,
+      name: place.displayName?.text || '未知地點',
+      vicinity: place.formattedAddress || '',
+      geometry: {
+        location: {
+          lat: place.location?.latitude || 0,
+          lng: place.location?.longitude || 0
+        }
+      },
+      rating: place.rating || 0,
+      user_rating_total: place.userRatingCount || 0,
+      types: place.types || [],
+      photos: place.photos?.map((photo: any) => ({
+        photo_reference: photo.name,
+        height: photo.heightPx,
+        width: photo.widthPx
+      })) || []
+    }));
 
-    res.json({
-      message: '文字搜尋成功',
-      data: places
-    });
-    return;
-  } catch (error) {
-    console.error('文字搜尋錯誤:', error);
-    console.error('錯誤詳情:', {
-      message: error instanceof Error ? error.message : '未知錯誤',
-      stack: error instanceof Error ? error.stack : undefined
-    });
+    sendSuccess(res, places, '搜尋成功');
+  } catch (error: any) {
+    console.error('搜尋失敗:', error);
     
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message: '文字搜尋時發生錯誤',
-      details: error instanceof Error ? error.message : '未知錯誤'
-    });
-    return;
+    if (error.message?.includes('API Key 未設定')) {
+      sendError(res, 'Google Maps API Key 未設定', 500);
+    } else if (error.response?.data) {
+      sendError(res, `Google API 錯誤: ${error.response.data.error?.message || '未知錯誤'}`, 500);
+    } else {
+      sendServerError(res, '搜尋失敗');
+    }
   }
 });
 
-// 附近搜尋
-router.post('/nearby-search', async (req, res): Promise<void> => {
+// 附近搜尋地點 - 使用新版 Places API (New)
+router.post('/nearby-search', async (req, res) => {
   try {
-    const { location, radius = 1000, type, keyword } = req.body;
+    const { location, radius = 1000, type } = req.body;
+
+    console.log('收到附近搜尋請求:', { location, radius, type });
 
     if (!location || !location.lat || !location.lng) {
-      res.status(400).json({
-        error: 'Bad Request',
-        message: '請提供位置座標'
-      });
+      sendError(res, '請提供位置資訊', 400);
       return;
     }
 
-    const apiKey = process.env['GOOGLE_MAPS_SERVER_KEY'];
-    if (!apiKey) {
-      res.status(500).json({
-        error: 'Internal Server Error',
-        message: 'Google Maps API Key 未設定'
-      });
-      return;
-    }
-
-    const response: PlacesNearbyResponse = await googleMapsClient.placesNearby({
-      params: {
-        location: { lat: location.lat, lng: location.lng },
-        radius: radius,
-        type: type,
-        keyword: keyword,
-        key: apiKey
+    console.log('開始調用新版 Google Places API (New) 附近搜尋...');
+    
+    // 新版 Places API (New) 附近搜尋請求格式
+    const requestData: any = {
+      locationRestriction: {
+        circle: {
+          center: {
+            latitude: location.lat,
+            longitude: location.lng
+          },
+          radius: radius
+        }
       },
-      timeout: 1000
-    });
+      maxResultCount: 20,
+      languageCode: 'zh-TW'
+    };
 
-    const places = response.data.results.map(place => ({
-      place_id: place.place_id,
-      name: place.name,
-      vicinity: place.vicinity,
-        geometry: {
-          location: {
-            lat: place.geometry!.location.lat,
-            lng: place.geometry!.location.lng
-          }
-        },
-      rating: place.rating,
-      user_ratings_total: place.user_ratings_total,
-      types: place.types,
-      photos: place.photos?.slice(0, 1)
+    // 如果有類型篩選
+    if (type) {
+      requestData.includedType = type;
+    }
+
+    const response = await makePlacesApiRequest(':searchNearby', requestData);
+
+    console.log('新版 Places API 附近搜尋回應:', response.places?.length || 0, '個結果');
+
+    const places = (response.places || []).map((place: any) => ({
+      place_id: place.id,
+      name: place.displayName?.text || '未知地點',
+      vicinity: place.formattedAddress || '',
+      geometry: {
+        location: {
+          lat: place.location?.latitude || 0,
+          lng: place.location?.longitude || 0
+        }
+      },
+      rating: place.rating || 0,
+      user_rating_total: place.userRatingCount || 0,
+      types: place.types || [],
+      photos: place.photos?.map((photo: any) => ({
+        photo_reference: photo.name,
+        height: photo.heightPx,
+        width: photo.widthPx
+      })) || []
     }));
 
-    res.json({
-      message: '附近搜尋成功',
-      data: places
-    });
-    return;
-  } catch (error) {
-    console.error('附近搜尋錯誤:', error);
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message: '附近搜尋時發生錯誤'
-    });
-    return;
+    sendSuccess(res, places, '附近搜尋成功');
+  } catch (error: any) {
+    console.error('附近搜尋失敗:', error);
+    
+    if (error.message?.includes('API Key 未設定')) {
+      sendError(res, 'Google Maps API Key 未設定', 500);
+    } else if (error.response?.data) {
+      sendError(res, `Google API 錯誤: ${error.response.data.error?.message || '未知錯誤'}`, 500);
+    } else {
+      sendServerError(res, '附近搜尋失敗');
+    }
   }
 });
 
 // 取得地點詳細資訊
-router.post('/place-details', async (req, res): Promise<void> => {
+router.get('/place-details/:placeId', async (req, res) => {
   try {
-    const { placeId } = req.body;
+    const { placeId } = req.params;
 
     if (!placeId) {
-      res.status(400).json({
-        error: 'Bad Request',
-        message: '請提供地點 ID'
-      });
+      sendError(res, '請提供地點 ID', 400);
       return;
     }
 
-    const apiKey = process.env['GOOGLE_MAPS_SERVER_KEY'];
-    if (!apiKey) {
-      res.status(500).json({
-        error: 'Internal Server Error',
-        message: 'Google Maps API Key 未設定'
-      });
-      return;
-    }
+    console.log('取得地點詳細資訊:', placeId);
 
-    const response: PlaceDetailsResponse = await googleMapsClient.placeDetails({
-      params: {
-        place_id: placeId,
-        fields: ['name', 'formatted_address', 'geometry', 'rating', 'user_ratings_total', 'types', 'photos', 'website', 'formatted_phone_number'],
-        key: apiKey
-      },
-      timeout: 1000
-    });
+    const response = await makePlacesApiRequest(`/${placeId}`, {});
 
-    const place = response.data.result;
     const placeDetails = {
-      place_id: place.place_id,
-      name: place.name,
-      formatted_address: place.formatted_address,
-        geometry: {
-          location: {
-            lat: place.geometry!.location.lat,
-            lng: place.geometry!.location.lng
-          }
-        },
-      rating: place.rating,
-      user_ratings_total: place.user_ratings_total,
-      types: place.types,
-      website: place.website,
-      formatted_phone_number: place.formatted_phone_number,
-      photos: place.photos?.slice(0, 3) // 取前三張照片
+      place_id: response.id,
+      name: response.displayName?.text || '未知地點',
+      formatted_address: response.formattedAddress || '',
+      geometry: {
+        location: {
+          lat: response.location?.latitude || 0,
+          lng: response.location?.longitude || 0
+        }
+      },
+      rating: response.rating || 0,
+      user_rating_total: response.userRatingCount || 0,
+      types: response.types || [],
+      photos: response.photos?.map((photo: any) => ({
+        photo_reference: photo.name,
+        height: photo.heightPx,
+        width: photo.widthPx
+      })) || [],
+      opening_hours: response.regularOpeningHours ? {
+        open_now: response.regularOpeningHours.openNow,
+        weekday_text: response.regularOpeningHours.weekdayDescriptions || []
+      } : null,
+      website: response.websiteUri || null,
+      phone_number: response.nationalPhoneNumber || null
     };
 
-    res.json({
-      message: '地點詳細資訊取得成功',
-      data: placeDetails
-    });
-    return;
-  } catch (error) {
-    console.error('取得地點詳細資訊錯誤:', error);
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message: '取得地點詳細資訊時發生錯誤'
-    });
-    return;
+    sendSuccess(res, placeDetails, '取得地點詳細資訊成功');
+  } catch (error: any) {
+    console.error('取得地點詳細資訊失敗:', error);
+    
+    if (error.message?.includes('API Key 未設定')) {
+      sendError(res, 'Google Maps API Key 未設定', 500);
+    } else if (error.response?.data) {
+      sendError(res, `Google API 錯誤: ${error.response.data.error?.message || '未知錯誤'}`, 500);
+    } else {
+      sendServerError(res, '取得地點詳細資訊失敗');
+    }
   }
 });
 

@@ -1,10 +1,10 @@
-import type { Spot } from '../pages/MapPage'
+import type { Place } from '../types'
 
 interface SpotListProps {
-  spots: Spot[]
-  selectedSpot: Spot | null
-  onSpotSelect: (spot: Spot) => void
-  onSpotDelete: (spotId: string) => void
+  spots: Place[]
+  selectedSpot: Place | null
+  onSpotSelect: (spot: Place) => void
+  onSpotDelete: (spotId: number) => void
 }
 
 function SpotList({ spots, selectedSpot, onSpotSelect, onSpotDelete }: SpotListProps) {

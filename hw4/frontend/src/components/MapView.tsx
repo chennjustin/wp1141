@@ -120,16 +120,16 @@ const MapView: React.FC<MapViewProps> = ({
   };
 
   // 取得地點的最新造訪日期
-  const getLatestVisit = (placeId: number) => {
-    const placeEntries = getPlaceEntries(placeId);
-    if (placeEntries.length === 0) return null;
-    
-    const sortedEntries = placeEntries.sort((a, b) => 
-      new Date(b.visitedAt || b.createdAt).getTime() - new Date(a.visitedAt || a.createdAt).getTime()
-    );
-    
-    return sortedEntries[0];
-  };
+  // const getLatestVisit = (placeId: number) => {
+  //   const placeEntries = getPlaceEntries(placeId);
+  //   if (placeEntries.length === 0) return null;
+  //   
+  //   const sortedEntries = placeEntries.sort((a, b) => 
+  //     new Date(b.visitedAt || b.createdAt).getTime() - new Date(a.visitedAt || a.createdAt).getTime()
+  //   );
+  //   
+  //   return sortedEntries[0];
+  // };
 
   if (!isLoaded) {
     return (
@@ -181,8 +181,8 @@ const MapView: React.FC<MapViewProps> = ({
         >
           {/* 渲染地點標記 */}
           {places.map(place => {
-            const latestEntry = getLatestVisit(place.id);
-            const averageRating = getAverageRating(place.id);
+            // const latestEntry = getLatestVisit(place.id);
+            // const averageRating = getAverageRating(place.id);
             
             return (
               <Marker

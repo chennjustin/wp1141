@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { errorHandler, notFound } from './middleware/errorHandler';
 
 // 載入環境變數
 dotenv.config();
@@ -48,23 +49,9 @@ app.use('/maps', mapRoutes);
 app.use('/search', searchRoutes);
 
 // 404 處理
-app.use('*', (req, res) => {
-  res.status(404).json({
-    error: 'Not Found',
-    message: `路由 ${req.originalUrl} 不存在`,
-    timestamp: new Date().toISOString()
-  });
-});
+app.use(notFound);
 
 // 全域錯誤處理
-app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error('錯誤:', err);
-  
-  res.status(err.status || 500).json({
-    error: err.message || 'Internal Server Error',
-    timestamp: new Date().toISOString(),
-    ...(process.env['NODE_ENV'] === 'development' && { stack: err.stack })
-  });
-});
+app.use(errorHandler);
 
 export default app;
