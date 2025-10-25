@@ -44,10 +44,15 @@ model Place {
   lat         Float
   lng         Float
   emoji       String?   @default("📍")
-  description String?
+  description String?   // 旅遊心得
   rating      Int?      // 1-5 評分
   visitedAt   DateTime? // 造訪日期
   weather     String?   // 天氣
+  travelMode  String?   // 交通方式
+  companions  String?  // 同行夥伴
+  expenses    String?   // 花費
+  tags        String?   // 標籤 (JSON 格式)
+  photos      String?   // 照片 (JSON 格式)
   user        User      @relation(fields: [userId], references: [id])
   userId      Int
   folder      Folder?   @relation(fields: [folderId], references: [id])

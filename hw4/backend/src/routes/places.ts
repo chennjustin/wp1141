@@ -67,16 +67,21 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const userId = req.user?.id || 1;
-    const { 
-      name, 
-      address, 
-      lat, 
-      lng, 
-      emoji, 
-      description, 
-      rating, 
-      visitedAt, 
-      weather, 
+    const {
+      name,
+      address,
+      lat,
+      lng,
+      emoji,
+      description,
+      rating,
+      visitedAt,
+      weather,
+      travelMode,
+      companions,
+      expenses,
+      tags,
+      photos,
       folderId 
     } = req.body;
 
@@ -112,6 +117,11 @@ router.post('/', async (req, res) => {
         rating: rating ? parseInt(rating) : null,
         visitedAt: visitedAt ? new Date(visitedAt) : null,
         weather,
+        travelMode,
+        companions,
+        expenses,
+        tags: tags ? JSON.stringify(tags) : null,
+        photos: photos ? JSON.stringify(photos) : null,
         userId,
         folderId: folderId || null
       },
@@ -135,14 +145,19 @@ router.put('/:id', async (req, res) => {
   try {
     const userId = req.user?.id || 1;
     const placeId = parseInt(req.params.id);
-    const { 
-      name, 
+    const {
+      name,
       address, 
       emoji, 
       description, 
       rating, 
       visitedAt, 
-      weather, 
+      weather,
+      travelMode,
+      companions,
+      expenses,
+      tags,
+      photos,
       folderId 
     } = req.body;
 
@@ -184,6 +199,11 @@ router.put('/:id', async (req, res) => {
         rating: rating ? parseInt(rating) : null,
         visitedAt: visitedAt ? new Date(visitedAt) : null,
         weather,
+        travelMode,
+        companions,
+        expenses,
+        tags: tags ? JSON.stringify(tags) : null,
+        photos: photos ? JSON.stringify(photos) : null,
         folderId: folderId || null
       },
       include: {

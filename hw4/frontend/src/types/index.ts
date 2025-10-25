@@ -65,10 +65,15 @@ export interface Place {
   lat: number;
   lng: number;
   emoji?: string;
-  description?: string;
+  description?: string; // 旅遊心得
   rating?: number;
   visitedAt?: string;
   weather?: string;
+  travelMode?: string; // 交通方式
+  companions?: string; // 同行夥伴
+  expenses?: string; // 花費
+  tags?: string[]; // 標籤
+  photos?: string[]; // 照片
   userId: number;
   folderId?: number;
   folder?: Folder;
@@ -90,6 +95,11 @@ export interface CreatePlaceRequest {
   rating?: number;
   visitedAt?: string;
   weather?: string;
+  travelMode?: string;
+  companions?: string;
+  expenses?: string;
+  tags?: string[];
+  photos?: string[];
   folderId?: number;
 }
 
@@ -101,6 +111,11 @@ export interface UpdatePlaceRequest {
   rating?: number;
   visitedAt?: string;
   weather?: string;
+  travelMode?: string;
+  companions?: string;
+  expenses?: string;
+  tags?: string[];
+  photos?: string[];
   folderId?: number;
 }
 

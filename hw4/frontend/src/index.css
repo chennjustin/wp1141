@@ -68,6 +68,30 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* 自定義滾動條樣式 */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #E8E6E3 #F8F6F3;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #F8F6F3;
+    border-radius: 3px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #E8E6E3;
+    border-radius: 3px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #9CA3AF;
+  }
 }
 
 /* 滾動條樣式 */
