@@ -10,9 +10,9 @@ const prisma = new PrismaClient();
 // router.use(authenticateToken);
 
 // 取得所有地點
-router.get('/', async (req, res) => {
+router.get('/', async (_req, res) => {
   try {
-    const userId = req.user?.id || 1; // 暫時使用固定用戶 ID
+    const userId = 1; // 暫時使用固定用戶 ID
     
     const places = await prisma.place.findMany({
       where: { userId },
@@ -66,7 +66,7 @@ router.get('/:id', async (req, res) => {
 // 新增地點
 router.post('/', async (req, res) => {
   try {
-    const userId = req.user?.id || 1;
+    const userId = 1; // 暫時使用固定用戶 ID
     const {
       name,
       address,

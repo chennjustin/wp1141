@@ -21,6 +21,7 @@ function MapPage() {
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [filterMode, setFilterMode] = useState<'all' | 'folders' | 'types'>('all');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [resetZoomTrigger, setResetZoomTrigger] = useState(0);
   const [mapClickData, setMapClickData] = useState<{
     lat: number;
     lng: number;
@@ -79,8 +80,9 @@ function MapPage() {
   // 處理搜尋結果選擇（點擊搜尋結果標記）
   const handlePlaceSearch = useCallback((result: PlacesSearchResult) => {
     console.log('選擇搜尋結果:', result);
-    // 將搜尋結果轉換為地點點擊資料，打開 PlaceModal
+    // 只將搜尋結果傳給 MapContainer 進行 zoom in，不打開 Modal
     if (result.geometry && result.geometry.location) {
+      // 通知 MapContainer 進行 zoom in
       setMapClickData({
         lat: result.geometry.location.lat,
         lng: result.geometry.location.lng,
@@ -90,8 +92,7 @@ function MapPage() {
         rating: result.rating,
         types: result.types
       });
-      // 立即打開 Modal 讓使用者確認並儲存
-      setShowPlaceModal(true);
+      // 不自動打開 Modal，讓使用者確認後自己點擊地點
     }
   }, []);
 
@@ -99,11 +100,15 @@ function MapPage() {
   const handleSearchSubmit = useCallback(async (query: string) => {
     try {
       console.log('處理搜尋提交:', query);
+      
+      // 重置 zoom 狀態，允許新的搜尋進行 zoom in
+      setResetZoomTrigger(prev => prev + 1);
+      
       const response = await search(query);
       
-      // 如果有搜尋結果，自動選擇第一個結果
+      // 如果有搜尋結果，自動選擇第一個結果並 zoom in
       if (response && response.length > 0) {
-        console.log('搜尋到結果，自動選擇第一個:', response[0]);
+        console.log('搜尋到結果，自動 zoom in 到第一個結果:', response[0]);
         handlePlaceSearch(response[0]);
       } else {
         console.log('沒有搜尋到結果');
@@ -277,6 +282,8 @@ function MapPage() {
             selectedPlace={selectedPlace}
             searchResults={searchResults}
             refreshTrigger={refreshTrigger}
+            mapClickData={mapClickData}
+            resetZoomTrigger={resetZoomTrigger}
           />
       </div>
 

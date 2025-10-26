@@ -171,18 +171,20 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* 背景遮罩 */}
       <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/30"
         onClick={onClose}
       />
       
       {/* 彈窗內容 */}
-      <div className="relative bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-white shadow-soft w-full max-w-lg max-h-[90vh] overflow-hidden">
         {/* 標題列 */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-800">新增地點</h2>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-mist bg-cream">
+          <h2 className="text-lg font-semibold text-stone">
+            {editingPlace ? '編輯地點' : '新增地點'}
+          </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-warm-gray hover:text-stone transition-colors p-1"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -191,140 +193,146 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
         </div>
 
         {/* 表單內容 */}
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
-          {/* 地點資訊 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              地點名稱 *
-            </label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="輸入地點名稱"
-              required
-            />
-          </div>
+        <div className="p-6 space-y-5 overflow-y-auto max-h-[calc(90vh-140px)]">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* 地點資訊 */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-stone mb-2">
+                  地點名稱 *
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-mist focus:outline-none focus:ring-2 focus:ring-slate-blue/20 focus:border-slate-blue"
+                  placeholder="輸入地點名稱"
+                  required
+                />
+              </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              地址
-            </label>
-            <input
-              type="text"
-              value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="輸入地址（選填）"
-            />
-          </div>
-
-          {/* 標記設定 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              選擇圖示
-            </label>
-            <div className="grid grid-cols-6 gap-2">
-              {emojiOptions.map(emoji => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => setFormData({ ...formData, emoji })}
-                  className={`p-2 rounded-lg border-2 transition-all ${
-                    formData.emoji === emoji
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <span className="text-lg">{emoji}</span>
-                </button>
-              ))}
+              <div>
+                <label className="block text-sm font-medium text-stone mb-2">
+                  地址
+                </label>
+                <input
+                  type="text"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  className="w-full px-3 py-2 border border-mist focus:outline-none focus:ring-2 focus:ring-slate-blue/20 focus:border-slate-blue"
+                  placeholder="輸入地址（選填）"
+                />
+              </div>
             </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              描述
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="輸入描述（選填）"
-              rows={2}
-            />
-          </div>
+            {/* 標記設定 */}
+            <div>
+              <label className="block text-sm font-medium text-stone mb-3">
+                選擇圖示
+              </label>
+              <div className="grid grid-cols-8 gap-2 max-h-32 overflow-y-auto border border-mist p-3 bg-cream/30">
+                {emojiOptions.map(emoji => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, emoji })}
+                    className={`p-2 border transition-colors ${
+                      formData.emoji === emoji
+                        ? 'border-slate-blue bg-slate-blue/10'
+                        : 'border-mist hover:border-warm-gray hover:bg-cream'
+                    }`}
+                  >
+                    <span className="text-lg">{emoji}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
 
-          {/* 資料夾設定 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              選擇資料夾
-            </label>
-            <select
-              value={formData.folderId || ''}
-              onChange={(e) => setFormData({ ...formData, folderId: e.target.value ? parseInt(e.target.value) : undefined })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">選擇資料夾（選填）</option>
-              {folders.map(folder => (
-                <option key={folder.id} value={folder.id}>
-                  {folder.icon} {folder.name}
-                </option>
-              ))}
-            </select>
-          </div>
+            <div>
+              <label className="block text-sm font-medium text-stone mb-2">
+                描述
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className="w-full px-3 py-2 border border-mist focus:outline-none focus:ring-2 focus:ring-slate-blue/20 focus:border-slate-blue resize-none"
+                placeholder="輸入描述（選填）"
+                rows={3}
+              />
+            </div>
 
-          <div className="flex items-center space-x-2">
-            <input
-              type="text"
-              placeholder="新增資料夾名稱"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  const folderName = e.currentTarget.value.trim();
+            {/* 資料夾設定 */}
+            <div>
+              <label className="block text-sm font-medium text-stone mb-2">
+                選擇資料夾
+              </label>
+              <select
+                value={formData.folderId || ''}
+                onChange={(e) => setFormData({ ...formData, folderId: e.target.value ? parseInt(e.target.value) : undefined })}
+                className="w-full px-3 py-2 border border-mist focus:outline-none focus:ring-2 focus:ring-slate-blue/20 focus:border-slate-blue"
+              >
+                <option value="">選擇資料夾（選填）</option>
+                {folders.map(folder => (
+                  <option key={folder.id} value={folder.id}>
+                    {folder.icon} {folder.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 新增資料夾 */}
+            <div className="flex items-center space-x-2">
+              <input
+                type="text"
+                placeholder="新增資料夾名稱"
+                className="flex-1 px-3 py-2 border border-mist focus:outline-none focus:ring-2 focus:ring-slate-blue/20 focus:border-slate-blue"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const folderName = e.currentTarget.value.trim();
+                    if (folderName) {
+                      handleCreateFolder(folderName);
+                      e.currentTarget.value = '';
+                    }
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const input = document.querySelector('input[placeholder="新增資料夾名稱"]') as HTMLInputElement;
+                  const folderName = input?.value.trim();
                   if (folderName) {
                     handleCreateFolder(folderName);
-                    e.currentTarget.value = '';
+                    input.value = '';
                   }
-                }
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => {
-                const input = document.querySelector('input[placeholder="新增資料夾名稱"]') as HTMLInputElement;
-                const folderName = input?.value.trim();
-                if (folderName) {
-                  handleCreateFolder(folderName);
-                  input.value = '';
-                }
-              }}
-              className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              新增
-            </button>
-          </div>
+                }}
+                className="px-4 py-2 bg-moss/10 text-moss hover:bg-moss/20 transition-colors"
+              >
+                新增
+              </button>
+            </div>
+          </form>
+        </div>
 
-          {/* 操作按鈕 */}
-          <div className="flex justify-end space-x-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-            >
-              取消
-            </button>
-            <button
-              type="submit"
-              disabled={loading || !formData.name.trim()}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? '儲存中...' : '儲存地點'}
-            </button>
-          </div>
-        </form>
+        {/* 操作按鈕 */}
+        <div className="flex justify-end space-x-3 px-6 py-4 border-t border-mist bg-cream">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-warm-gray hover:text-stone transition-colors"
+          >
+            取消
+          </button>
+          <button
+            type="submit"
+            onClick={handleSubmit}
+            disabled={loading || !formData.name.trim()}
+            className="px-6 py-2 bg-moss/10 text-moss hover:bg-moss/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {loading ? '儲存中...' : '儲存地點'}
+          </button>
+        </div>
       </div>
     </div>
   );

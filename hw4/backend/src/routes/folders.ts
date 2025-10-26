@@ -10,9 +10,9 @@ const prisma = new PrismaClient();
 // router.use(authenticateToken);
 
 // 取得所有資料夾
-router.get('/', async (req, res) => {
+router.get('/', async (_req, res) => {
   try {
-    const userId = req.user?.id || 1;
+    const userId = 1; // 暫時使用固定用戶 ID
     
     const folders = await prisma.folder.findMany({
       where: { userId },
@@ -81,7 +81,21 @@ router.get('/:id', async (req, res) => {
 // 新增資料夾
 router.post('/', async (req, res) => {
   try {
-    const userId = req.user?.id || 1;
+    let userId = req.user?.id;
+    
+    // 如果沒有用戶，創建一個默認用戶
+    if (!userId) {
+      const defaultUser = await prisma.user.upsert({
+        where: { email: 'default@example.com' },
+        update: {},
+        create: {
+          username: 'default',
+          email: 'default@example.com',
+          password: 'default'
+        }
+      });
+      userId = defaultUser.id;
+    }
     const { name, description, color, icon, parentId } = req.body;
 
     // 驗證必填欄位
@@ -90,17 +104,6 @@ router.post('/', async (req, res) => {
       return;
     }
 
-    // 確保用戶存在
-    await prisma.user.upsert({
-      where: { id: userId },
-      update: {},
-      create: {
-        id: userId,
-        username: `user_${userId}`,
-        email: `user${userId}@example.com`,
-        password: `temp_password_${userId}`
-      }
-    });
 
     // 如果指定了父資料夾，檢查是否存在且屬於該使用者
     if (parentId) {

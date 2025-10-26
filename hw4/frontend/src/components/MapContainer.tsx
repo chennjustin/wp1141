@@ -23,6 +23,16 @@ interface MapContainerProps {
   selectedPlace?: Place | null;
   refreshTrigger?: number;
   searchResults?: any[];
+  mapClickData?: {
+    lat: number;
+    lng: number;
+    name?: string;
+    address?: string;
+    placeId?: string;
+    rating?: number;
+    types?: string[];
+  } | null;
+  resetZoomTrigger?: number;
 }
 
 const MapContainer: React.FC<MapContainerProps> = ({
@@ -33,7 +43,9 @@ const MapContainer: React.FC<MapContainerProps> = ({
   onMapClick,
   selectedPlace,
   refreshTrigger,
-  searchResults = []
+  searchResults = [],
+  mapClickData,
+  resetZoomTrigger
 }) => {
   const [places, setPlaces] = useState<Place[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -44,6 +56,7 @@ const MapContainer: React.FC<MapContainerProps> = ({
   
   const [showAddToCollection, setShowAddToCollection] = useState(false);
   const [selectedPlaceInfo, setSelectedPlaceInfo] = useState<any>(null);
+  const [hasZoomedToSearch, setHasZoomedToSearch] = useState(false);
   
   
 
@@ -135,6 +148,31 @@ const MapContainer: React.FC<MapContainerProps> = ({
       }
     }
   }, [searchResults, map]);
+
+  // 處理搜尋結果的 zoom in（來自 MapPage 的 mapClickData）
+  useEffect(() => {
+    if (mapClickData && map && !hasZoomedToSearch) {
+      console.log('收到 mapClickData，進行 zoom in:', mapClickData);
+      const location = new google.maps.LatLng(mapClickData.lat, mapClickData.lng);
+      
+      // 平滑移動到該位置
+      map.panTo(location);
+      map.setZoom(18); // zoom in 到適當的級別
+      
+      // 標記已經 zoom in 過
+      setHasZoomedToSearch(true);
+      
+      console.log('已 zoom in 到位置:', mapClickData.name || '未知地點');
+    }
+  }, [mapClickData, map, hasZoomedToSearch]);
+
+  // 監聽 resetZoomTrigger 變化，重置 zoom 狀態
+  useEffect(() => {
+    if (resetZoomTrigger !== undefined) {
+      setHasZoomedToSearch(false);
+      console.log('重置 zoom 狀態，允許下次搜尋時 zoom in');
+    }
+  }, [resetZoomTrigger]);
 
   // 不再需要自定義搜尋參數，Google Maps 會自動處理
 
