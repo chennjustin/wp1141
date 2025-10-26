@@ -76,15 +76,6 @@ function MapPage() {
     }
   }, [updatePlace, loadData]);
 
-  // 處理搜尋
-  const handleSearch = useCallback(async (query: string) => {
-    try {
-      await search(query);
-    } catch (error) {
-      console.error('搜尋失敗:', error);
-    }
-  }, [search]);
-
   // 處理搜尋結果選擇（點擊搜尋結果標記）
   const handlePlaceSearch = useCallback((result: PlacesSearchResult) => {
     console.log('選擇搜尋結果:', result);
@@ -99,14 +90,28 @@ function MapPage() {
         rating: result.rating,
         types: result.types
       });
+      // 立即打開 Modal 讓使用者確認並儲存
       setShowPlaceModal(true);
     }
   }, []);
 
   // 處理搜尋提交
-  const handleSearchSubmit = useCallback((query: string) => {
-    handleSearch(query);
-  }, [handleSearch]);
+  const handleSearchSubmit = useCallback(async (query: string) => {
+    try {
+      console.log('處理搜尋提交:', query);
+      const response = await search(query);
+      
+      // 如果有搜尋結果，自動選擇第一個結果
+      if (response && response.length > 0) {
+        console.log('搜尋到結果，自動選擇第一個:', response[0]);
+        handlePlaceSearch(response[0]);
+      } else {
+        console.log('沒有搜尋到結果');
+      }
+    } catch (error) {
+      console.error('搜尋提交失敗:', error);
+    }
+  }, [search, handlePlaceSearch]);
 
   // 處理地點創建
   const handlePlaceCreated = useCallback(async (placeData: any) => {
@@ -271,7 +276,6 @@ function MapPage() {
             onMapClick={handleMapClick}
             selectedPlace={selectedPlace}
             searchResults={searchResults}
-            onSearchResultClick={handlePlaceSearch}
             refreshTrigger={refreshTrigger}
           />
       </div>

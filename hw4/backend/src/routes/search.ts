@@ -180,7 +180,7 @@ router.post('/nearby-search', async (req, res) => {
   }
 });
 
-// 取得地點詳細資訊
+// 取得地點詳細資訊 - 使用新版 Places API (New)
 router.get('/place-details/:placeId', async (req, res) => {
   try {
     const { placeId } = req.params;
@@ -192,41 +192,60 @@ router.get('/place-details/:placeId', async (req, res) => {
 
     console.log('取得地點詳細資訊:', placeId);
 
-    const response = await makePlacesApiRequest(`/${placeId}`, {});
+    const apiKey = process.env['GOOGLE_MAPS_SERVER_KEY'];
+    
+    if (!apiKey) {
+      sendError(res, 'Google Maps API Key 未設定', 500);
+      return;
+    }
+
+    // 使用新版 Places API (New) 的 GET 方法
+    const response = await axios.get(`${PLACES_API_BASE_URL}/${placeId}`, {
+      headers: {
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': 'id,displayName,formattedAddress,location,rating,userRatingCount,types,photos,regularOpeningHours,websiteUri,nationalPhoneNumber',
+        'Content-Type': 'application/json'
+      },
+      timeout: 10000
+    });
+
+    const place = response.data;
 
     const placeDetails = {
-      place_id: response.id,
-      name: response.displayName?.text || '未知地點',
-      formatted_address: response.formattedAddress || '',
+      place_id: place.id,
+      name: place.displayName?.text || '未知地點',
+      formatted_address: place.formattedAddress || '',
       geometry: {
         location: {
-          lat: response.location?.latitude || 0,
-          lng: response.location?.longitude || 0
+          lat: place.location?.latitude || 0,
+          lng: place.location?.longitude || 0
         }
       },
-      rating: response.rating || 0,
-      user_rating_total: response.userRatingCount || 0,
-      types: response.types || [],
-      photos: response.photos?.map((photo: any) => ({
+      rating: place.rating || 0,
+      user_rating_total: place.userRatingCount || 0,
+      types: place.types || [],
+      photos: place.photos?.map((photo: any) => ({
         photo_reference: photo.name,
         height: photo.heightPx,
         width: photo.widthPx
       })) || [],
-      opening_hours: response.regularOpeningHours ? {
-        open_now: response.regularOpeningHours.openNow,
-        weekday_text: response.regularOpeningHours.weekdayDescriptions || []
+      opening_hours: place.regularOpeningHours ? {
+        open_now: place.regularOpeningHours.openNow,
+        weekday_text: place.regularOpeningHours.weekdayDescriptions || []
       } : null,
-      website: response.websiteUri || null,
-      phone_number: response.nationalPhoneNumber || null
+      website: place.websiteUri || null,
+      phone_number: place.nationalPhoneNumber || null
     };
 
     sendSuccess(res, placeDetails, '取得地點詳細資訊成功');
   } catch (error: any) {
     console.error('取得地點詳細資訊失敗:', error);
+    console.error('錯誤詳情:', error.response?.data);
     
     if (error.message?.includes('API Key 未設定')) {
       sendError(res, 'Google Maps API Key 未設定', 500);
     } else if (error.response?.data) {
+      console.error('Google API 錯誤回應:', error.response.data);
       sendError(res, `Google API 錯誤: ${error.response.data.error?.message || '未知錯誤'}`, 500);
     } else {
       sendServerError(res, '取得地點詳細資訊失敗');

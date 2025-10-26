@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
 import type { Place, Folder } from '../types';
-import { placesApi, foldersApi } from '../services/data';
+import { placesApi, foldersApi, searchApi } from '../services/data';
 import AddToCollectionModal from './AddToCollectionModal';
 
 const mapContainerStyle = {
@@ -23,7 +23,6 @@ interface MapContainerProps {
   selectedPlace?: Place | null;
   refreshTrigger?: number;
   searchResults?: any[];
-  onSearchResultClick?: (result: any) => void;
 }
 
 const MapContainer: React.FC<MapContainerProps> = ({
@@ -34,18 +33,14 @@ const MapContainer: React.FC<MapContainerProps> = ({
   onMapClick,
   selectedPlace,
   refreshTrigger,
-  searchResults = [],
-  onSearchResultClick
+  searchResults = []
 }) => {
   const [places, setPlaces] = useState<Place[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [selectedMarker, setSelectedMarker] = useState<Place | null>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [loading, setLoading] = useState(true);
-  const [nearbyPlaces, setNearbyPlaces] = useState<any[]>([]);
-  const [isLoadingNearby, setIsLoadingNearby] = useState(false);
-  const [lastSearchLocation, setLastSearchLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [lastSearchTime, setLastSearchTime] = useState<number>(0);
+  // 移除附近地點相關狀態，直接使用 Google Maps 內建 POI
   
   const [showAddToCollection, setShowAddToCollection] = useState(false);
   const [selectedPlaceInfo, setSelectedPlaceInfo] = useState<any>(null);
@@ -102,90 +97,152 @@ const MapContainer: React.FC<MapContainerProps> = ({
     }
   }, [refreshTrigger]);
 
-  // 載入附近地點（自動探索）
-  const loadNearbyPlaces = useCallback(async (lat: number, lng: number, radius: number = 2000) => {
-    const now = Date.now();
-    
-    // 避免重複搜尋相同位置（增加容差）
-    if (lastSearchLocation && 
-        Math.abs(lastSearchLocation.lat - lat) < 0.005 && 
-        Math.abs(lastSearchLocation.lng - lng) < 0.005) {
-      return;
-    }
-
-    // API 配額保護：至少間隔 10 秒才能再次搜尋
-    if (now - lastSearchTime < 10000) {
-      console.log('⏰ API 配額保護：請稍後再試');
-      return;
-    }
-
-    try {
-      setIsLoadingNearby(true);
-      const response = await fetch('http://localhost:3000/search/nearby-search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          location: { lat, lng },
-          radius
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.data && Array.isArray(data.data)) {
-          console.log(`📍 找到 ${data.data.length} 個附近地點`);
-          setNearbyPlaces(data.data);
-          setLastSearchLocation({ lat, lng });
-          setLastSearchTime(now);
+  // 搜尋結果自動 zoom in，並自動點擊第一個結果以顯示 Google Maps 原生資訊
+  useEffect(() => {
+    if (searchResults && searchResults.length > 0 && map) {
+      // 如果只有一個結果，直接 zoom in 到該地點
+      if (searchResults.length === 1) {
+        const result = searchResults[0];
+        if (result.geometry && result.geometry.location) {
+          const location = new google.maps.LatLng(
+            result.geometry.location.lat,
+            result.geometry.location.lng
+          );
+          map.panTo(location);
+          map.setZoom(18); // zoom in 更近，以便看到 Google Maps 原生 POI
+          
+          // 延遲一下，等待地圖載入完成，然後模擬點擊以顯示 POI 資訊
+          setTimeout(() => {
+            // 觸發地圖點擊事件，讓系統去搜尋該位置的 POI
+            google.maps.event.trigger(map, 'click', {
+              latLng: location,
+              stop: null
+            });
+          }, 500);
         }
       } else {
-        const errorData = await response.json();
-        console.error('附近搜尋失敗:', errorData.error);
-        
-        // 如果是配額超限，顯示友好提示
-        if (errorData.error?.includes('Quota exceeded')) {
-          console.log('⏰ Google API 配額已用完，請稍後再試');
-          setNearbyPlaces([]);
-        }
+        // 如果有多個結果，調整視野包含所有結果
+        const bounds = new google.maps.LatLngBounds();
+        searchResults.forEach((result) => {
+          if (result.geometry && result.geometry.location) {
+            bounds.extend({
+              lat: result.geometry.location.lat,
+              lng: result.geometry.location.lng
+            });
+          }
+        });
+        map.fitBounds(bounds);
       }
-    } catch (error) {
-      console.error('載入附近地點失敗:', error);
-    } finally {
-      setIsLoadingNearby(false);
     }
-  }, [lastSearchLocation, lastSearchTime]);
+  }, [searchResults, map]);
+
+  // 不再需要自定義搜尋參數，Google Maps 會自動處理
+
+  // 不再需要載入附近地點，直接使用 Google Maps 內建的 POI
+  // Google Maps 會根據 zoom level 自動顯示/隱藏地點
 
   // 地圖載入完成
   const onLoad = useCallback((mapInstance: google.maps.Map) => {
     setMap(mapInstance);
 
-    let searchTimeout: number | null = null;
-
-    // 監聽地圖閒置事件（使用者停止移動或縮放後觸發）
-    mapInstance.addListener('idle', () => {
-      // 清除之前的搜尋計時器
-      if (searchTimeout) {
-        clearTimeout(searchTimeout);
-      }
-
-      // 延遲 1 秒後才搜尋，避免過度搜尋
-      searchTimeout = window.setTimeout(() => {
-        const center = mapInstance.getCenter();
-        const zoom = mapInstance.getZoom();
-        
-        // 只在 zoom level 15 以上才自動探索（更嚴格的條件）
-        if (center && zoom && zoom >= 15) {
-          const radius = Math.floor(1000 / Math.pow(2, zoom - 15));
-          loadNearbyPlaces(center.lat(), center.lng(), Math.max(radius, 200));
-        } else if (zoom && zoom < 15) {
-          // zoom level 太小時清空附近地點
-          setNearbyPlaces([]);
-        }
-      }, 1000);
+    // 啟用 Google Maps 內建的 POI 點擊功能
+    mapInstance.setOptions({
+      clickableIcons: true // 允許點擊 Google Maps 內建的 POI
     });
-  }, [loadNearbyPlaces]);
+
+    // 監聽地圖點擊事件 - 使用 Google Maps JavaScript API 獲取 POI 資訊
+    mapInstance.addListener('click', (event: any) => {
+      console.log('=== 地圖點擊事件觸發 ===', event);
+      
+      if (event.latLng) {
+        const lat = event.latLng.lat();
+        const lng = event.latLng.lng();
+        
+        console.log('點擊座標:', { lat, lng });
+        console.log('placeId:', event.placeId);
+        
+        // 如果點擊的是 Google Maps POI（有 placeId）
+        if (event.placeId) {
+          console.log('點擊了 Google Maps POI，placeId:', event.placeId);
+          
+          // 阻止預設的 InfoWindow
+          event.stop?.();
+          
+          // 使用後端 API 獲取 POI 詳細資訊（因為前端 API Key 沒有啟用 Places API）
+          searchApi.getPlaceDetails(event.placeId)
+            .then((response) => {
+              console.log('後端 getPlaceDetails 回應:', response);
+              
+              if (response.success && response.data) {
+                const place = response.data;
+                const placeInfo = {
+                  name: place.name || '',
+                  address: place.formatted_address || '',
+                  lat: place.geometry?.location?.lat || lat,
+                  lng: place.geometry?.location?.lng || lng,
+                  rating: place.rating || 0,
+                  types: place.types || [],
+                  photos: place.photos || [],
+                  opening_hours: place.opening_hours || null,
+                  place_id: event.placeId
+                };
+                
+                console.log('調用 onMapClick，傳入 POI 資訊:', placeInfo);
+                onMapClick?.(placeInfo.lat, placeInfo.lng, placeInfo);
+              } else {
+                console.log('無法獲取 POI 詳細資訊，使用基本資訊');
+                // 如果無法獲取詳細資訊，使用空白資訊
+                const placeInfo = {
+                  name: '',
+                  address: '',
+                  lat,
+                  lng,
+                  rating: 0,
+                  types: [],
+                  photos: [],
+                  opening_hours: null,
+                  place_id: event.placeId
+                };
+                onMapClick?.(lat, lng, placeInfo);
+              }
+            })
+            .catch((error) => {
+              console.error('獲取 POI 詳細資訊失敗:', error);
+              // 如果失敗，使用空白資訊
+              const placeInfo = {
+                name: '',
+                address: '',
+                lat,
+                lng,
+                rating: 0,
+                types: [],
+                photos: [],
+                opening_hours: null,
+                place_id: event.placeId
+              };
+              onMapClick?.(lat, lng, placeInfo);
+            });
+        } else {
+          // 點擊的是空白區域，讓使用者自己輸入
+          console.log('點擊了空白區域');
+          const placeInfo = {
+            name: '',
+            address: '',
+            lat,
+            lng,
+            rating: 0,
+            types: [],
+            photos: [],
+            opening_hours: null,
+            place_id: null
+          };
+          
+          console.log('調用 onMapClick，傳入空白資訊:', placeInfo);
+          onMapClick?.(lat, lng, placeInfo);
+        }
+      }
+    });
+  }, [onMapClick]);
 
   // 地圖卸載
   const onUnmount = useCallback(() => {
@@ -238,55 +295,74 @@ const MapContainer: React.FC<MapContainerProps> = ({
     const lng = event.latLng.lng();
 
     try {
-      // 使用 Places API 搜尋附近地點
-      const service = new google.maps.places.PlacesService(map);
-      const request = {
-        location: { lat, lng },
-        radius: 100,
-        type: 'establishment'
-      };
+      // 使用後端的新 Places API (New) 搜尋附近地點
+      const response = await searchApi.nearbySearch(
+        { lat, lng },
+        100, // 100 公尺範圍內
+        'establishment'
+      );
 
-      service.nearbySearch(request, (results, status) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
-          // 找到最近的地點
-          const nearestPlace = results[0];
+      if (response.success && response.data && response.data.length > 0) {
+        // 找到最近的地點
+        const nearestPlace = response.data[0];
+        const placeInfo = {
+          name: nearestPlace.name || '未知地點',
+          address: nearestPlace.vicinity || '',
+          placeId: nearestPlace.place_id,
+          rating: nearestPlace.rating,
+          types: nearestPlace.types
+        };
+        onMapClick?.(lat, lng, placeInfo);
+      } else {
+        // 使用 Geocoding API 取得地址資訊
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+          if (status === google.maps.GeocoderStatus.OK && results && results.length > 0) {
+            const result = results[0];
+            const placeInfo = {
+              name: result.formatted_address,
+              address: result.formatted_address,
+              placeId: result.place_id,
+              types: result.types
+            };
+            onMapClick?.(lat, lng, placeInfo);
+          } else {
+            // 如果都找不到，使用座標作為名稱
+            const placeInfo = {
+              name: `位置 (${lat.toFixed(6)}, ${lng.toFixed(6)})`,
+              address: '',
+              placeId: null,
+              types: []
+            };
+            onMapClick?.(lat, lng, placeInfo);
+          }
+        });
+      }
+    } catch (error) {
+      console.error('搜尋附近地點失敗:', error);
+      // 如果 API 調用失敗，使用 Geocoding API 作為回退
+      const geocoder = new google.maps.Geocoder();
+      geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+        if (status === google.maps.GeocoderStatus.OK && results && results.length > 0) {
+          const result = results[0];
           const placeInfo = {
-            name: nearestPlace.name || '未知地點',
-            address: nearestPlace.vicinity || '',
-            placeId: nearestPlace.place_id,
-            rating: nearestPlace.rating,
-            types: nearestPlace.types
+            name: result.formatted_address,
+            address: result.formatted_address,
+            placeId: result.place_id,
+            types: result.types
           };
           onMapClick?.(lat, lng, placeInfo);
         } else {
-          // 使用 Geocoding API 取得地址資訊
-          const geocoder = new google.maps.Geocoder();
-          geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-            if (status === google.maps.GeocoderStatus.OK && results && results.length > 0) {
-              const result = results[0];
-              const placeInfo = {
-                name: result.formatted_address,
-                address: result.formatted_address,
-                placeId: result.place_id,
-                types: result.types
-              };
-              onMapClick?.(lat, lng, placeInfo);
-            } else {
-              // 如果都找不到，使用座標作為名稱
-              const placeInfo = {
-                name: `位置 (${lat.toFixed(6)}, ${lng.toFixed(6)})`,
-                address: '',
-                placeId: null,
-                types: []
-              };
-              onMapClick?.(lat, lng, placeInfo);
-            }
-          });
+          // 如果都找不到，使用座標作為名稱
+          const placeInfo = {
+            name: `位置 (${lat.toFixed(6)}, ${lng.toFixed(6)})`,
+            address: '',
+            placeId: null,
+            types: []
+          };
+          onMapClick?.(lat, lng, placeInfo);
         }
       });
-    } catch (error) {
-      console.error('地圖點擊處理失敗:', error);
-      onMapClick?.(lat, lng);
     }
   }, [map, onMapClick]);
 
@@ -329,6 +405,8 @@ const MapContainer: React.FC<MapContainerProps> = ({
     };
   };
 
+  // 不再需要自定義地點標記圖示，完全使用 Google Maps 原生 POI
+
   if (!isLoaded) {
     return (
       <div className="flex items-center justify-center h-full bg-gray-100">
@@ -362,17 +440,14 @@ const MapContainer: React.FC<MapContainerProps> = ({
         onClick={handleMapClick}
         options={{
           gestureHandling: 'greedy',
-          clickableIcons: false,
+          clickableIcons: true, // 啟用 Google Maps 內建 POI 點擊
           mapTypeControl: true,
           streetViewControl: true,
           fullscreenControl: false,
           zoomControl: true,
           styles: [
-            {
-              featureType: 'poi',
-              elementType: 'labels',
-              stylers: [{ visibility: 'off' }]
-            }
+            // 保持 Google Maps 預設的 POI 標籤顯示
+            // 這樣機場、車站、景點等都會正常顯示
           ]
         }}
       >
@@ -393,48 +468,8 @@ const MapContainer: React.FC<MapContainerProps> = ({
           );
         })}
 
-        {/* 渲染搜尋結果標記（橙色） */}
-        {searchResults.map((result, index) => (
-          <Marker
-            key={`search-${result.place_id || index}`}
-            position={{
-              lat: result.geometry.location.lat,
-              lng: result.geometry.location.lng
-            }}
-            onClick={() => onSearchResultClick?.(result)}
-            icon={createMarkerIcon('🔍', '#F59E0B')}
-            zIndex={1000}
-          />
-        ))}
-
-        {/* 渲染附近探索地點標記（灰色，半透明） */}
-        {nearbyPlaces.map((place, index) => (
-          <Marker
-            key={`nearby-${place.place_id || index}`}
-            position={{
-              lat: place.geometry.location.lat,
-              lng: place.geometry.location.lng
-            }}
-            onClick={() => {
-              // 點擊附近地點時，顯示加入收藏 Modal
-              setSelectedPlaceInfo({
-                name: place.name,
-                address: place.vicinity,
-                rating: place.rating,
-                opening_hours: place.opening_hours,
-                photos: place.photos,
-                types: place.types,
-                place_id: place.place_id,
-                geometry: place.geometry
-              });
-              setShowAddToCollection(true);
-            }}
-            icon={createMarkerIcon('📍', '#9CA3AF')}
-            opacity={0.6}
-            zIndex={1}
-            title={place.name} // 添加 hover 提示
-          />
-        ))}
+        {/* 不再渲染自定義搜尋結果標記，完全使用 Google Maps 原生 POI */}
+        {/* Google Maps 內建 POI 會自動顯示，點擊後會自動觸發我們的處理邏輯 */}
 
         {/* 資訊視窗 */}
         {selectedMarker && (
@@ -467,13 +502,7 @@ const MapContainer: React.FC<MapContainerProps> = ({
         )}
       </GoogleMap>
 
-      {/* 載入附近地點的指示器 */}
-        {isLoadingNearby && (
-          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white px-4 py-2 rounded-lg shadow-md flex items-center space-x-2 z-50">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-            <span className="text-sm text-gray-700">探索附近地點...</span>
-          </div>
-        )}
+      {/* Google Maps 內建 POI 不需要載入指示器 */}
 
       {/* 地點統計 - 重新定位 */}
       <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg shadow-md px-3 py-2">

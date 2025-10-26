@@ -156,6 +156,7 @@ export interface UpdateEntryRequest {
 
 // API 回應型別
 export interface ApiResponse<T = any> {
+  success: boolean;
   message: string;
   data?: T;
   error?: string;
@@ -186,4 +187,9 @@ export interface PlacesSearchResult {
   };
   rating?: number;
   types: string[];
+  photos?: Array<{
+    photo_reference: string;
+    height: number;
+    width: number;
+  }>;
 }

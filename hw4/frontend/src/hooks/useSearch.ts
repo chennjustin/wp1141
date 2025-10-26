@@ -11,7 +11,7 @@ export const useSearch = () => {
     if (!query.trim()) {
       setResults([]);
       setError(null);
-      return;
+      return [];
     }
 
     try {
@@ -22,13 +22,16 @@ export const useSearch = () => {
       
       if (response.data) {
         setResults(response.data);
+        return response.data;
       } else {
         setResults([]);
+        return [];
       }
     } catch (err) {
       console.error('搜尋失敗:', err);
       setError('搜尋失敗，請稍後再試');
       setResults([]);
+      return [];
     } finally {
       setLoading(false);
     }

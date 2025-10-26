@@ -206,7 +206,7 @@ export const searchApi = {
 
   // 取得地點詳細資訊
   getPlaceDetails: async (placeId: string): Promise<ApiResponse<any>> => {
-    const response = await api.post('/search/place-details', { placeId });
+    const response = await api.get(`/search/place-details/${placeId}`);
     return response.data;
   },
 };
