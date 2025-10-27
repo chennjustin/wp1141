@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 interface CreateFolderModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreate: (folderData: { name: string; icon: string; color: string }) => void;
+  onCreate: (folderData: { name: string; icon: string }) => void;
 }
 
 const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
@@ -13,8 +13,7 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
 }) => {
   const [formData, setFormData] = useState({
     name: '',
-    icon: '📁',
-    color: '#7C8B9F'
+    icon: '📁'
   });
 
   const iconOptions = [
@@ -22,25 +21,17 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
     '🎯', '⭐', '💎', '🔖', '🏷️', '🎨', '🎭', '🎪', '🎨', '🎯'
   ];
 
-  const colorOptions = [
-    { name: '石藍', value: '#7C8B9F' },
-    { name: '墨綠', value: '#8B9B8F' },
-    { name: '溫暖灰', value: '#9CA3AF' },
-    { name: '霧灰', value: '#E8E6E3' },
-    { name: '奶白', value: '#F8F6F3' }
-  ];
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.name.trim()) {
       onCreate(formData);
-      setFormData({ name: '', icon: '📁', color: '#7C8B9F' });
+      setFormData({ name: '', icon: '📁' });
       onClose();
     }
   };
 
   const handleClose = () => {
-    setFormData({ name: '', icon: '📁', color: '#7C8B9F' });
+    setFormData({ name: '', icon: '📁' });
     onClose();
   };
 
@@ -103,28 +94,6 @@ const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
                   >
                     {icon}
                   </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 顏色選擇 */}
-            <div>
-              <label className="block text-sm font-medium text-stone mb-2">
-                選擇顏色
-              </label>
-              <div className="flex space-x-2">
-                {colorOptions.map((color) => (
-                  <button
-                    key={color.value}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, color: color.value })}
-                    className={`w-8 h-8 rounded-full border-2 transition-all duration-200 ${
-                      formData.color === color.value
-                        ? 'border-slate-blue scale-110'
-                        : 'border-mist/50 hover:border-slate-blue/50'
-                    }`}
-                    style={{ backgroundColor: color.value }}
-                  />
                 ))}
               </div>
             </div>

@@ -178,9 +178,8 @@ const PlaceInfoCard: React.FC<PlaceInfoCardProps> = ({
   };
 
   const handleDelete = () => {
-    if (confirm(`確定要刪除「${place.name}」嗎？`)) {
-      onDelete(place);
-    }
+    // 直接調用 onDelete，讓父組件處理確認
+    onDelete(place);
   };
 
   const renderStars = (currentRating: number, interactive: boolean = false) => {
@@ -473,9 +472,9 @@ const PlaceInfoCard: React.FC<PlaceInfoCardProps> = ({
                 </button>
                 <button
                   onClick={handleSave}
-                  className="flex-1 px-4 py-2.5 bg-moss/10 text-moss rounded-full hover:bg-moss/20 transition-all duration-200 text-sm font-medium"
+                  className="flex-1 px-4 py-2.5 bg-slate-blue text-white rounded-full hover:bg-slate-blue/80 transition-all duration-200 text-sm font-medium"
                 >
-                  💾 儲存記錄
+                  儲存記錄
                 </button>
               </div>
             </div>

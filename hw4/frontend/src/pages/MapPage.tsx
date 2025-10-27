@@ -34,7 +34,7 @@ function MapPage() {
 
   // 使用自定義 hooks
   const { user, logout } = useAuth();
-  const { places, folders, createPlace, updatePlace, deletePlace, createFolder, deleteFolder, loadData } = usePlaces();
+  const { places, folders, updatePlace, deletePlace, createFolder, deleteFolder, loadData } = usePlaces();
   const { results: searchResults, search } = useSearch();
 
   // 初始化：登入後自動載入使用者資料
@@ -47,6 +47,7 @@ function MapPage() {
 
   // 處理地圖點擊
   const handleMapClick = useCallback((lat: number, lng: number, placeInfo?: any) => {
+    console.log('MapPage handleMapClick 收到資料:', JSON.stringify(placeInfo, null, 2));
     setMapClickData({
       lat,
       lng,
@@ -118,11 +119,10 @@ function MapPage() {
     }
   }, [search, handlePlaceSearch]);
 
-  // 處理地點創建
-  const handlePlaceCreated = useCallback(async (placeData: any) => {
+  // 處理地點創建 - 注意：API 已經在 PlaceModal 中調用，這裡只需要更新 UI
+  const handlePlaceCreated = useCallback(async (place: any) => {
     try {
-      const newPlace = await createPlace(placeData);
-      setSelectedPlace(newPlace!);
+      setSelectedPlace(place);
       setShowPlaceModal(false);
       setMapClickData(null);
       // 觸發 MapContainer 重新載入
@@ -130,16 +130,14 @@ function MapPage() {
       // 同時重新載入 MapPage 的資料夾列表
       await loadData();
     } catch (error) {
-      console.error('創建地點失敗:', error);
+      console.error('處理地點創建失敗:', error);
     }
-  }, [createPlace, loadData]);
+  }, [loadData]);
 
-  // 處理地點更新
+  // 處理地點更新 - 注意：API 已經在 PlaceModal 中調用，這裡只需要更新 UI
   const handlePlaceUpdated = useCallback(async (place: any) => {
     try {
-      if (editingPlace) {
-        await updatePlace(editingPlace.id, place);
-      }
+      setSelectedPlace(place);
       setShowPlaceModal(false);
       setEditingPlace(null);
       // 觸發 MapContainer 重新載入
@@ -147,9 +145,9 @@ function MapPage() {
       // 同時重新載入 MapPage 的資料夾列表
       await loadData();
     } catch (error) {
-      console.error('更新地點失敗:', error);
+      console.error('處理地點更新失敗:', error);
     }
-  }, [updatePlace, editingPlace, loadData]);
+  }, [loadData]);
 
   // 處理地點刪除
   const handlePlaceDeleted = useCallback(async (place: Place) => {
@@ -329,7 +327,7 @@ function MapPage() {
           selectedFolder={selectedFolder}
           onFolderSelect={handleFolderSelect}
           onPlaceSelect={handlePlaceClick}
-           onCreateFolder={async (folderData: { name: string; icon: string; color: string }) => {
+           onCreateFolder={async (folderData: { name: string; icon: string }) => {
              try {
                await createFolder(folderData);
                await loadData();

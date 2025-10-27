@@ -96,7 +96,7 @@ router.post('/', async (req, res) => {
       });
       userId = defaultUser.id;
     }
-    const { name, description, color, icon, parentId } = req.body;
+    const { name, description, icon, parentId } = req.body;
 
     // 驗證必填欄位
     if (!name) {
@@ -124,7 +124,6 @@ router.post('/', async (req, res) => {
       data: {
         name,
         description,
-        color: color || '#3B82F6',
         icon: icon || '📁',
         userId,
         parentId: parentId || null
@@ -149,7 +148,7 @@ router.put('/:id', async (req, res) => {
   try {
     const userId = req.user?.id || 1;
     const folderId = parseInt(req.params.id);
-    const { name, description, color, icon, parentId } = req.body;
+    const { name, description, icon, parentId } = req.body;
 
     // 檢查資料夾是否存在且屬於該使用者
     const existingFolder = await prisma.folder.findFirst({
@@ -184,7 +183,6 @@ router.put('/:id', async (req, res) => {
       data: {
         name,
         description,
-        color,
         icon,
         parentId: parentId || null
       },

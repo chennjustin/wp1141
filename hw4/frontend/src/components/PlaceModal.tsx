@@ -58,9 +58,14 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
     }
   };
 
-  // 初始化表單數據
+  // 初始化表單數據 - 當 Modal 打開時
   useEffect(() => {
+    if (!isOpen) return;
+    
+    console.log('PlaceModal 初始化資料:', { editingPlace, initialData });
+    
     if (editingPlace) {
+      console.log('使用 editingPlace 資料');
       setFormData({
         name: editingPlace.name || '',
         address: editingPlace.address || '',
@@ -74,6 +79,7 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
         folderId: editingPlace.folderId
       });
     } else if (initialData) {
+      console.log('使用 initialData 資料:', initialData);
       setFormData({
         name: initialData.name || '',
         address: initialData.address || '',
@@ -83,8 +89,20 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
         description: '',
         folderId: undefined
       });
+    } else {
+      console.log('沒有提供資料，使用預設值');
+      // 重置為預設值
+      setFormData({
+        name: '',
+        address: '',
+        lat: 0,
+        lng: 0,
+        emoji: '📍',
+        description: '',
+        folderId: undefined
+      });
     }
-  }, [editingPlace, initialData]);
+  }, [isOpen, editingPlace, initialData]);
 
   useEffect(() => {
     if (isOpen) {
@@ -92,20 +110,6 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
     }
   }, [isOpen]);
 
-  // 初始化表單資料
-  useEffect(() => {
-    if (initialData) {
-      setFormData({
-        name: initialData.name || '',
-        address: initialData.address || '',
-        lat: initialData.lat,
-        lng: initialData.lng,
-        emoji: '📍',
-        description: '',
-        folderId: undefined
-      });
-    }
-  }, [initialData]);
 
   // 建立或更新地點
   const handleSubmit = async (e: React.FormEvent) => {
@@ -125,20 +129,20 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
       } else {
         // 建立新地點
         const response = await placesApi.create(formData);
-        if (response.data) {
+        if (response.data && onPlaceCreated) {
           onPlaceCreated(response.data);
-          onClose();
-          // 重置表單
-          setFormData({
-            name: '',
-            address: '',
-            lat: 0,
-            lng: 0,
-            emoji: '📍',
-            description: '',
-            folderId: undefined
-          });
         }
+        onClose();
+        // 重置表單
+        setFormData({
+          name: '',
+          address: '',
+          lat: 0,
+          lng: 0,
+          emoji: '📍',
+          description: '',
+          folderId: undefined
+        });
       }
     } catch (error) {
       console.error('操作地點失敗:', error);
@@ -153,7 +157,6 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
       const response = await foldersApi.create({
         name: folderName,
         description: '',
-        color: '#3B82F6',
         icon: '📁'
       });
       if (response.data) {
@@ -176,7 +179,7 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
       />
       
       {/* 彈窗內容 */}
-      <div className="relative bg-white shadow-soft w-full max-w-lg max-h-[90vh] overflow-hidden">
+      <div className="relative bg-white shadow-soft w-full max-w-lg max-h-[90vh] overflow-hidden rounded-lg">
         {/* 標題列 */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-mist bg-cream">
           <h2 className="text-lg font-semibold text-stone">
@@ -201,27 +204,27 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
                 <label className="block text-sm font-medium text-stone mb-2">
                   地點名稱 *
                 </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-mist focus:outline-none focus:ring-2 focus:ring-slate-blue/20 focus:border-slate-blue"
-                  placeholder="輸入地點名稱"
-                  required
-                />
+                      <input
+                        type="text"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        className="w-full px-3 py-2 border border-mist focus:outline-none focus:ring-2 focus:ring-slate-blue/20 focus:border-slate-blue rounded-md"
+                        placeholder="輸入地點名稱"
+                        required
+                      />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-stone mb-2">
                   地址
                 </label>
-                <input
-                  type="text"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full px-3 py-2 border border-mist focus:outline-none focus:ring-2 focus:ring-slate-blue/20 focus:border-slate-blue"
-                  placeholder="輸入地址（選填）"
-                />
+                      <input
+                        type="text"
+                        value={formData.address}
+                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                        className="w-full px-3 py-2 border border-mist focus:outline-none focus:ring-2 focus:ring-slate-blue/20 focus:border-slate-blue rounded-md"
+                        placeholder="輸入地址（選填）"
+                      />
               </div>
             </div>
 
@@ -230,13 +233,13 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
               <label className="block text-sm font-medium text-stone mb-3">
                 選擇圖示
               </label>
-              <div className="grid grid-cols-8 gap-2 max-h-32 overflow-y-auto border border-mist p-3 bg-cream/30">
+                    <div className="grid grid-cols-8 gap-2 max-h-32 overflow-y-auto border border-mist p-3 bg-cream/30 rounded-md">
                 {emojiOptions.map(emoji => (
                   <button
                     key={emoji}
                     type="button"
                     onClick={() => setFormData({ ...formData, emoji })}
-                    className={`p-2 border transition-colors ${
+                    className={`p-2 border transition-colors rounded-md ${
                       formData.emoji === emoji
                         ? 'border-slate-blue bg-slate-blue/10'
                         : 'border-mist hover:border-warm-gray hover:bg-cream'
@@ -252,13 +255,13 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
               <label className="block text-sm font-medium text-stone mb-2">
                 描述
               </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full px-3 py-2 border border-mist focus:outline-none focus:ring-2 focus:ring-slate-blue/20 focus:border-slate-blue resize-none"
-                placeholder="輸入描述（選填）"
-                rows={3}
-              />
+                    <textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      className="w-full px-3 py-2 border border-mist focus:outline-none focus:ring-2 focus:ring-slate-blue/20 focus:border-slate-blue resize-none rounded-md"
+                      placeholder="輸入描述（選填）"
+                      rows={3}
+                    />
             </div>
 
             {/* 資料夾設定 */}
@@ -266,11 +269,11 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
               <label className="block text-sm font-medium text-stone mb-2">
                 選擇資料夾
               </label>
-              <select
-                value={formData.folderId || ''}
-                onChange={(e) => setFormData({ ...formData, folderId: e.target.value ? parseInt(e.target.value) : undefined })}
-                className="w-full px-3 py-2 border border-mist focus:outline-none focus:ring-2 focus:ring-slate-blue/20 focus:border-slate-blue"
-              >
+                    <select
+                      value={formData.folderId || ''}
+                      onChange={(e) => setFormData({ ...formData, folderId: e.target.value ? parseInt(e.target.value) : undefined })}
+                      className="w-full px-3 py-2 border border-mist focus:outline-none focus:ring-2 focus:ring-slate-blue/20 focus:border-slate-blue rounded-md"
+                    >
                 <option value="">選擇資料夾（選填）</option>
                 {folders.map(folder => (
                   <option key={folder.id} value={folder.id}>
@@ -282,21 +285,21 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
 
             {/* 新增資料夾 */}
             <div className="flex items-center space-x-2">
-              <input
-                type="text"
-                placeholder="新增資料夾名稱"
-                className="flex-1 px-3 py-2 border border-mist focus:outline-none focus:ring-2 focus:ring-slate-blue/20 focus:border-slate-blue"
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    const folderName = e.currentTarget.value.trim();
-                    if (folderName) {
-                      handleCreateFolder(folderName);
-                      e.currentTarget.value = '';
-                    }
-                  }
-                }}
-              />
+                    <input
+                      type="text"
+                      placeholder="新增資料夾名稱"
+                      className="flex-1 px-3 py-2 border border-mist focus:outline-none focus:ring-2 focus:ring-slate-blue/20 focus:border-slate-blue rounded-md"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const folderName = e.currentTarget.value.trim();
+                          if (folderName) {
+                            handleCreateFolder(folderName);
+                            e.currentTarget.value = '';
+                          }
+                        }
+                      }}
+                    />
               <button
                 type="button"
                 onClick={() => {
@@ -307,7 +310,7 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
                     input.value = '';
                   }
                 }}
-                className="px-4 py-2 bg-moss/10 text-moss hover:bg-moss/20 transition-colors"
+                className="px-4 py-2 bg-slate-blue text-white hover:bg-slate-blue/80 transition-colors rounded-md"
               >
                 新增
               </button>
@@ -320,7 +323,7 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-warm-gray hover:text-stone transition-colors"
+            className="px-4 py-2 text-warm-gray hover:text-stone transition-colors rounded-md"
           >
             取消
           </button>
@@ -328,7 +331,7 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
             type="submit"
             onClick={handleSubmit}
             disabled={loading || !formData.name.trim()}
-            className="px-6 py-2 bg-moss/10 text-moss hover:bg-moss/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-6 py-2 bg-slate-blue text-white hover:bg-slate-blue/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-md"
           >
             {loading ? '儲存中...' : '儲存地點'}
           </button>

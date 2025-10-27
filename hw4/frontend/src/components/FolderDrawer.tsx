@@ -10,7 +10,7 @@ interface FolderDrawerProps {
   selectedFolder: Folder | null;
   onFolderSelect: (folder: Folder | null) => void;
   onPlaceSelect: (place: Place) => void;
-  onCreateFolder: (folderData: { name: string; icon: string; color: string }) => void;
+  onCreateFolder: (folderData: { name: string; icon: string }) => void;
   onDeleteFolder: (folder: Folder) => void;
   onShowAllPlaces: () => void;
 }
@@ -54,7 +54,7 @@ const FolderDrawer: React.FC<FolderDrawerProps> = ({
     onFolderSelect(null);
   };
 
-  const handleCreateFolder = (folderData: { name: string; icon: string; color: string }) => {
+  const handleCreateFolder = (folderData: { name: string; icon: string }) => {
     onCreateFolder(folderData);
     setShowCreateModal(false);
   };

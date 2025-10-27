@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
 import type { Place, Folder } from '../types';
-import { placesApi, foldersApi, searchApi } from '../services/data';
+import { placesApi, foldersApi } from '../services/data';
+import api from '../services/api';
 import AddToCollectionModal from './AddToCollectionModal';
 
 const mapContainerStyle = {
@@ -179,17 +180,15 @@ const MapContainer: React.FC<MapContainerProps> = ({
   // 不再需要載入附近地點，直接使用 Google Maps 內建的 POI
   // Google Maps 會根據 zoom level 自動顯示/隱藏地點
 
-  // 地圖載入完成
-  const onLoad = useCallback((mapInstance: google.maps.Map) => {
-    setMap(mapInstance);
+  // 監聽地圖點擊事件 - 使用 Google Maps JavaScript API 獲取 POI 資訊
+  const setupMapClickListener = useCallback(() => {
+    if (!map) return;
 
-    // 啟用 Google Maps 內建的 POI 點擊功能
-    mapInstance.setOptions({
-      clickableIcons: true // 允許點擊 Google Maps 內建的 POI
-    });
+    // 移除舊的監聽器
+    google.maps.event.clearListeners(map, 'click');
 
-    // 監聽地圖點擊事件 - 使用 Google Maps JavaScript API 獲取 POI 資訊
-    mapInstance.addListener('click', (event: any) => {
+    // 添加新的監聽器
+    map.addListener('click', async (event: any) => {
       console.log('=== 地圖點擊事件觸發 ===', event);
       
       if (event.latLng) {
@@ -199,70 +198,53 @@ const MapContainer: React.FC<MapContainerProps> = ({
         console.log('點擊座標:', { lat, lng });
         console.log('placeId:', event.placeId);
         
-        // 如果點擊的是 Google Maps POI（有 placeId）
         if (event.placeId) {
+          // 點擊了 Google Maps POI
           console.log('點擊了 Google Maps POI，placeId:', event.placeId);
           
           // 阻止預設的 InfoWindow
           event.stop?.();
           
-          // 使用後端 API 獲取 POI 詳細資訊（因為前端 API Key 沒有啟用 Places API）
-          searchApi.getPlaceDetails(event.placeId)
-            .then((response) => {
-              console.log('後端 getPlaceDetails 回應:', response);
-              
-              if (response.success && response.data) {
-                const place = response.data;
-                const placeInfo = {
-                  name: place.name || '',
-                  address: place.formatted_address || '',
-                  lat: place.geometry?.location?.lat || lat,
-                  lng: place.geometry?.location?.lng || lng,
-                  rating: place.rating || 0,
-                  types: place.types || [],
-                  photos: place.photos || [],
-                  opening_hours: place.opening_hours || null,
-                  place_id: event.placeId
-                };
-                
-                console.log('調用 onMapClick，傳入 POI 資訊:', placeInfo);
-                onMapClick?.(placeInfo.lat, placeInfo.lng, placeInfo);
-              } else {
-                console.log('無法獲取 POI 詳細資訊，使用基本資訊');
-                // 如果無法獲取詳細資訊，使用空白資訊
-                const placeInfo = {
-                  name: '',
-                  address: '',
-                  lat,
-                  lng,
-                  rating: 0,
-                  types: [],
-                  photos: [],
-                  opening_hours: null,
-                  place_id: event.placeId
-                };
-                onMapClick?.(lat, lng, placeInfo);
-              }
-            })
-            .catch((error) => {
-              console.error('獲取 POI 詳細資訊失敗:', error);
-              // 如果失敗，使用空白資訊
-              const placeInfo = {
-                name: '',
-                address: '',
-                lat,
-                lng,
-                rating: 0,
-                types: [],
-                photos: [],
-                opening_hours: null,
-                place_id: event.placeId
-              };
-              onMapClick?.(lat, lng, placeInfo);
-            });
+          // 使用後端 API 獲取 POI 詳細資訊
+          try {
+            const response = await api.get(`/search/place-details/${event.placeId}`);
+            console.log('後端 getPlaceDetails 完整回應:', JSON.stringify(response.data, null, 2));
+            
+            // 後端回傳的資料結構是 { success: true, data: {...} }
+            const place = response.data.data || response.data;
+            const placeInfo = {
+              name: place.name || '',
+              address: place.formatted_address || '',
+              lat: place.geometry?.location?.lat || lat,
+              lng: place.geometry?.location?.lng || lng,
+              rating: place.rating || 0,
+              types: place.types || [],
+              photos: place.photos || [],
+              opening_hours: place.opening_hours || null,
+              placeId: event.placeId
+            };
+            
+            console.log('調用 onMapClick，傳入 POI 資訊:', placeInfo);
+            onMapClick?.(placeInfo.lat, placeInfo.lng, placeInfo);
+          } catch (error) {
+            console.log('無法獲取 POI 詳細資訊，使用基本資訊:', error);
+            // 如果無法獲取詳細資訊，使用基本資訊
+            const placeInfo = {
+              name: '',
+              address: '',
+              lat,
+              lng,
+              rating: 0,
+              types: [],
+              photos: [],
+              opening_hours: null,
+              placeId: event.placeId
+            };
+            onMapClick?.(lat, lng, placeInfo);
+          }
         } else {
-          // 點擊的是空白區域，讓使用者自己輸入
-          console.log('點擊了空白區域');
+          // 點擊的是空白區域，也打開 Modal 讓用戶可以手動輸入
+          console.log('點擊了空白區域，打開 Modal 讓用戶手動輸入');
           const placeInfo = {
             name: '',
             address: '',
@@ -272,15 +254,34 @@ const MapContainer: React.FC<MapContainerProps> = ({
             types: [],
             photos: [],
             opening_hours: null,
-            place_id: null
+            placeId: null
           };
-          
-          console.log('調用 onMapClick，傳入空白資訊:', placeInfo);
           onMapClick?.(lat, lng, placeInfo);
         }
       }
     });
-  }, [onMapClick]);
+  }, [map, onMapClick]);
+
+  useEffect(() => {
+    setupMapClickListener();
+  }, [setupMapClickListener]);
+
+  // 地圖載入完成
+  const onLoad = useCallback((mapInstance: google.maps.Map) => {
+    setMap(mapInstance);
+
+    // 啟用 Google Maps 內建的 POI 點擊功能，但禁用原生 InfoWindow
+    mapInstance.setOptions({
+      clickableIcons: true // 允許點擊 Google Maps 內建的 POI
+    });
+
+    // 禁用所有 InfoWindow
+    mapInstance.addListener('click', () => {
+      // 關閉任何開啟的 InfoWindow
+      const infoWindows = mapInstance.get('infoWindows') || [];
+      infoWindows.forEach((iw: any) => iw.close());
+    });
+  }, []);
 
   // 地圖卸載
   const onUnmount = useCallback(() => {
@@ -325,84 +326,6 @@ const MapContainer: React.FC<MapContainerProps> = ({
 
 
 
-  // 地圖點擊事件 - 整合 Places API
-  const handleMapClick = useCallback(async (event: google.maps.MapMouseEvent) => {
-    if (!event.latLng || !map) return;
-
-    const lat = event.latLng.lat();
-    const lng = event.latLng.lng();
-
-    try {
-      // 使用後端的新 Places API (New) 搜尋附近地點
-      const response = await searchApi.nearbySearch(
-        { lat, lng },
-        100, // 100 公尺範圍內
-        'establishment'
-      );
-
-      if (response.success && response.data && response.data.length > 0) {
-        // 找到最近的地點
-        const nearestPlace = response.data[0];
-        const placeInfo = {
-          name: nearestPlace.name || '未知地點',
-          address: nearestPlace.vicinity || '',
-          placeId: nearestPlace.place_id,
-          rating: nearestPlace.rating,
-          types: nearestPlace.types
-        };
-        onMapClick?.(lat, lng, placeInfo);
-      } else {
-        // 使用 Geocoding API 取得地址資訊
-        const geocoder = new google.maps.Geocoder();
-        geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-          if (status === google.maps.GeocoderStatus.OK && results && results.length > 0) {
-            const result = results[0];
-            const placeInfo = {
-              name: result.formatted_address,
-              address: result.formatted_address,
-              placeId: result.place_id,
-              types: result.types
-            };
-            onMapClick?.(lat, lng, placeInfo);
-          } else {
-            // 如果都找不到，使用座標作為名稱
-            const placeInfo = {
-              name: `位置 (${lat.toFixed(6)}, ${lng.toFixed(6)})`,
-              address: '',
-              placeId: null,
-              types: []
-            };
-            onMapClick?.(lat, lng, placeInfo);
-          }
-        });
-      }
-    } catch (error) {
-      console.error('搜尋附近地點失敗:', error);
-      // 如果 API 調用失敗，使用 Geocoding API 作為回退
-      const geocoder = new google.maps.Geocoder();
-      geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-        if (status === google.maps.GeocoderStatus.OK && results && results.length > 0) {
-          const result = results[0];
-          const placeInfo = {
-            name: result.formatted_address,
-            address: result.formatted_address,
-            placeId: result.place_id,
-            types: result.types
-          };
-          onMapClick?.(lat, lng, placeInfo);
-        } else {
-          // 如果都找不到，使用座標作為名稱
-          const placeInfo = {
-            name: `位置 (${lat.toFixed(6)}, ${lng.toFixed(6)})`,
-            address: '',
-            placeId: null,
-            types: []
-          };
-          onMapClick?.(lat, lng, placeInfo);
-        }
-      });
-    }
-  }, [map, onMapClick]);
 
   // 標記點擊事件
 
@@ -475,7 +398,6 @@ const MapContainer: React.FC<MapContainerProps> = ({
         zoom={selectedPlace ? 15 : 10}
         onLoad={onLoad}
         onUnmount={onUnmount}
-        onClick={handleMapClick}
         options={{
           gestureHandling: 'greedy',
           clickableIcons: true, // 啟用 Google Maps 內建 POI 點擊
@@ -483,6 +405,7 @@ const MapContainer: React.FC<MapContainerProps> = ({
           streetViewControl: true,
           fullscreenControl: false,
           zoomControl: true,
+          disableDefaultUI: false,
           styles: [
             // 保持 Google Maps 預設的 POI 標籤顯示
             // 這樣機場、車站、景點等都會正常顯示
