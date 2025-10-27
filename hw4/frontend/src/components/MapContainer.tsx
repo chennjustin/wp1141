@@ -350,19 +350,26 @@ const MapContainer: React.FC<MapContainerProps> = ({
     }
   });
 
-  // 建立自訂標記圖示
-  const createMarkerIcon = (emoji: string, color: string = '#3B82F6') => {
+  // 建立自訂標記圖示 - 簡約設計，無背景色
+  const createMarkerIcon = (emoji: string) => {
     return {
       url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-        <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="16" cy="16" r="14" fill="${color}" stroke="white" stroke-width="2"/>
-          <text x="16" y="20" text-anchor="middle" fill="white" font-size="12" font-family="Arial">
-            ${emoji}
-          </text>
+        <svg width="40" height="48" viewBox="0 0 40 48" xmlns="http://www.w3.org/2000/svg">
+          <!-- 白色陰影 -->
+          <path d="M20 8 L20 8 C20 8, 20 8, 20 8" fill="white" stroke="white" stroke-width="2" opacity="0.3"/>
+          
+          <!-- 圖標容器 - 白色半透明圓形 -->
+          <circle cx="20" cy="18" r="14" fill="white" fill-opacity="0.95" stroke="rgba(148, 163, 184, 0.3)" stroke-width="1.5"/>
+          
+          <!-- 圖標外框 - 深色邊框 -->
+          <circle cx="20" cy="18" r="13" fill="none" stroke="rgba(100, 116, 139, 0.4)" stroke-width="1"/>
+          
+          <!-- 圖標文字 -->
+          <text x="20" y="22" text-anchor="middle" font-size="16" font-family="Segoe UI Emoji, Apple Color Emoji, Arial">${emoji}</text>
         </svg>
       `)}`,
-      scaledSize: new google.maps.Size(32, 32),
-      anchor: new google.maps.Point(16, 16)
+      scaledSize: new google.maps.Size(40, 48),
+      anchor: new google.maps.Point(20, 48)
     };
   };
 
@@ -414,9 +421,6 @@ const MapContainer: React.FC<MapContainerProps> = ({
       >
         {/* 渲染地點標記 */}
         {filteredPlaces.map(place => {
-          const folder = folders.find(f => f.id === place.folderId);
-          const iconColor = folder?.color || '#3B82F6';
-          
           return (
             <Marker
               key={place.id}
@@ -424,7 +428,7 @@ const MapContainer: React.FC<MapContainerProps> = ({
               onClick={() => {
                 onPlaceClick?.(place);
               }}
-              icon={createMarkerIcon(place.emoji || '📍', iconColor)}
+              icon={createMarkerIcon(place.emoji || '📍')}
             />
           );
         })}
