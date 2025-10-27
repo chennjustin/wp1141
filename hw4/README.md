@@ -1,83 +1,342 @@
 # TravelSpot Journal
 
-一個完整的旅遊景點記錄應用程式，包含前端和後端服務。
+一個基於 React + TypeScript + Express 的旅遊地點收藏與管理系統，讓使用者能夠在地圖上標記、分類和管理喜愛的旅遊地點。
+
+## 專案概述
+
+TravelSpot Journal 是一個現代化的旅遊地點管理應用程式，結合了 Google Maps API 的強大功能，讓使用者能夠：
+
+- 在地圖上搜尋和標記旅遊地點
+- 使用圖示分類不同類型的地點（美食、景點、住宿等）
+- 建立資料夾來組織收藏的地點
+- 記錄旅遊心得和評分
+- 透過篩選功能快速找到特定類型的地點
+
+## 技術架構
+
+### 前端
+
+- **React 19** - 現代化 UI 框架
+- **TypeScript** - 型別安全的 JavaScript
+- **Vite** - 快速的建置工具
+- **Tailwind CSS** - 實用優先的 CSS 框架
+- **React Router** - 單頁應用程式路由
+- **@react-google-maps/api** - Google Maps React 整合
+
+### 後端
+
+- **Express.js** - Node.js Web 框架
+- **TypeScript** - 型別安全的 JavaScript
+- **Prisma** - 現代化資料庫 ORM
+- **SQLite** - 輕量級資料庫
+- **JWT** - JSON Web Token 認證
+- **bcrypt** - 密碼雜湊
+- **@googlemaps/google-maps-services-js** - Google Maps 服務端 API
+
+### 資料庫
+
+- **SQLite** - 使用 Prisma ORM 管理
+- 支援使用者、資料夾、地點、造訪紀錄等實體
+
+## 功能特色
+
+### 地圖功能
+
+- **互動式地圖**：基於 Google Maps 的完整地圖體驗
+- **地點搜尋**：透過搜尋列快速找到想要的地點
+- **地點標記**：點擊地圖上的 POI 或搜尋結果來標記地點
+- **智慧縮放**：搜尋後自動縮放到適當範圍，減少不必要的動畫
+
+### 地點管理
+
+- **圖示分類**：提供 7 種主要類型圖示（美食、景點、住宿、購物、醫院、學校、公園）
+- **自訂圖示**：額外提供多種圖示選擇
+- **詳細資訊**：記錄地點名稱、地址、描述、評分等
+- **視覺化標記**：在地圖上以不同圖示顯示各類型地點
+
+### 資料夾系統
+
+- **分類管理**：建立資料夾來組織收藏的地點
+- **階層結構**：支援巢狀資料夾（未來擴展）
+- **批量操作**：快速管理多個地點
+- **滾動支援**：大量資料夾時提供良好的使用體驗
+
+### 篩選功能
+
+- **類型篩選**：根據圖示類型快速篩選地點
+- **資料夾篩選**：按資料夾分類查看地點
+- **即時更新**：篩選結果即時反映在地圖上
+
+### 使用者體驗
+
+- **響應式設計**：支援各種螢幕尺寸
+- **直觀介面**：簡潔現代的 UI 設計
+- **快速操作**：減少不必要的動畫和操作步驟
+- **資料持久化**：所有資料安全儲存在資料庫中
+
+## 使用方式
+
+### 基本操作流程
+
+1. **註冊/登入**
+
+   - 首次使用需要註冊帳號
+   - 登入後可開始使用所有功能
+2. **搜尋地點**
+
+   - 在頂部搜尋列輸入地點名稱或地址
+   - 系統會顯示搜尋結果並自動縮放到該區域
+   - 點擊地圖上的 POI 或搜尋結果來查看詳細資訊
+3. **收藏地點**
+
+   - 點擊地圖上的地點或搜尋結果
+   - 在彈出的地點資訊視窗中點擊「新增地點」
+   - 選擇適當的圖示和資料夾
+   - 填寫地點名稱、描述等資訊
+   - 點擊「儲存地點」完成收藏
+4. **管理資料夾**
+
+   - 點擊右上角的「資料夾」按鈕
+   - 在資料夾管理頁面中：
+     - 點擊資料夾名稱展開/收合地點列表
+     - 使用「新增資料夾」按鈕建立新資料夾
+     - 點擊垃圾桶圖示刪除不需要的資料夾
+5. **篩選地點**
+
+   - 使用右上角的篩選選單
+   - 選擇「依類型篩選」或「依資料夾篩選」
+   - 地圖會即時顯示符合條件的地點
+6. **編輯地點**
+
+   - 點擊地圖上的地點標記
+   - 在左側資訊卡中點擊「編輯記錄」
+   - 修改地點資訊後點擊「儲存」
+
+## 環境設定
+
+### Google Cloud Platform 設定
+
+1. **建立 Google Cloud 專案**
+
+   - 前往 [Google Cloud Console](https://console.cloud.google.com/)
+   - 建立新專案或選擇現有專案
+2. **啟用必要的 API**
+
+   - **Maps JavaScript API** - 前端地圖顯示
+   - **Places API** - 地點搜尋和詳細資訊
+   - **Places API (New)** - 地點搜尋和詳細資訊
+   - **Geocoding API** - 地址轉換
+   - **Directions API** - 路線規劃（未來功能）
+   - 
+3. **建立 API 金鑰**
+
+   - 在「API 和服務」→「憑證」中建立 API 金鑰
+   - 建議建立兩個金鑰：
+     - **前端金鑰**：限制為 Maps JavaScript API
+     - **後端金鑰**：限制為 Places API、Geocoding API、Directions API
+4. **設定 API 金鑰限制**
+
+   - **前端金鑰**：限制 HTTP 參照來源（如 `localhost:3000`）
+   - **後端金鑰**：限制 IP 位址（如伺服器 IP）
+
+### 環境變數設定
+
+#### 後端環境變數 (.env)
+
+```env
+# 資料庫
+DATABASE_URL="file:./dev.db"
+
+# JWT 密鑰
+JWT_SECRET="your-super-secret-jwt-key"
+
+# Google Maps API
+GOOGLE_MAPS_SERVER_KEY="your-backend-api-key"
+
+# 伺服器設定
+PORT=3000
+NODE_ENV="development"
+```
+
+#### 前端環境變數 (.env)
+
+```env
+# Google Maps API
+VITE_GOOGLE_MAPS_JS_KEY="your-frontend-api-key"
+
+# API 基礎 URL
+VITE_API_BASE_URL="http://localhost:3000"
+```
+
+## 安裝與執行
+
+### 前置需求
+
+- Node.js 18+
+- npm 或 yarn
+- Git
+
+### 1. 複製專案
+
+```bash
+git clone <repository-url>
+cd hw4
+```
+
+### 2. 安裝依賴套件
+
+#### 後端
+
+```bash
+cd backend
+npm install
+```
+
+#### 前端
+
+```bash
+cd frontend
+npm install
+```
+
+### 3. 設定環境變數
+
+- 複製並修改環境變數檔案
+- 填入您的 Google Maps API 金鑰
+
+### 4. 初始化資料庫
+
+```bash
+cd backend
+npx prisma generate
+npx prisma db push
+```
+
+### 5. 啟動開發伺服器
+
+#### 後端（終端機 1）
+
+```bash
+cd backend
+npm run dev
+```
+
+#### 前端（終端機 2）
+
+```bash
+cd frontend
+npm run dev
+```
+
+### 6. 開啟應用程式
+
+- 前端：http://localhost:5173
+- 後端 API：http://localhost:3000
+
+## 生產環境部署
+
+### 建置專案
+
+#### 後端
+
+```bash
+cd backend
+npm run build
+npm start
+```
+
+#### 前端
+
+```bash
+cd frontend
+npm run build
+```
+
+### 資料庫遷移
+
+```bash
+cd backend
+npx prisma migrate deploy
+```
 
 ## 專案結構
 
 ```
 hw4/
-├── frontend/                # React 前端應用
-│   ├── src/                # 原始碼
-│   ├── public/             # 靜態資源
-│   ├── package.json        # 前端依賴
-│   └── README.md           # 前端說明
-└── README.md               # 專案總說明
+├── backend/                 # 後端 API
+│   ├── src/
+│   │   ├── routes/         # API 路由
+│   │   ├── middleware/     # 中介軟體
+│   │   ├── services/       # 服務層
+│   │   └── main.ts         # 應用程式入口
+│   ├── prisma/
+│   │   └── schema.prisma   # 資料庫結構
+│   └── package.json
+├── frontend/               # 前端應用
+│   ├── src/
+│   │   ├── components/     # React 組件
+│   │   ├── pages/          # 頁面組件
+│   │   ├── services/       # API 服務
+│   │   ├── hooks/          # 自訂 Hooks
+│   │   ├── contexts/       # React Context
+│   │   └── types/          # TypeScript 型別
+│   └── package.json
+└── README.md
 ```
 
-## 快速開始
+## 開發指南
 
-### 前端 (React + TypeScript + Vite)
+### 資料庫操作
 
-1. 進入前端目錄：
-   ```bash
-   cd frontend
-   ```
+```bash
+# 查看資料庫
+npx prisma studio
 
-2. 安裝依賴：
-   ```bash
-   npm install
-   ```
+# 建立遷移
+npx prisma migrate dev --name migration-name
 
-3. 設定環境變數：
-   ```bash
-   cp .env.example .env
-   ```
-   
-   編輯 `.env` 檔案，填入您的 Google Maps API Key：
-   ```env
-   VITE_GOOGLE_MAPS_JS_KEY=您的_Google_Maps_Browser_Key
-   VITE_API_BASE_URL=http://localhost:3000
-   ```
+# 重置資料庫
+npx prisma migrate reset
+```
 
-4. 啟動開發伺服器：
-   ```bash
-   npm run dev
-   ```
+### 程式碼品質
 
-   前端將在 `http://localhost:5173` 啟動。
+- 使用 TypeScript 確保型別安全
+- 遵循 ESLint 規則
+- 使用 Prettier 格式化程式碼
 
-## 功能特色
+### API 文件
 
-### 前端功能
-- 🗺️ Google Maps 整合
-- 📍 地圖點擊新增景點
-- 📋 景點列表管理
-- 🔍 地圖與列表互動
-- 🎨 現代化 UI 設計
+- 後端 API 遵循 RESTful 設計原則
+- 所有 API 都需要 JWT 認證
+- 回應格式統一為 `{ success: boolean, data?: any, message?: string }`
 
-## 技術棧
+## 常見問題
 
-### 前端
-- **框架**: React 18 + TypeScript
-- **建置工具**: Vite
-- **路由**: React Router DOM
-- **地圖**: Google Maps JavaScript API
-- **樣式**: TailwindCSS
-- **HTTP**: Axios
+### Q: Google Maps 不顯示？
 
-## 開發說明
+A: 檢查前端 API 金鑰是否正確設定，並確認已啟用 Maps JavaScript API。
 
-### 前端開發
-- 使用 `npm run dev` 啟動開發伺服器
-- 使用 `npm run build` 建置生產版本
-- 所有前端相關檔案都在 `frontend/` 目錄中
+### Q: 地點搜尋沒有結果？
 
-### 環境變數
-- 前端需要設定 `VITE_GOOGLE_MAPS_JS_KEY` 來使用 Google Maps API
-- 前端需要設定 `VITE_API_BASE_URL` 來連接後端 API
+A: 確認後端 API 金鑰已啟用 Places API，並檢查 API 配額。
 
-## 注意事項
+### Q: 資料庫連線失敗？
 
-- 請確保 Google Maps API Key 已正確設定
-- 請將 `http://localhost:5173` 加入 API Key 的允許來源清單
-- 前端目前可以獨立運行，不依賴後端服務
+A: 確認 DATABASE_URL 設定正確，並執行 `npx prisma generate`。
+
+### Q: 認證失敗？
+
+A: 檢查 JWT_SECRET 是否設定，並確認使用者已正確註冊。
+
+## 授權
+
+MIT License
+
+## 貢獻
+
+歡迎提交 Issue 和 Pull Request 來改善這個專案。
+
+## 聯絡資訊
+
+如有問題或建議，請透過 GitHub Issues 聯絡。
