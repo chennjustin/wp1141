@@ -9,7 +9,6 @@ interface FilterDropdownProps {
   onFilterModeChange: (mode: 'all' | 'folders' | 'types') => void;
   onFolderSelect: (folderIds: number[]) => void;
   onTypeFilter: (types: string[]) => void;
-  onShowAllPlaces: () => void;
 }
 
 const FilterDropdown: React.FC<FilterDropdownProps> = ({

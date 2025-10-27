@@ -316,20 +316,42 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
             {/* 資料夾設定 */}
             <div>
               <label className="block text-sm font-medium text-stone mb-2">
-                選擇資料夾
+                選擇資料夾（選填）
               </label>
-                    <select
-                      value={formData.folderId || ''}
-                      onChange={(e) => setFormData({ ...formData, folderId: e.target.value ? parseInt(e.target.value) : undefined })}
-                      className="w-full px-3 py-2 border border-mist focus:outline-none focus:ring-2 focus:ring-slate-blue/20 focus:border-slate-blue rounded-md"
+              
+              {/* 資料夾選擇區域 */}
+              <div className="border border-mist rounded-md bg-cream/30">
+                <div className="max-h-32 overflow-y-auto">
+                  {/* 無資料夾選項 */}
+                  <div
+                    onClick={() => setFormData({ ...formData, folderId: undefined })}
+                    className={`px-3 py-2 cursor-pointer transition-colors flex items-center space-x-2 ${
+                      formData.folderId === undefined
+                        ? 'bg-slate-blue text-white'
+                        : 'hover:bg-cream'
+                    }`}
+                  >
+                    <span className="text-sm">📁</span>
+                    <span className="text-sm">無資料夾</span>
+                  </div>
+                  
+                  {/* 資料夾列表 */}
+                  {folders.map(folder => (
+                    <div
+                      key={folder.id}
+                      onClick={() => setFormData({ ...formData, folderId: folder.id })}
+                      className={`px-3 py-2 cursor-pointer transition-colors flex items-center space-x-2 ${
+                        formData.folderId === folder.id
+                          ? 'bg-slate-blue text-white'
+                          : 'hover:bg-cream'
+                      }`}
                     >
-                <option value="">選擇資料夾（選填）</option>
-                {folders.map(folder => (
-                  <option key={folder.id} value={folder.id}>
-                    {folder.icon} {folder.name}
-                  </option>
-                ))}
-              </select>
+                      <span className="text-sm">{folder.icon}</span>
+                      <span className="text-sm">{folder.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* 新增資料夾 */}

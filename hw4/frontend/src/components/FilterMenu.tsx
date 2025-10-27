@@ -9,7 +9,6 @@ interface FilterMenuProps {
   onFilterModeChange: (mode: 'all' | 'folders' | 'types') => void;
   onFolderSelect: (folderIds: number[]) => void;
   onTypeFilter: (types: string[]) => void;
-  onShowAllPlaces: () => void;
 }
 
 const FilterMenu: React.FC<FilterMenuProps> = ({
@@ -19,8 +18,7 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
   filterMode,
   onFilterModeChange,
   onFolderSelect,
-  onTypeFilter,
-  onShowAllPlaces
+  onTypeFilter
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -172,18 +170,6 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
                 </div>
               )}
 
-              {/* 快速操作 */}
-              <div className="pt-4 border-t border-mist/30">
-                <button
-                  onClick={() => {
-                    onShowAllPlaces();
-                    setIsOpen(false);
-                  }}
-                  className="w-full px-4 py-2.5 bg-moss/10 text-moss rounded-lg hover:bg-moss/20 transition-colors text-sm font-medium"
-                >
-                  🌍 顯示所有收藏
-                </button>
-              </div>
             </div>
           </div>
         </>

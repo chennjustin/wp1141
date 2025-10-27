@@ -5,14 +5,12 @@ interface FilterPanelProps {
   folders: Folder[];
   selectedFolders: number[];
   onFolderSelect: (folderIds: number[]) => void;
-  onShowAllPlaces: () => void;
 }
 
 const FilterPanel: React.FC<FilterPanelProps> = ({
   folders,
   selectedFolders,
-  onFolderSelect,
-  onShowAllPlaces
+  onFolderSelect
 }) => {
   const [localFolders, setLocalFolders] = useState<Folder[]>([]);
 
@@ -95,12 +93,6 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
         <div className="pt-4 border-t border-mist">
           <h3 className="text-xs font-medium text-warm-gray uppercase tracking-wider mb-3">快速操作</h3>
           <div className="space-y-2">
-            <button
-              onClick={onShowAllPlaces}
-              className="w-full px-4 py-2.5 bg-moss/10 text-moss rounded-lg hover:bg-moss/20 transition-colors text-sm font-light"
-            >
-              🌍 顯示所有收藏
-            </button>
             <button
               onClick={handleSelectAll}
               className="w-full px-4 py-2.5 bg-warm-gray/10 text-warm-gray rounded-lg hover:bg-warm-gray/20 transition-colors text-sm font-light"

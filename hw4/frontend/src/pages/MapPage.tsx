@@ -204,12 +204,6 @@ function MapPage() {
     setFilterMode('types');
   }, []);
 
-  // 處理顯示所有地點
-  const handleShowAllPlaces = useCallback(() => {
-    setFilterMode('all');
-    setSelectedFolders([]);
-    setSelectedTypes([]);
-  }, []);
 
   // 處理登出
   const handleLogout = useCallback(() => {
@@ -295,7 +289,6 @@ function MapPage() {
             onFilterModeChange={handleFilterModeChange}
             onFolderSelect={setSelectedFolders}
             onTypeFilter={handleTypeFilter}
-            onShowAllPlaces={handleShowAllPlaces}
           />
           
                 <button
@@ -345,7 +338,6 @@ function MapPage() {
               console.error('刪除資料夾失敗:', error);
             }
           }}
-          onShowAllPlaces={handleShowAllPlaces}
         />
       </main>
 

@@ -12,7 +12,6 @@ interface FolderDrawerProps {
   onPlaceSelect: (place: Place) => void;
   onCreateFolder: (folderData: { name: string; icon: string }) => void;
   onDeleteFolder: (folder: Folder) => void;
-  onShowAllPlaces: () => void;
 }
 
 const FolderDrawer: React.FC<FolderDrawerProps> = ({
@@ -24,8 +23,7 @@ const FolderDrawer: React.FC<FolderDrawerProps> = ({
   onFolderSelect,
   onPlaceSelect,
   onCreateFolder,
-  onDeleteFolder,
-  onShowAllPlaces
+  onDeleteFolder
 }) => {
   const [expandedFolders, setExpandedFolders] = useState<Set<number>>(new Set());
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -47,11 +45,6 @@ const FolderDrawer: React.FC<FolderDrawerProps> = ({
   const handleFolderClick = (folder: Folder) => {
     onFolderSelect(folder);
     toggleFolder(folder.id);
-  };
-
-  const handleShowAll = () => {
-    onShowAllPlaces();
-    onFolderSelect(null);
   };
 
   const handleCreateFolder = (folderData: { name: string; icon: string }) => {
@@ -89,26 +82,8 @@ const FolderDrawer: React.FC<FolderDrawerProps> = ({
           </div>
 
           {/* 內容區域 */}
-          <div className="flex-1 overflow-y-auto scrollbar-hide">
-            <div className="p-6 space-y-4">
-              {/* 顯示所有地點 */}
-              <button
-                onClick={handleShowAll}
-                className={`w-full flex items-center space-x-3 p-4 rounded-xl border transition-all duration-300 ${
-                  !selectedFolder
-                    ? 'bg-slate-blue/5 border-slate-blue/30'
-                    : 'bg-white border-mist/30 hover:border-slate-blue/30'
-                }`}
-              >
-                <div className="w-10 h-10 rounded-lg bg-cream flex items-center justify-center">
-                  <span className="text-lg">🌍</span>
-                </div>
-                <div className="flex-1 text-left">
-                  <p className="text-sm font-medium text-stone">顯示所有地點</p>
-                  <p className="text-xs text-warm-gray mt-0.5">{places.length} 個收藏地點</p>
-                </div>
-              </button>
-
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-6 space-y-4 max-h-[60vh]">
               {/* 資料夾列表 */}
               {folders.map((folder) => {
                 const folderPlaces = getPlacesInFolder(folder.id);
@@ -153,18 +128,20 @@ const FolderDrawer: React.FC<FolderDrawerProps> = ({
 
                     {/* 展開的地點列表 */}
                     {isExpanded && (
-                      <div className="ml-4 space-y-1 animate-fade-in">
+                      <div className="ml-4 animate-fade-in">
                         {folderPlaces.length > 0 ? (
-                          folderPlaces.map((place) => (
-                            <button
-                              key={place.id}
-                              onClick={() => onPlaceSelect(place)}
-                              className="w-full flex items-center space-x-2 p-2 rounded-lg hover:bg-mist/30 transition-colors"
-                            >
-                              <span className="text-sm">{place.emoji || '📍'}</span>
-                              <span className="flex-1 text-left text-sm text-stone">{place.name}</span>
-                            </button>
-                          ))
+                          <div className="max-h-32 overflow-y-auto space-y-1">
+                            {folderPlaces.map((place) => (
+                              <button
+                                key={place.id}
+                                onClick={() => onPlaceSelect(place)}
+                                className="w-full flex items-center space-x-2 p-2 rounded-lg hover:bg-mist/30 transition-colors"
+                              >
+                                <span className="text-sm">{place.emoji || '📍'}</span>
+                                <span className="flex-1 text-left text-sm text-stone">{place.name}</span>
+                              </button>
+                            ))}
+                          </div>
                         ) : (
                           <p className="text-xs text-warm-gray p-2">此資料夾暫無地點</p>
                         )}
@@ -184,12 +161,6 @@ const FolderDrawer: React.FC<FolderDrawerProps> = ({
                  className="flex-1 px-4 py-2.5 bg-slate-blue/10 text-slate-blue rounded-full hover:bg-slate-blue/20 transition-all duration-200 text-sm font-medium"
                >
                  ➕ 新增資料夾
-               </button>
-               <button
-                 onClick={handleShowAll}
-                 className="flex-1 px-4 py-2.5 bg-moss/10 text-moss rounded-full hover:bg-moss/20 transition-all duration-200 text-sm font-medium"
-               >
-                 🌍 清除篩選
                </button>
              </div>
           </div>
