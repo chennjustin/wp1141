@@ -112,6 +112,13 @@ TravelSpot Journal 是一個現代化的旅遊地點管理應用程式，結合�
    - 在左側資訊卡中點擊「編輯記錄」
    - 修改地點資訊後點擊「儲存」
 
+### 進階功能
+
+- **批量管理**：在資料夾管理頁面可以一次查看多個地點
+- **智慧分類**：系統會根據選擇的圖示自動分類地點類型
+- **搜尋優化**：支援中文和英文地點搜尋
+- **地圖控制**：提供衛星圖和街道圖切換
+
 ## 環境設定
 
 ### Google Cloud Platform 設定
@@ -120,61 +127,56 @@ TravelSpot Journal 是一個現代化的旅遊地點管理應用程式，結合�
 
    - 前往 [Google Cloud Console](https://console.cloud.google.com/)
    - 建立新專案或選擇現有專案
-2. **啟用必要的 API**
+2. **建立與設定 API Key**
 
-   - **Maps JavaScript API** - 前端地圖顯示
-   - **Places API** - 地點搜尋和詳細資訊
-   - **Places API (New)** - 地點搜尋和詳細資訊
-   - **Geocoding API** - 地址轉換
-   - **Directions API** - 路線規劃（未來功能）
-   - 
+#### 前端 Key（Browser Key）
+
+- **限制類型**：HTTP 網域
+- **允許清單**：
+  - `http://localhost:5173/*`
+  - `http://127.0.0.1:5173/*`
+- **啟用 API**：Maps JavaScript API
+
+> **注意**：這是前端 Vite App 的 URL。如果因為任何因素導致前端的 port 不是 5173（可能會是 5174, 517*, 3000, etc），請重新確保前端是開在 5173，或者是修改這個設定。
+
+#### 後端 Key（Server Key）
+
+- **限制類型**：IP 位址
+  - **注意**：由於目前 app 尚未 deploy，app 是跑在本地端，故可暫時無 IP 限制，但需注意安全風險
+- **服務啟用規則（統一規格）**：為了確保同學們可以順利 review 彼此的作業，所以即使 app 不會完全使用到 Geocoding, Places, Directions 這三種 APIs，但還是請使用同一把 Server Key 同時啟用下列三項服務：
+  - **Geocoding API**
+  - **Places API**
+  - **Directions API**
+
 3. **建立 API 金鑰**
-
-   - 在「API 和服務」→「憑證」中建立 API 金鑰
-   - 建議建立兩個金鑰：
-     - **前端金鑰**：限制為 Maps JavaScript API
-     - **後端金鑰**：限制為 Places API、Geocoding API、Directions API
-4. **設定 API 金鑰限制**
-
-   - **前端金鑰**：限制 HTTP 參照來源（如 `localhost:3000`）
-   - **後端金鑰**：限制 IP 位址（如伺服器 IP）
+   - 在「API 和服務」→「憑證」中建立兩個 API 金鑰
+   - 分別設定前端和後端的限制條件
 
 ### 環境變數設定
 
 #### 後端環境變數 (.env)
 
 ```env
-# 資料庫
-DATABASE_URL="file:./dev.db"
-
-# JWT 密鑰
-JWT_SECRET="your-super-secret-jwt-key"
-
-# Google Maps API
-GOOGLE_MAPS_SERVER_KEY="your-backend-api-key"
-
-# 伺服器設定
 PORT=3000
-NODE_ENV="development"
+CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+DATABASE_URL=file:./dev.db
+GOOGLE_MAPS_SERVER_KEY=YOUR_SERVER_KEY   # 已啟用 Geocoding/Places/Directions
 ```
 
 #### 前端環境變數 (.env)
 
 ```env
-# Google Maps API
-VITE_GOOGLE_MAPS_JS_KEY="your-frontend-api-key"
-
-# API 基礎 URL
-VITE_API_BASE_URL="http://localhost:3000"
+VITE_GOOGLE_MAPS_JS_KEY=YOUR_BROWSER_KEY   # Maps JavaScript API（Browser Key）
+VITE_API_BASE_URL=http://localhost:3000    # 後端 API 位址
 ```
+
+> **注意**：這是前端 Vite App 的 URL。如果因為任何因素導致前端的 port 不是 5173（可能會是 5174, 517*, 3000, etc），請重新確保前端是開在 5173，或者是修改這個設定。
 
 ## 安裝與執行
 
 ### 前置需求
 
 - Node.js 18+
-- npm 或 yarn
-- Git
 
 ### 1. 複製專案
 
@@ -214,14 +216,14 @@ npx prisma db push
 
 ### 5. 啟動開發伺服器
 
-#### 後端（終端機 1）
+#### 後端
 
 ```bash
 cd backend
 npm run dev
 ```
 
-#### 前端（終端機 2）
+#### 前端
 
 ```bash
 cd frontend
@@ -284,33 +286,6 @@ hw4/
 └── README.md
 ```
 
-## 開發指南
-
-### 資料庫操作
-
-```bash
-# 查看資料庫
-npx prisma studio
-
-# 建立遷移
-npx prisma migrate dev --name migration-name
-
-# 重置資料庫
-npx prisma migrate reset
-```
-
-### 程式碼品質
-
-- 使用 TypeScript 確保型別安全
-- 遵循 ESLint 規則
-- 使用 Prettier 格式化程式碼
-
-### API 文件
-
-- 後端 API 遵循 RESTful 設計原則
-- 所有 API 都需要 JWT 認證
-- 回應格式統一為 `{ success: boolean, data?: any, message?: string }`
-
 ## 常見問題
 
 ### Q: Google Maps 不顯示？
@@ -328,15 +303,3 @@ A: 確認 DATABASE_URL 設定正確，並執行 `npx prisma generate`。
 ### Q: 認證失敗？
 
 A: 檢查 JWT_SECRET 是否設定，並確認使用者已正確註冊。
-
-## 授權
-
-MIT License
-
-## 貢獻
-
-歡迎提交 Issue 和 Pull Request 來改善這個專案。
-
-## 聯絡資訊
-
-如有問題或建議，請透過 GitHub Issues 聯絡。
