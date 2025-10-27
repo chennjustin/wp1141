@@ -334,6 +334,20 @@ const MapContainer: React.FC<MapContainerProps> = ({
     setSelectedMarker(null);
   }, []);
 
+  // 根據圖示判斷地點類型
+  const getPlaceTypeFromEmoji = (emoji: string): string => {
+    const emojiToType: { [key: string]: string } = {
+      '🍴': 'food',
+      '🏞️': 'attraction', 
+      '🏨': 'accommodation',
+      '🛍️': 'shopping',
+      '🏥': 'hospital',
+      '🏫': 'school',
+      '🌳': 'park'
+    };
+    return emojiToType[emoji] || 'other';
+  };
+
   // 篩選顯示的地點
   const filteredPlaces = places.filter(place => {
     // 根據篩選模式決定篩選邏輯
@@ -343,8 +357,9 @@ const MapContainer: React.FC<MapContainerProps> = ({
       case 'folders':
         return selectedFolders.length === 0 || selectedFolders.includes(place.folderId || 0);
       case 'types':
-        // 暫時跳過類型篩選，因為 Place 類型中沒有 types 欄位
-        return selectedTypes.length === 0;
+        if (selectedTypes.length === 0) return true;
+        const placeType = getPlaceTypeFromEmoji(place.emoji || '📍');
+        return selectedTypes.includes(placeType);
       default:
         return true;
     }

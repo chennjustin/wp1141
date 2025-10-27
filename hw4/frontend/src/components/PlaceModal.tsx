@@ -39,12 +39,25 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
     folderId: undefined
   });
 
-  // 常用 emoji 選項
-  const emojiOptions = [
-    '📍', '🏠', '🏢', '🏪', '🍽️', '☕', '🍜', '🍕', '🍔', '🍰',
-    '🏛️', '🏞️', '🏖️', '🏔️', '⛰️', '🌊', '🌳', '🌸', '🌺',
+  // 主要類型圖示（對應篩選的種類）
+  const mainTypeEmojis = [
+    { emoji: '🍴', label: '美食', type: 'food' },
+    { emoji: '🏞️', label: '景點', type: 'attraction' },
+    { emoji: '🏨', label: '住宿', type: 'accommodation' },
+    { emoji: '🛍️', label: '購物', type: 'shopping' },
+    { emoji: '🏥', label: '醫院', type: 'hospital' },
+    { emoji: '🏫', label: '學校', type: 'school' },
+    { emoji: '🌳', label: '公園', type: 'park' }
+  ];
+
+  // 其他圖示
+  const otherEmojis = [
+    '📍', '🏠', '🏢', '🏪', '☕', '🍜', '🍕', '🍔', '🍰',
+    '🏛️', '🏖️', '🏔️', '⛰️', '🌊', '🌸', '🌺',
     '🎭', '🎨', '🎪', '🎡', '🎢', '🏟️', '🏰', '⛪', '🕌', '🕍'
   ];
+
+  const [showOtherEmojis, setShowOtherEmojis] = useState(false);
 
   // 載入資料夾
   const loadFolders = async () => {
@@ -233,22 +246,58 @@ const PlaceModal: React.FC<PlaceModalProps> = ({
               <label className="block text-sm font-medium text-stone mb-3">
                 選擇圖示
               </label>
-                    <div className="grid grid-cols-8 gap-2 max-h-32 overflow-y-auto border border-mist p-3 bg-cream/30 rounded-md">
-                {emojiOptions.map(emoji => (
+              
+              {/* 主要類型圖示 */}
+              <div className="grid grid-cols-4 gap-2 mb-3">
+                {mainTypeEmojis.map(({ emoji, label }) => (
                   <button
                     key={emoji}
                     type="button"
                     onClick={() => setFormData({ ...formData, emoji })}
-                    className={`p-2 border transition-colors rounded-md ${
+                    className={`p-3 border transition-colors rounded-md flex flex-col items-center space-y-1 ${
                       formData.emoji === emoji
                         ? 'border-slate-blue bg-slate-blue/10'
                         : 'border-mist hover:border-warm-gray hover:bg-cream'
                     }`}
                   >
                     <span className="text-lg">{emoji}</span>
+                    <span className="text-xs text-warm-gray">{label}</span>
                   </button>
                 ))}
               </div>
+
+              {/* 其他圖示按鈕 */}
+              <button
+                type="button"
+                onClick={() => setShowOtherEmojis(!showOtherEmojis)}
+                className={`w-full p-2 border transition-colors rounded-md ${
+                  showOtherEmojis
+                    ? 'border-slate-blue bg-slate-blue/10'
+                    : 'border-mist hover:border-warm-gray hover:bg-cream'
+                }`}
+              >
+                <span className="text-sm text-stone">📍 其他圖示</span>
+              </button>
+
+              {/* 其他圖示展開區域 */}
+              {showOtherEmojis && (
+                <div className="mt-3 grid grid-cols-8 gap-2 max-h-32 overflow-y-auto border border-mist p-3 bg-cream/30 rounded-md">
+                  {otherEmojis.map(emoji => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, emoji })}
+                      className={`p-2 border transition-colors rounded-md ${
+                        formData.emoji === emoji
+                          ? 'border-slate-blue bg-slate-blue/10'
+                          : 'border-mist hover:border-warm-gray hover:bg-cream'
+                      }`}
+                    >
+                      <span className="text-lg">{emoji}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div>
