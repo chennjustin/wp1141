@@ -35,24 +35,23 @@ export const authOptions: NextAuthOptions = {
     },
   },
   callbacks: {
-    async session({ session, user }) {
-      // 將 userId 添加到 session
-      if (session.user && user) {
-        // 使用從資料庫查詢的 user 對象（包含 userId）
+    async jwt({ token, user, account, profile, trigger }) {
+      // 登入時把使用者 id 放到 token.sub（NextAuth 既有），其餘維持不變
+      if (user?.id) {
+        token.sub = user.id
+      }
+      return token
+    },
+    async session({ session, token }) {
+      // 以 token.sub（即 user.id）查詢 userId 並掛到 session
+      if (session.user && token?.sub) {
+        session.user.id = token.sub
         const dbUser = await prisma.user.findUnique({
-          where: { id: user.id },
+          where: { id: token.sub },
           select: { userId: true },
         })
         if (dbUser?.userId) {
           session.user.userId = dbUser.userId
-        } else if (user.email) {
-          // 如果還沒有 userId，生成一個
-          const userId = await generateUserId(user.email)
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { userId },
-          })
-          session.user.userId = userId
         }
       }
       return session
