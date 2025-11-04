@@ -48,10 +48,14 @@ export default function RegisterForm({ defaultName = '', defaultImage = '' }: Re
         const existing = JSON.parse(localStorage.getItem('recentLogins') || '[]')
         const filtered = existing.filter((u: any) => u.userId !== recentLogin.userId)
         localStorage.setItem('recentLogins', JSON.stringify([recentLogin, ...filtered].slice(0, 5)))
+        
+        // 觸發自定義事件，通知其他組件更新
+        window.dispatchEvent(new Event('recentLoginsUpdated'))
       }
 
-      // 導向首頁
-      router.push('/home')
+      // 強制重新載入頁面以更新 session
+      // 這樣可以確保 JWT 重新查詢資料庫並獲取最新的 userId
+      window.location.href = '/home'
     } catch (err) {
       setError('發生錯誤，請稍後再試')
       setLoading(false)

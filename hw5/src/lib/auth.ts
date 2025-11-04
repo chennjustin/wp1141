@@ -27,27 +27,35 @@ export const authOptions: NextAuthOptions = {
       // 允許所有登入，但確保同一個 provider + providerAccountId 不會重複建立帳號
       return true
     },
-    async jwt({ token, user, account }) {
-      // 首次登入時設定 token 資訊
-      if (user?.id) {
-        token.sub = user.id
-        token.exp = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60 // 7 天
+    async jwt({ token, user, account, trigger }) {
+      // 首次登入時或更新資料時，重新查詢資料庫獲取最新用戶資訊
+      if (user?.id || token?.sub) {
+        const userId = user?.id || token.sub
         
-        // 查詢資料庫獲取完整用戶資訊
-        const dbUser = await prisma.user.findUnique({
-          where: { id: user.id },
-          include: {
-            accounts: { select: { provider: true }, take: 1 },
-          },
-        })
-        
-        if (dbUser) {
-          token.userId = dbUser.userId
-          token.name = dbUser.name
-          token.email = dbUser.email
-          token.image = dbUser.image
-          token.bio = (dbUser as any).bio ?? null // 等待 migration 後更新
-          token.provider = dbUser.accounts[0]?.provider
+        if (userId) {
+          // 首次登入時設定過期時間
+          if (user?.id) {
+            token.sub = user.id
+            token.exp = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60 // 7 天
+          }
+          
+          // 每次 JWT 被使用時，都重新查詢資料庫獲取最新資訊
+          // 這樣註冊完成後，JWT 會自動更新為最新資料
+          const dbUser = await prisma.user.findUnique({
+            where: { id: userId as string },
+            include: {
+              accounts: { select: { provider: true }, take: 1 },
+            },
+          })
+          
+          if (dbUser) {
+            token.userId = dbUser.userId
+            token.name = dbUser.name
+            token.email = dbUser.email
+            token.image = dbUser.image
+            token.bio = (dbUser as any).bio ?? null // 等待 migration 後更新
+            token.provider = dbUser.accounts[0]?.provider
+          }
         }
       }
       return token

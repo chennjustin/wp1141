@@ -1,20 +1,46 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { signIn } from 'next-auth/react'
 
 // 合併 OAuth 登入按鈕和最近登入列表
 export default function AuthButtons() {
-  // 從 localStorage 取得最近登入帳號
-  const getRecentLogins = () => {
-    if (typeof window === 'undefined') return []
-    try {
-      return JSON.parse(localStorage.getItem('recentLogins') || '[]')
-    } catch {
-      return []
-    }
-  }
+  const [recentLogins, setRecentLogins] = useState<any[]>([])
 
-  const recentLogins = getRecentLogins()
+  useEffect(() => {
+    // 從 localStorage 取得最近登入帳號
+    const getRecentLogins = () => {
+      if (typeof window === 'undefined') return []
+      try {
+        return JSON.parse(localStorage.getItem('recentLogins') || '[]')
+      } catch {
+        return []
+      }
+    }
+
+    // 初始載入
+    setRecentLogins(getRecentLogins())
+
+    // 監聽自定義事件（當 localStorage 在同頁面更新時）
+    const handleRecentLoginsUpdate = () => {
+      setRecentLogins(getRecentLogins())
+    }
+
+    // 監聽 localStorage 變化（當其他分頁更新時）
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'recentLogins') {
+        setRecentLogins(getRecentLogins())
+      }
+    }
+
+    window.addEventListener('recentLoginsUpdated', handleRecentLoginsUpdate)
+    window.addEventListener('storage', handleStorageChange)
+
+    return () => {
+      window.removeEventListener('recentLoginsUpdated', handleRecentLoginsUpdate)
+      window.removeEventListener('storage', handleStorageChange)
+    }
+  }, [])
 
   const handleOAuthLogin = (provider: string, email?: string) => {
     if (provider === 'google' && email) {
@@ -46,6 +72,7 @@ export default function AuthButtons() {
     // 如果沒有有效的 session，需要重新 OAuth 登入
     handleOAuthLogin(login.provider, login.email)
   }
+
 
   return (
     <div className="space-y-4">
