@@ -20,6 +20,11 @@ export default function UserIdLogin() {
         setLoading(false)
         return
       }
+      // 若為 Google，帶上 login_hint 以自動選擇對應 email，避免帳號選擇器
+      if (data.provider === 'google' && data.email) {
+        await signIn('google', { callbackUrl: '/', login_hint: data.email })
+        return
+      }
       await signIn(data.provider, { callbackUrl: '/' })
     } catch (err) {
       setError('發生錯誤，請稍後再試')

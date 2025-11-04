@@ -10,7 +10,11 @@ export async function GET(req: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { userId },
-    select: { id: true, accounts: { select: { provider: true }, take: 1 } },
+    select: {
+      id: true,
+      email: true,
+      accounts: { select: { provider: true }, take: 1 },
+    },
   })
 
   if (!user) {
@@ -22,7 +26,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'provider not linked' }, { status: 404 })
   }
 
-  return NextResponse.json({ provider })
+  return NextResponse.json({ provider, email: user.email })
 }
 
 
