@@ -13,7 +13,10 @@ export default async function OnboardingPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full space-y-6 bg-white p-8 rounded-lg shadow">
-        <h1 className="text-2xl font-bold">設定你的帳戶</h1>
+        <h1 className="text-2xl font-bold">註冊 - 設定你的帳戶</h1>
+        <p className="text-sm text-gray-600 mb-4">
+          請設定你的 userID 和顯示名稱以完成註冊
+        </p>
         <form action="/api/onboarding" method="post" className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">userID（唯一）</label>

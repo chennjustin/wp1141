@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import LogoutButton from '@/components/LogoutButton'
+import EditNameButton from '@/components/EditNameButton'
 
 export default async function HomePage() {
   const session = await getServerSession(authOptions)
@@ -28,7 +29,10 @@ export default async function HomePage() {
             
             <div className="space-y-3">
               <div>
-                <label className="text-sm font-medium text-gray-700">名稱</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-gray-700">名稱</label>
+                  <EditNameButton currentName={user.name || ''} />
+                </div>
                 <p className="mt-1 text-lg text-gray-900">{user.name || '未設定'}</p>
               </div>
               

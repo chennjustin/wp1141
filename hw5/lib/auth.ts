@@ -32,15 +32,27 @@ export const authOptions: NextAuthOptions = {
       return token
     },
     async session({ session, token }) {
-      // 以 token.sub（即 user.id）查詢 userId 並掛到 session
+      // 以 token.sub（即 user.id）查詢資料庫中的最新資料
       if (session.user && token?.sub) {
         session.user.id = token.sub
         const dbUser = await prisma.user.findUnique({
           where: { id: token.sub },
-          select: { userId: true },
+          select: { userId: true, name: true, email: true, image: true },
         })
-        if (dbUser?.userId) {
-          session.user.userId = dbUser.userId
+        if (dbUser) {
+          // 使用資料庫中的最新值，覆蓋 OAuth provider 提供的值
+          if (dbUser.userId) {
+            session.user.userId = dbUser.userId
+          }
+          if (dbUser.name) {
+            session.user.name = dbUser.name
+          }
+          if (dbUser.email) {
+            session.user.email = dbUser.email
+          }
+          if (dbUser.image) {
+            session.user.image = dbUser.image
+          }
         }
       }
       return session
