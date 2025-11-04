@@ -22,11 +22,6 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   // 關閉 email linking：同一個 email 用不同 provider 會建立不同帳號
-  events: {
-    async signIn({ user, account, profile }) {
-      // 登入成功時的事件處理
-    },
-  },
   callbacks: {
     async signIn({ user, account }) {
       // 允許所有登入，但確保同一個 provider + providerAccountId 不會重複建立帳號
