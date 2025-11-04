@@ -5,7 +5,17 @@ import { signIn } from 'next-auth/react'
 // OAuth 登入按鈕
 export default function AuthButtons() {
   const handleOAuthLogin = (provider: string) => {
-    signIn(provider as 'google' | 'github' | 'facebook', { callbackUrl: '/' })
+    // 直接點擊 Google 登入按鈕時，顯示帳號選擇器
+    if (provider === 'google') {
+      signIn('google', {
+        callbackUrl: '/',
+        authorizationParams: {
+          prompt: 'select_account', // 強制顯示帳號選擇器
+        },
+      })
+    } else {
+      signIn(provider as 'github' | 'facebook', { callbackUrl: '/' })
+    }
   }
 
   return (
