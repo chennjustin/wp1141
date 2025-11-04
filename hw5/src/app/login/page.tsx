@@ -2,12 +2,13 @@ import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import Link from 'next/link'
+import AuthButtons from '@/components/AuthButtons'
 import UserIdLogin from '@/components/UserIdLogin'
-import RecentUsersList from '@/components/RecentUsersList'
 
 export default async function LoginPage() {
   const session = await getServerSession(authOptions)
 
+  // 如果已經登入，導向首頁
   if (session) {
     redirect('/home')
   }
@@ -22,8 +23,8 @@ export default async function LoginPage() {
         <div className="bg-white rounded-lg shadow-md p-8 space-y-6">
           <h2 className="text-2xl font-semibold text-center">登入</h2>
           
-          {/* 最近登入的用戶列表 */}
-          <RecentUsersList />
+          {/* OAuth 登入按鈕和最近登入 */}
+          <AuthButtons />
 
           {/* 以 userId 登入 */}
           <div className="space-y-4">
@@ -43,4 +44,3 @@ export default async function LoginPage() {
     </div>
   )
 }
-

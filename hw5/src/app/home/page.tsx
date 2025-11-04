@@ -47,6 +47,13 @@ export default async function HomePage() {
                   {user.userId || '載入中...'}
                 </p>
               </div>
+              
+              {user.bio && (
+                <div>
+                  <label className="text-sm font-medium text-gray-700">自介</label>
+                  <p className="mt-1 text-lg text-gray-900">{user.bio}</p>
+                </div>
+              )}
             </div>
             
             {user.image && (

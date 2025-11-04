@@ -8,12 +8,8 @@ export default withAuth(
   {
     callbacks: {
       authorized: ({ token, req }) => {
-        // 保護 /home 路由，需要登入
-        if (req.nextUrl.pathname.startsWith('/home')) {
-          return !!token
-        }
-        // 若進入 /onboarding 也需登入，但避免沒有 userId 的新用戶被擋在外
-        if (req.nextUrl.pathname.startsWith('/onboarding')) {
+        // 保護 /home 和 /register 路由，需要登入
+        if (req.nextUrl.pathname.startsWith('/home') || req.nextUrl.pathname.startsWith('/register')) {
           return !!token
         }
         return true
@@ -23,6 +19,6 @@ export default withAuth(
 )
 
 export const config = {
-  matcher: ['/home/:path*', '/onboarding'],
+  matcher: ['/home/:path*', '/register'],
 }
 

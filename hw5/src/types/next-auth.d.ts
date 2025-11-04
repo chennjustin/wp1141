@@ -8,12 +8,24 @@ declare module 'next-auth' {
       email?: string | null
       image?: string | null
       userId?: string | null
+      bio?: string | null
+      provider?: string | null
     }
   }
 
   interface User {
     id: string
     userId?: string | null
+    bio?: string | null
+    provider?: string | null
+  }
+}
+
+declare module 'next-auth/jwt' {
+  interface JWT {
+    userId?: string | null
+    bio?: string | null
+    provider?: string | null
   }
 }
 

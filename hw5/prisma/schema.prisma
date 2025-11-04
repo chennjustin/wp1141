@@ -12,11 +12,12 @@ datasource db {
 
 model User {
   id            String    @id @default(cuid())
-  email         String?   @unique
+  email         String?   // 移除 @unique，允許同一個 email 用不同 provider 建立不同帳號
   emailVerified DateTime?
-  name          String?
+  name          String?   // displayName（使用者自訂顯示名稱）
   image         String?
-  userId        String?   @unique
+  userId        String?   @unique // 使用者自訂的唯一 ID（如 @ric2k1）
+  bio           String?   // 自介
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   accounts      Account[]

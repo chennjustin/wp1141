@@ -9,9 +9,9 @@ export default async function Home() {
     redirect('/login')
   }
 
-  // 若尚未設定 userId，引導去 Onboarding
+  // 若尚未設定 userId，引導去 /register 完成註冊
   if (!session.user?.userId) {
-    redirect('/onboarding')
+    redirect('/register')
   }
 
   redirect('/home')
