@@ -36,23 +36,6 @@ export default function RegisterForm({ defaultName = '', defaultImage = '' }: Re
         return
       }
 
-      // 儲存到 localStorage（最近登入帳號）
-      if (data.user) {
-        const recentLogin = {
-          userId: data.user.userId,
-          name: data.user.name,
-          image: data.user.image,
-          provider: data.user.provider,
-          email: data.user.email, // 用於 Google login_hint
-        }
-        const existing = JSON.parse(localStorage.getItem('recentLogins') || '[]')
-        const filtered = existing.filter((u: any) => u.userId !== recentLogin.userId)
-        localStorage.setItem('recentLogins', JSON.stringify([recentLogin, ...filtered].slice(0, 5)))
-        
-        // 觸發自定義事件，通知其他組件更新
-        window.dispatchEvent(new Event('recentLoginsUpdated'))
-      }
-
       // 強制重新載入頁面以更新 session
       // 這樣可以確保 JWT 重新查詢資料庫並獲取最新的 userId
       window.location.href = '/home'
