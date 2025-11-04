@@ -12,6 +12,10 @@ export default withAuth(
         if (req.nextUrl.pathname.startsWith('/home')) {
           return !!token
         }
+        // 若進入 /onboarding 也需登入，但避免沒有 userId 的新用戶被擋在外
+        if (req.nextUrl.pathname.startsWith('/onboarding')) {
+          return !!token
+        }
         return true
       },
     },
@@ -19,6 +23,6 @@ export default withAuth(
 )
 
 export const config = {
-  matcher: ['/home/:path*'],
+  matcher: ['/home/:path*', '/onboarding'],
 }
 

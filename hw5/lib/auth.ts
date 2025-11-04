@@ -22,18 +22,7 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
     }),
   ],
-  events: {
-    async createUser({ user }) {
-      // 當新用戶被創建時，生成 userId
-      if (user.email) {
-        const userId = await generateUserId(user.email)
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { userId },
-        })
-      }
-    },
-  },
+  // 移除自動 userId 生成：改為首次登入導向 /onboarding 由使用者自行設定
   callbacks: {
     async jwt({ token, user, account, profile, trigger }) {
       // 登入時把使用者 id 放到 token.sub（NextAuth 既有），其餘維持不變
