@@ -22,6 +22,11 @@ model User {
   updatedAt     DateTime  @updatedAt
   accounts      Account[]
   sessions      Session[]
+  posts         Post[]    @relation("UserPosts")
+  likes         Like[]
+  reposts       Repost[]
+  followers     Follow[]  @relation("UserFollowers")
+  following     Follow[]  @relation("UserFollowing")
 }
 
 model Account {
@@ -57,5 +62,64 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  authorId  String
+  parentId  String?  // 用於回覆（指向另一個 Post）
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  author   User   @relation("UserPosts", fields: [authorId], references: [id], onDelete: Cascade)
+  parent   Post?  @relation("PostReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Post[] @relation("PostReplies")
+  likes    Like[]
+  reposts  Repost[]
+  
+  @@index([authorId])
+  @@index([parentId])
+  @@index([createdAt])
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, postId])
+  @@index([postId])
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String   // 追蹤者
+  followingId String   // 被追蹤者
+  createdAt   DateTime @default(now())
+  
+  follower  User @relation("UserFollowers", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("UserFollowing", fields: [followingId], references: [id], onDelete: Cascade)
+  
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+model Repost {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, postId])
+  @@index([postId])
 }
 
