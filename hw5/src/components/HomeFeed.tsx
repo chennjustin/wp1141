@@ -55,9 +55,72 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
       fetchPosts()
     }
 
-    const handleLike = (postId: string) => {
-      console.log('Like:', postId)
-      // TODO: Call API
+    const handleLike = async (postId: string) => {
+      // Find the post
+      const postIndex = posts.findIndex((p) => p.id === postId)
+      if (postIndex === -1) return
+
+      const post = posts[postIndex]
+      const wasLiked = post.liked || false
+      const previousLikeCount = post.likeCount
+
+      // Optimistic update
+      const updatedPosts = [...posts]
+      updatedPosts[postIndex] = {
+        ...post,
+        liked: !wasLiked,
+        likeCount: wasLiked ? post.likeCount - 1 : post.likeCount + 1,
+      }
+      setPosts(updatedPosts)
+
+      try {
+        const response = await fetch('/api/like', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ postId }),
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to toggle like')
+        }
+
+        const data = await response.json()
+        
+        // Update with server response (use current state)
+        setPosts((currentPosts) => {
+          const currentPostIndex = currentPosts.findIndex((p) => p.id === postId)
+          if (currentPostIndex === -1) return currentPosts
+          
+          const currentPost = currentPosts[currentPostIndex]
+          const finalPosts = [...currentPosts]
+          finalPosts[currentPostIndex] = {
+            ...currentPost,
+            liked: data.liked,
+            likeCount: data.liked
+              ? currentPost.likeCount + 1
+              : Math.max(0, currentPost.likeCount - 1),
+          }
+          return finalPosts
+        })
+      } catch (error) {
+        console.error('Error toggling like:', error)
+        
+        // Rollback on error (use current state)
+        setPosts((currentPosts) => {
+          const currentPostIndex = currentPosts.findIndex((p) => p.id === postId)
+          if (currentPostIndex === -1) return currentPosts
+          
+          const rollbackPosts = [...currentPosts]
+          rollbackPosts[currentPostIndex] = {
+            ...currentPosts[currentPostIndex],
+            liked: wasLiked,
+            likeCount: previousLikeCount,
+          }
+          return rollbackPosts
+        })
+      }
     }
 
     const handleRepost = (postId: string) => {

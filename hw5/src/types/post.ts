@@ -14,5 +14,6 @@ export interface Post {
   likeCount: number
   repostCount: number
   commentCount: number
+  liked?: boolean // Whether current user has liked this post
 }
 
