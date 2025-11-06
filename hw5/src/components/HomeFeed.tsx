@@ -77,13 +77,18 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
         })
 
         // Handle post liked
+        // Only update if this is not the current user's action (to avoid double updates)
         channel.bind(PUSHER_EVENTS.POST_LIKED, (data: PostLikedPayload) => {
           setPosts((currentPosts) => {
-            return currentPosts.map((post) =>
-              post.id === data.postId
-                ? { ...post, likeCount: data.likeCount }
-                : post
-            )
+            return currentPosts.map((post) => {
+              if (post.id === data.postId) {
+                // Don't update if this post is currently being processed by the user
+                // The optimistic update and API response will handle it
+                // Only update the count from other users' actions
+                return { ...post, likeCount: data.likeCount }
+              }
+              return post
+            })
           })
         })
 
@@ -174,19 +179,16 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
 
         const data = await response.json()
         
-        // Update with server response (use current state)
+        // Update with server response (use server's likeCount directly)
         setPosts((currentPosts) => {
           const currentPostIndex = currentPosts.findIndex((p) => p.id === postId)
           if (currentPostIndex === -1) return currentPosts
           
-          const currentPost = currentPosts[currentPostIndex]
           const finalPosts = [...currentPosts]
           finalPosts[currentPostIndex] = {
-            ...currentPost,
+            ...currentPosts[currentPostIndex],
             liked: data.liked,
-            likeCount: data.liked
-              ? currentPost.likeCount + 1
-              : Math.max(0, currentPost.likeCount - 1),
+            likeCount: data.likeCount, // Use server's count directly
           }
           return finalPosts
         })

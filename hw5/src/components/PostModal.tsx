@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { usePostModal } from './PostModalProvider'
 
 interface PostModalProps {
@@ -9,6 +10,8 @@ interface PostModalProps {
 
 export default function PostModal({ onPostCreated }: PostModalProps) {
   const { isOpen, closeModal } = usePostModal()
+  const { data: session } = useSession()
+  const currentUser = session?.user
   const [content, setContent] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const maxLength = 280
@@ -95,9 +98,17 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4">
           <div className="flex gap-4">
-            {/* Avatar placeholder */}
+            {/* Avatar */}
             <div className="flex-shrink-0">
-              <div className="w-12 h-12 rounded-full bg-gray-300" />
+              {currentUser?.image ? (
+                <img
+                  src={currentUser.image}
+                  alt={currentUser.name || 'User'}
+                  className="w-12 h-12 rounded-full"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-gray-300" />
+              )}
             </div>
 
             {/* Textarea */}

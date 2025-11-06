@@ -65,14 +65,26 @@ export default async function ProfilePageRoute({ params }: ProfilePageProps) {
           image: true,
         },
       },
-      reposts: {
-        where: {
-          userId: user.id,
-        },
-        select: {
-          userId: true,
-        },
-      },
+      reposts: session.user
+        ? {
+            where: {
+              userId: session.user.id as string,
+            },
+            select: {
+              userId: true,
+            },
+          }
+        : false,
+      likes: session.user
+        ? {
+            where: {
+              userId: session.user.id as string,
+            },
+            select: {
+              userId: true,
+            },
+          }
+        : false,
       _count: {
         select: {
           likes: true,
@@ -94,7 +106,8 @@ export default async function ProfilePageRoute({ params }: ProfilePageProps) {
     likeCount: post._count.likes,
     repostCount: post._count.reposts,
     commentCount: post._count.replies,
-    repostedByMe: post.reposts.length > 0, // 標記是否為轉發的貼文
+    repostedByMe: session.user ? (post.reposts as any)?.length > 0 : false, // 標記是否為轉發的貼文
+    liked: session.user ? (post.likes as any)?.length > 0 : false,
   }))
 
   // Format user to match User type

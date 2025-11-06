@@ -68,28 +68,23 @@ export default function PostDetailPage({ parentPost: initialParentPost, replies:
 
       const data = await response.json()
 
-      // Update with server response
+      // Update with server response (use server's likeCount directly)
       if (postId === parentPost.id) {
         setParentPost((current) => ({
           ...current,
           liked: data.liked,
-          likeCount: data.liked
-            ? current.likeCount + 1
-            : Math.max(0, current.likeCount - 1),
+          likeCount: data.likeCount, // Use server's count directly
         }))
       } else {
         setReplies((currentReplies) => {
           const currentReplyIndex = currentReplies.findIndex((p) => p.id === postId)
           if (currentReplyIndex === -1) return currentReplies
 
-          const currentReply = currentReplies[currentReplyIndex]
           const finalReplies = [...currentReplies]
           finalReplies[currentReplyIndex] = {
-            ...currentReply,
+            ...currentReplies[currentReplyIndex],
             liked: data.liked,
-            likeCount: data.liked
-              ? currentReply.likeCount + 1
-              : Math.max(0, currentReply.likeCount - 1),
+            likeCount: data.likeCount, // Use server's count directly
           }
           return finalReplies
         })

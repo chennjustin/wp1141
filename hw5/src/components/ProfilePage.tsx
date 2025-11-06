@@ -106,19 +106,16 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
 
       const data = await response.json()
       
-      // Update with server response (use current state)
+      // Update with server response (use server's likeCount directly)
       setPosts((currentPosts) => {
         const currentPostIndex = currentPosts.findIndex((p) => p.id === postId)
         if (currentPostIndex === -1) return currentPosts
         
-        const currentPost = currentPosts[currentPostIndex]
         const finalPosts = [...currentPosts]
         finalPosts[currentPostIndex] = {
-          ...currentPost,
+          ...currentPosts[currentPostIndex],
           liked: data.liked,
-          likeCount: data.liked
-            ? currentPost.likeCount + 1
-            : Math.max(0, currentPost.likeCount - 1),
+          likeCount: data.likeCount, // Use server's count directly
         }
         return finalPosts
       })

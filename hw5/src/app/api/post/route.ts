@@ -36,6 +36,16 @@ export async function GET(req: NextRequest) {
               },
             }
           : false,
+        likes: user
+          ? {
+              where: {
+                userId: user.id,
+              },
+              select: {
+                userId: true,
+              },
+            }
+          : false,
         _count: {
           select: {
             likes: true,
@@ -58,6 +68,7 @@ export async function GET(req: NextRequest) {
       repostCount: post._count.reposts,
       commentCount: post._count.replies,
       reposted: user ? (post.reposts as any)?.length > 0 : false,
+      liked: user ? (post.likes as any)?.length > 0 : false,
     }))
 
     return NextResponse.json(formattedPosts)

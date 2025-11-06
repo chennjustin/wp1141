@@ -32,6 +32,14 @@ export default async function PostPage({ params }: PostPageProps) {
           image: true,
         },
       },
+      likes: {
+        where: {
+          userId: session.user.id as string,
+        },
+        select: {
+          userId: true,
+        },
+      },
       replies: {
         orderBy: { createdAt: 'desc' },
         include: {
@@ -41,6 +49,14 @@ export default async function PostPage({ params }: PostPageProps) {
               userId: true,
               name: true,
               image: true,
+            },
+          },
+          likes: {
+            where: {
+              userId: session.user.id as string,
+            },
+            select: {
+              userId: true,
             },
           },
           _count: {
@@ -76,6 +92,7 @@ export default async function PostPage({ params }: PostPageProps) {
     likeCount: postData._count.likes,
     repostCount: postData._count.reposts,
     commentCount: postData._count.replies,
+    liked: (postData.likes as any)?.length > 0,
   }
 
   // Format replies
@@ -89,6 +106,7 @@ export default async function PostPage({ params }: PostPageProps) {
     likeCount: reply._count.likes,
     repostCount: 0, // Replies don't have reposts in this structure
     commentCount: reply._count.replies,
+    liked: (reply.likes as any)?.length > 0,
   }))
 
   return (
