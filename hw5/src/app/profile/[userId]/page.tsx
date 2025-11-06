@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
-import { getUserByUserId, getPostsByAuthorId, getCurrentMockUser } from '@/lib/mockData'
+import { prisma } from '@/lib/prisma'
 import AppLayout from '@/components/AppLayout'
 import Navbar from '@/components/Navbar'
 import ProfilePage from '@/components/ProfilePage'
@@ -19,23 +19,85 @@ export default async function ProfilePageRoute({ params }: ProfilePageProps) {
     redirect('/login')
   }
 
-  // Get user by userId
-  const user = getUserByUserId(params.userId)
+  // Get user by userId from database
+  const user = await prisma.user.findUnique({
+    where: { userId: params.userId },
+    select: {
+      id: true,
+      userId: true,
+      name: true,
+      image: true,
+      bio: true,
+      email: true,
+      createdAt: true,
+      _count: {
+        select: {
+          posts: true,
+          followers: true,
+          following: true,
+        },
+      },
+    },
+  })
+
   if (!user) {
     redirect('/home')
   }
 
-  // Get user's posts
-  const posts = getPostsByAuthorId(user.id)
+  // Get user's posts from database
+  const postsData = await prisma.post.findMany({
+    where: {
+      authorId: user.id,
+      parentId: null, // 只返回原始貼文，不包含回覆
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+    include: {
+      author: {
+        select: {
+          id: true,
+          userId: true,
+          name: true,
+          image: true,
+        },
+      },
+      _count: {
+        select: {
+          likes: true,
+          replies: true,
+          reposts: true,
+        },
+      },
+    },
+  })
+
+  // Format posts to match Post type
+  const posts = postsData.map((post) => ({
+    id: post.id,
+    content: post.content,
+    authorId: post.authorId,
+    createdAt: post.createdAt.toISOString(),
+    updatedAt: post.updatedAt.toISOString(),
+    author: post.author,
+    likeCount: post._count.likes,
+    repostCount: post._count.reposts,
+    commentCount: post._count.replies,
+  }))
+
+  // Format user to match User type
+  const formattedUser = {
+    ...user,
+    createdAt: user.createdAt.toISOString(),
+  }
 
   // Check if it's own profile
-  const currentUser = getCurrentMockUser()
-  const isOwnProfile = user.id === currentUser.id
+  const isOwnProfile = user.id === session.user.id
 
   return (
     <AppLayout>
-      <Navbar type="profile" profileName={user.name} />
-      <ProfilePage user={user} posts={posts} isOwnProfile={isOwnProfile} />
+      <Navbar type="profile" profileName={user.name || undefined} />
+      <ProfilePage user={formattedUser} posts={posts} isOwnProfile={isOwnProfile} />
     </AppLayout>
   )
 }

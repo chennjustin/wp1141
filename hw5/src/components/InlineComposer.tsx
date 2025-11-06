@@ -1,22 +1,23 @@
 'use client'
 
 import React from 'react'
+import { useSession } from 'next-auth/react'
 import { usePostModal } from './PostModalProvider'
-import { getCurrentMockUser } from '@/lib/mockData'
 
 export default function InlineComposer() {
   const { openModal } = usePostModal()
-  const currentUser = getCurrentMockUser()
+  const { data: session } = useSession()
+  const currentUser = session?.user
 
   return (
     <div className="border-b border-gray-200 p-4">
       <div className="flex gap-4">
         {/* Avatar */}
         <div className="flex-shrink-0">
-          {currentUser.image ? (
+          {currentUser?.image ? (
             <img
               src={currentUser.image}
-              alt={currentUser.name}
+              alt={currentUser.name || 'User'}
               className="w-12 h-12 rounded-full"
             />
           ) : (

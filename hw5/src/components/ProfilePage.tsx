@@ -3,11 +3,12 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import PostCard from './PostCard'
-import { MockUser, MockPost, getUserByUserId, getPostsByAuthorId, getCurrentMockUser } from '@/lib/mockData'
+import { User } from '@/types/user'
+import { Post } from '@/types/post'
 
 interface ProfilePageProps {
-  user: MockUser
-  posts: MockPost[]
+  user: User
+  posts: Post[]
   isOwnProfile: boolean
 }
 
@@ -84,15 +85,15 @@ export default function ProfilePage({ user, posts, isOwnProfile }: ProfilePagePr
 
         {/* User Info */}
         <div className="mb-4">
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">{user.name}</h1>
-          <p className="text-gray-500 mb-3">@{user.userId}</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">{user.name || 'Unknown'}</h1>
+          {user.userId && <p className="text-gray-500 mb-3">@{user.userId}</p>}
           {user.bio && <p className="text-gray-900 mb-3">{user.bio}</p>}
           <div className="flex gap-4 text-sm text-gray-500">
             <span>
-              <span className="font-semibold text-gray-900">{user.followingCount}</span> Following
+              <span className="font-semibold text-gray-900">{user._count.following}</span> Following
             </span>
             <span>
-              <span className="font-semibold text-gray-900">{user.followersCount}</span> Followers
+              <span className="font-semibold text-gray-900">{user._count.followers}</span> Followers
             </span>
           </div>
         </div>

@@ -1,14 +1,15 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { usePostModal } from './PostModalProvider'
-import { getCurrentMockUser } from '@/lib/mockData'
 import LogoutButton from './LogoutButton'
 
 export default function Sidebar() {
   const router = useRouter()
   const { openModal } = usePostModal()
-  const currentUser = getCurrentMockUser()
+  const { data: session } = useSession()
+  const currentUser = session?.user
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-[20%] border-r border-gray-200 bg-white flex flex-col">
@@ -43,7 +44,11 @@ export default function Sidebar() {
 
         {/* Profile Button */}
         <button
-          onClick={() => router.push(`/profile/${currentUser.userId}`)}
+          onClick={() => {
+            if (currentUser?.userId) {
+              router.push(`/profile/${currentUser.userId}`)
+            }
+          }}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors text-left"
         >
           <svg
@@ -87,28 +92,32 @@ export default function Sidebar() {
       </nav>
 
       {/* User Info */}
-      <div className="p-4 border-t border-gray-200">
-        <div className="flex items-center gap-3 mb-3">
-          {currentUser.image ? (
-            <img
-              src={currentUser.image}
-              alt={currentUser.name}
-              className="w-10 h-10 rounded-full"
-            />
-          ) : (
-            <div className="w-10 h-10 rounded-full bg-gray-300" />
-          )}
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900 truncate">
-              {currentUser.name}
-            </p>
-            <p className="text-sm text-gray-500 truncate">
-              @{currentUser.userId}
-            </p>
+      {currentUser && (
+        <div className="p-4 border-t border-gray-200">
+          <div className="flex items-center gap-3 mb-3">
+            {currentUser.image ? (
+              <img
+                src={currentUser.image}
+                alt={currentUser.name || 'User'}
+                className="w-10 h-10 rounded-full"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-gray-300" />
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 truncate">
+                {currentUser.name || 'Unknown'}
+              </p>
+              {currentUser.userId && (
+                <p className="text-sm text-gray-500 truncate">
+                  @{currentUser.userId}
+                </p>
+              )}
+            </div>
           </div>
+          <LogoutButton />
         </div>
-        <LogoutButton />
-      </div>
+      )}
     </aside>
   )
 }
