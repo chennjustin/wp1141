@@ -2,6 +2,54 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser, unauthorizedResponse, badRequestResponse } from '@/lib/api-helpers'
 
+export async function GET(req: NextRequest) {
+  try {
+    const posts = await prisma.post.findMany({
+      where: {
+        parentId: null, // 只返回原始貼文，不包含回覆
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            userId: true,
+            name: true,
+            image: true,
+          },
+        },
+        _count: {
+          select: {
+            likes: true,
+            replies: true,
+            reposts: true,
+          },
+        },
+      },
+    })
+
+    // 格式化回傳資料
+    const formattedPosts = posts.map((post) => ({
+      id: post.id,
+      content: post.content,
+      authorId: post.authorId,
+      createdAt: post.createdAt.toISOString(),
+      updatedAt: post.updatedAt.toISOString(),
+      author: post.author,
+      likeCount: post._count.likes,
+      repostCount: post._count.reposts,
+      commentCount: post._count.replies,
+    }))
+
+    return NextResponse.json(formattedPosts)
+  } catch (error) {
+    console.error('Error fetching posts:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser()
@@ -33,6 +81,13 @@ export async function POST(req: NextRequest) {
             image: true,
           },
         },
+        _count: {
+          select: {
+            likes: true,
+            replies: true,
+            reposts: true,
+          },
+        },
       },
     })
 
@@ -40,9 +95,13 @@ export async function POST(req: NextRequest) {
       {
         id: post.id,
         content: post.content,
-        createdAt: post.createdAt,
-        updatedAt: post.updatedAt,
+        authorId: post.authorId,
+        createdAt: post.createdAt.toISOString(),
+        updatedAt: post.updatedAt.toISOString(),
         author: post.author,
+        likeCount: post._count.likes,
+        repostCount: post._count.reposts,
+        commentCount: post._count.replies,
       },
       { status: 201 }
     )

@@ -3,23 +3,53 @@
 import React, { useState, useEffect } from 'react'
 import { usePostModal } from './PostModalProvider'
 
-export default function PostModal() {
+interface PostModalProps {
+  onPostCreated?: () => void
+}
+
+export default function PostModal({ onPostCreated }: PostModalProps) {
   const { isOpen, closeModal } = usePostModal()
   const [content, setContent] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const maxLength = 280
 
   useEffect(() => {
     if (!isOpen) {
       // Clear content when modal closes
       setContent('')
+      setIsSubmitting(false)
     }
   }, [isOpen])
 
-  const handlePost = () => {
-    if (content.trim().length === 0) return
-    console.log('Posting:', content)
-    // TODO: Call API to create post
-    closeModal()
+  const handlePost = async () => {
+    if (content.trim().length === 0 || content.length > maxLength) return
+
+    setIsSubmitting(true)
+    try {
+      const response = await fetch('/api/post', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content: content.trim() }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to create post')
+      }
+
+      // Success - close modal and trigger refresh
+      closeModal()
+      if (onPostCreated) {
+        onPostCreated()
+      }
+    } catch (error) {
+      console.error('Error creating post:', error)
+      alert(error instanceof Error ? error.message : 'Failed to create post')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleDiscard = () => {
@@ -106,10 +136,10 @@ export default function PostModal() {
           </button>
           <button
             onClick={handlePost}
-            disabled={content.trim().length === 0 || content.length > maxLength}
+            disabled={content.trim().length === 0 || content.length > maxLength || isSubmitting}
             className="px-6 py-2 rounded-full font-semibold text-white bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            Post
+            {isSubmitting ? 'Posting...' : 'Post'}
           </button>
         </div>
       </div>

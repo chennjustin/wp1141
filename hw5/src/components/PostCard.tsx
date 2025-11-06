@@ -1,20 +1,18 @@
 'use client'
 
 import React from 'react'
-import { MockPost, MockUser, getUserById } from '@/lib/mockData'
+import { Post } from '@/types/post'
 
 interface PostCardProps {
-  post: MockPost
+  post: Post
   onLike?: (postId: string) => void
   onRepost?: (postId: string) => void
   onComment?: (postId: string) => void
 }
 
 export default function PostCard({ post, onLike, onRepost, onComment }: PostCardProps) {
-  const author = getUserById(post.authorId)
-  if (!author) return null
-
-  const formatTimeAgo = (date: Date) => {
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString)
     const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
     if (seconds < 60) return `${seconds}s`
     const minutes = Math.floor(seconds / 60)
@@ -54,10 +52,10 @@ export default function PostCard({ post, onLike, onRepost, onComment }: PostCard
       <div className="flex gap-3">
         {/* Avatar */}
         <div className="flex-shrink-0">
-          {author.image ? (
+          {post.author?.image ? (
             <img
-              src={author.image}
-              alt={author.name}
+              src={post.author.image}
+              alt={post.author?.name || 'User'}
               className="w-12 h-12 rounded-full"
             />
           ) : (
@@ -69,9 +67,13 @@ export default function PostCard({ post, onLike, onRepost, onComment }: PostCard
         <div className="flex-1 min-w-0">
           {/* Header */}
           <div className="flex items-center gap-2 mb-1">
-            <span className="font-semibold text-gray-900">{author.name}</span>
-            <span className="text-gray-500">@{author.userId}</span>
-            <span className="text-gray-500">·</span>
+            <span className="font-semibold text-gray-900">{post.author?.name || 'Unknown'}</span>
+            {post.author?.userId && (
+              <>
+                <span className="text-gray-500">@{post.author?.userId}</span>
+                <span className="text-gray-500">·</span>
+              </>
+            )}
             <span className="text-gray-500">{formatTimeAgo(post.createdAt)}</span>
           </div>
 

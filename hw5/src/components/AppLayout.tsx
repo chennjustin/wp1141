@@ -4,7 +4,12 @@ import React from 'react'
 import Sidebar from './Sidebar'
 import PostModal from './PostModal'
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+interface AppLayoutProps {
+  children: React.ReactNode
+  onPostCreated?: () => void
+}
+
+export default function AppLayout({ children, onPostCreated }: AppLayoutProps) {
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Left Sidebar - Fixed */}
@@ -19,7 +24,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="w-[20%]" />
 
       {/* Post Modal */}
-      <PostModal />
+      <PostModal onPostCreated={onPostCreated} />
     </div>
   )
 }
