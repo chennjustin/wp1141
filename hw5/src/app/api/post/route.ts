@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser, unauthorizedResponse, badRequestResponse } from '@/lib/api-helpers'
+import { pusherServer } from '@/lib/pusher/server'
+import { PUSHER_EVENTS } from '@/lib/pusher/events'
+
+export const runtime = 'nodejs'
 
 export async function GET(req: NextRequest) {
   try {
@@ -104,20 +108,29 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    return NextResponse.json(
-      {
-        id: post.id,
-        content: post.content,
-        authorId: post.authorId,
-        createdAt: post.createdAt.toISOString(),
-        updatedAt: post.updatedAt.toISOString(),
-        author: post.author,
-        likeCount: post._count.likes,
-        repostCount: post._count.reposts,
-        commentCount: post._count.replies,
-      },
-      { status: 201 }
-    )
+    const formattedPost = {
+      id: post.id,
+      content: post.content,
+      authorId: post.authorId,
+      createdAt: post.createdAt.toISOString(),
+      updatedAt: post.updatedAt.toISOString(),
+      author: post.author,
+      likeCount: post._count.likes,
+      repostCount: post._count.reposts,
+      commentCount: post._count.replies,
+    }
+
+    // Trigger Pusher event
+    try {
+      await pusherServer().trigger('feed', PUSHER_EVENTS.POST_CREATED, {
+        post: formattedPost,
+      })
+    } catch (pusherError) {
+      console.error('Error triggering Pusher event:', pusherError)
+      // Don't fail the request if Pusher fails
+    }
+
+    return NextResponse.json(formattedPost, { status: 201 })
   } catch (error) {
     console.error('Error creating post:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

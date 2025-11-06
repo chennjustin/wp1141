@@ -1,10 +1,14 @@
 'use client'
 
-import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react'
+import React, { useState, useEffect, useImperativeHandle, forwardRef, useRef } from 'react'
+import { useSession } from 'next-auth/react'
 import InlineComposer from './InlineComposer'
 import PostCard from './PostCard'
 import ReplyModal from './ReplyModal'
 import { Post } from '@/types/post'
+import { pusherClient } from '@/lib/pusher/client'
+import { PUSHER_EVENTS, PostCreatedPayload, PostLikedPayload, PostRepostedPayload, PostRepliedPayload } from '@/lib/pusher/events'
+import Pusher from 'pusher-js'
 
 interface HomeFeedProps {
   onRefreshRef?: React.MutableRefObject<(() => void) | null>
@@ -16,6 +20,9 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [replyTarget, setReplyTarget] = useState<Post | null>(null)
+    const { data: session } = useSession()
+    const currentUserId = session?.user?.id
+    const pusherChannelRef = useRef<any>(null)
 
     const fetchPosts = async () => {
       try {
@@ -40,6 +47,83 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
     useEffect(() => {
       fetchPosts()
     }, [])
+
+    // Subscribe to Pusher events
+    useEffect(() => {
+      if (typeof window === 'undefined') return
+
+      let pusher: Pusher | null = null
+      try {
+        pusher = pusherClient()
+        const channel = pusher.subscribe('feed')
+
+        pusherChannelRef.current = channel
+
+        // Handle new post created
+        channel.bind(PUSHER_EVENTS.POST_CREATED, (data: PostCreatedPayload) => {
+          // Skip if this is our own post (already added via optimistic update)
+          if (data.post.authorId === currentUserId) {
+            return
+          }
+
+          setPosts((currentPosts) => {
+            // Check if post already exists
+            if (currentPosts.some((p) => p.id === data.post.id)) {
+              return currentPosts
+            }
+            // Add new post at the top
+            return [data.post as Post, ...currentPosts]
+          })
+        })
+
+        // Handle post liked
+        channel.bind(PUSHER_EVENTS.POST_LIKED, (data: PostLikedPayload) => {
+          setPosts((currentPosts) => {
+            return currentPosts.map((post) =>
+              post.id === data.postId
+                ? { ...post, likeCount: data.likeCount }
+                : post
+            )
+          })
+        })
+
+        // Handle post reposted
+        channel.bind(PUSHER_EVENTS.POST_REPOSTED, (data: PostRepostedPayload) => {
+          setPosts((currentPosts) => {
+            return currentPosts.map((post) =>
+              post.id === data.postId
+                ? { ...post, repostCount: data.repostCount }
+                : post
+            )
+          })
+        })
+
+        // Handle post replied
+        channel.bind(PUSHER_EVENTS.POST_REPLIED, (data: PostRepliedPayload) => {
+          setPosts((currentPosts) => {
+            return currentPosts.map((post) =>
+              post.id === data.parentId
+                ? { ...post, commentCount: data.commentCount }
+                : post
+            )
+          })
+        })
+      } catch (error) {
+        console.error('Error setting up Pusher subscription:', error)
+      }
+
+      // Cleanup on unmount
+      return () => {
+        if (pusher && pusherChannelRef.current) {
+          try {
+            pusher.unsubscribe('feed')
+          } catch (error) {
+            console.error('Error unsubscribing from Pusher:', error)
+          }
+          pusherChannelRef.current = null
+        }
+      }
+    }, [currentUserId])
 
     // Expose refresh function to parent
     useImperativeHandle(ref, () => ({

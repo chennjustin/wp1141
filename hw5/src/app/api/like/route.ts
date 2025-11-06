@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser, unauthorizedResponse, badRequestResponse, notFoundResponse } from '@/lib/api-helpers'
+import { pusherServer } from '@/lib/pusher/server'
+import { PUSHER_EVENTS } from '@/lib/pusher/events'
+
+export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
   try {
@@ -34,6 +38,7 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    let liked: boolean
     if (existingLike) {
       // 取消按讚
       await prisma.like.delete({
@@ -44,8 +49,7 @@ export async function POST(req: NextRequest) {
           },
         },
       })
-
-      return NextResponse.json({ liked: false })
+      liked = false
     } else {
       // 按讚
       await prisma.like.create({
@@ -54,9 +58,42 @@ export async function POST(req: NextRequest) {
           postId,
         },
       })
-
-      return NextResponse.json({ liked: true })
+      liked = true
     }
+
+    // Get updated likeCount
+    const updatedPost = await prisma.post.findUnique({
+      where: { id: postId },
+      include: {
+        _count: {
+          select: {
+            likes: true,
+          },
+        },
+      },
+    })
+
+    const likeCount = updatedPost?._count.likes || 0
+
+    // Trigger Pusher events
+    try {
+      const pusher = pusherServer()
+      await Promise.all([
+        pusher.trigger('feed', PUSHER_EVENTS.POST_LIKED, {
+          postId,
+          likeCount,
+        }),
+        pusher.trigger(`post-${postId}`, PUSHER_EVENTS.POST_LIKED, {
+          postId,
+          likeCount,
+        }),
+      ])
+    } catch (pusherError) {
+      console.error('Error triggering Pusher event:', pusherError)
+      // Don't fail the request if Pusher fails
+    }
+
+    return NextResponse.json({ liked, likeCount })
   } catch (error) {
     console.error('Error toggling like:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

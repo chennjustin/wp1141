@@ -1,10 +1,14 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import PostCard from './PostCard'
 import ReplyModal from './ReplyModal'
 import { Post } from '@/types/post'
+import { pusherClient } from '@/lib/pusher/client'
+import { PUSHER_EVENTS, PostLikedPayload, PostRepostedPayload, PostRepliedPayload } from '@/lib/pusher/events'
+import Pusher from 'pusher-js'
 
 interface PostDetailPageProps {
   parentPost: Post
@@ -13,9 +17,13 @@ interface PostDetailPageProps {
 
 export default function PostDetailPage({ parentPost: initialParentPost, replies: initialReplies }: PostDetailPageProps) {
   const router = useRouter()
+  const { data: session } = useSession()
+  const currentUserId = session?.user?.id
   const [parentPost, setParentPost] = useState<Post>(initialParentPost)
   const [replies, setReplies] = useState<Post[]>(initialReplies)
   const [replyTarget, setReplyTarget] = useState<Post | null>(null)
+  const feedChannelRef = useRef<any>(null)
+  const postChannelRef = useRef<any>(null)
 
   const handleLike = async (postId: string) => {
     // Find the post (could be parent or reply)
@@ -112,10 +120,178 @@ export default function PostDetailPage({ parentPost: initialParentPost, replies:
     }
   }
 
-  const handleRepost = (postId: string) => {
-    console.log('Repost:', postId)
-    // TODO: Call API
+  const handleRepost = async (postId: string) => {
+    // Find the post (could be parent or reply)
+    const post = postId === parentPost.id ? parentPost : replies.find((p) => p.id === postId)
+    if (!post) return
+
+    const wasReposted = post.reposted || false
+    const previousRepostCount = post.repostCount
+
+    // Optimistic update
+    if (postId === parentPost.id) {
+      setParentPost({
+        ...parentPost,
+        reposted: !wasReposted,
+        repostCount: wasReposted ? parentPost.repostCount - 1 : parentPost.repostCount + 1,
+      })
+    } else {
+      const replyIndex = replies.findIndex((p) => p.id === postId)
+      if (replyIndex !== -1) {
+        const updatedReplies = [...replies]
+        updatedReplies[replyIndex] = {
+          ...replies[replyIndex],
+          reposted: !wasReposted,
+          repostCount: wasReposted ? replies[replyIndex].repostCount - 1 : replies[replyIndex].repostCount + 1,
+        }
+        setReplies(updatedReplies)
+      }
+    }
+
+    try {
+      const response = await fetch('/api/repost', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ postId }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle repost')
+      }
+
+      const data = await response.json()
+
+      // Update with server response
+      if (postId === parentPost.id) {
+        setParentPost((current) => ({
+          ...current,
+          reposted: data.reposted,
+          repostCount: data.repostCount,
+        }))
+      } else {
+        setReplies((currentReplies) => {
+          const currentReplyIndex = currentReplies.findIndex((p) => p.id === postId)
+          if (currentReplyIndex === -1) return currentReplies
+
+          const currentReply = currentReplies[currentReplyIndex]
+          const finalReplies = [...currentReplies]
+          finalReplies[currentReplyIndex] = {
+            ...currentReply,
+            reposted: data.reposted,
+            repostCount: data.repostCount,
+          }
+          return finalReplies
+        })
+      }
+    } catch (error) {
+      console.error('Error toggling repost:', error)
+
+      // Rollback
+      if (postId === parentPost.id) {
+        setParentPost((current) => ({
+          ...current,
+          reposted: wasReposted,
+          repostCount: previousRepostCount,
+        }))
+      } else {
+        setReplies((currentReplies) => {
+          const replyIndex = currentReplies.findIndex((p) => p.id === postId)
+          if (replyIndex === -1) return currentReplies
+
+          const rollbackReplies = [...currentReplies]
+          rollbackReplies[replyIndex] = {
+            ...currentReplies[replyIndex],
+            reposted: wasReposted,
+            repostCount: previousRepostCount,
+          }
+          return rollbackReplies
+        })
+      }
+    }
   }
+
+  // Subscribe to Pusher events
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    let pusher: Pusher | null = null
+    try {
+      pusher = pusherClient()
+      const feedChannel = pusher.subscribe('feed')
+      const postChannel = pusher.subscribe(`post-${parentPost.id}`)
+
+      feedChannelRef.current = feedChannel
+      postChannelRef.current = postChannel
+
+      const handlePostLiked = (data: PostLikedPayload) => {
+        if (data.postId === parentPost.id) {
+          setParentPost((current) => ({
+            ...current,
+            likeCount: data.likeCount,
+          }))
+        } else {
+          setReplies((currentReplies) => {
+            return currentReplies.map((reply) =>
+              reply.id === data.postId
+                ? { ...reply, likeCount: data.likeCount }
+                : reply
+            )
+          })
+        }
+      }
+
+      const handlePostReposted = (data: PostRepostedPayload) => {
+        if (data.postId === parentPost.id) {
+          setParentPost((current) => ({
+            ...current,
+            repostCount: data.repostCount,
+          }))
+        }
+      }
+
+      const handlePostReplied = (data: PostRepliedPayload) => {
+        if (data.parentId === parentPost.id) {
+          setParentPost((current) => ({
+            ...current,
+            commentCount: data.commentCount,
+          }))
+          // Optionally refresh replies
+          // For now, just update the count
+        }
+      }
+
+      // Bind events on both channels
+      feedChannel.bind(PUSHER_EVENTS.POST_LIKED, handlePostLiked)
+      feedChannel.bind(PUSHER_EVENTS.POST_REPOSTED, handlePostReposted)
+      feedChannel.bind(PUSHER_EVENTS.POST_REPLIED, handlePostReplied)
+
+      postChannel.bind(PUSHER_EVENTS.POST_LIKED, handlePostLiked)
+      postChannel.bind(PUSHER_EVENTS.POST_REPOSTED, handlePostReposted)
+      postChannel.bind(PUSHER_EVENTS.POST_REPLIED, handlePostReplied)
+    } catch (error) {
+      console.error('Error setting up Pusher subscription:', error)
+    }
+
+    // Cleanup
+    return () => {
+      if (pusher) {
+        try {
+          if (feedChannelRef.current) {
+            pusher.unsubscribe('feed')
+            feedChannelRef.current = null
+          }
+          if (postChannelRef.current) {
+            pusher.unsubscribe(`post-${parentPost.id}`)
+            postChannelRef.current = null
+          }
+        } catch (error) {
+          console.error('Error unsubscribing from Pusher:', error)
+        }
+      }
+    }
+  }, [parentPost.id])
 
   const handleComment = (postId: string) => {
     // For replies, open reply modal

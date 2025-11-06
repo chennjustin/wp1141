@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser, unauthorizedResponse, badRequestResponse, notFoundResponse } from '@/lib/api-helpers'
+import { pusherServer } from '@/lib/pusher/server'
+import { PUSHER_EVENTS } from '@/lib/pusher/events'
+
+export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
   try {
@@ -57,9 +61,29 @@ export async function POST(req: NextRequest) {
         },
       })
 
+      const repostCount = updatedPost?._count.reposts || 0
+
+      // Trigger Pusher events
+      try {
+        const pusher = pusherServer()
+        await Promise.all([
+          pusher.trigger('feed', PUSHER_EVENTS.POST_REPOSTED, {
+            postId,
+            repostCount,
+          }),
+          pusher.trigger(`post-${postId}`, PUSHER_EVENTS.POST_REPOSTED, {
+            postId,
+            repostCount,
+          }),
+        ])
+      } catch (pusherError) {
+        console.error('Error triggering Pusher event:', pusherError)
+        // Don't fail the request if Pusher fails
+      }
+
       return NextResponse.json({
         reposted: false,
-        repostCount: updatedPost?._count.reposts || 0,
+        repostCount,
       })
     } else {
       // 轉發
@@ -82,9 +106,29 @@ export async function POST(req: NextRequest) {
         },
       })
 
+      const repostCount = updatedPost?._count.reposts || 0
+
+      // Trigger Pusher events
+      try {
+        const pusher = pusherServer()
+        await Promise.all([
+          pusher.trigger('feed', PUSHER_EVENTS.POST_REPOSTED, {
+            postId,
+            repostCount,
+          }),
+          pusher.trigger(`post-${postId}`, PUSHER_EVENTS.POST_REPOSTED, {
+            postId,
+            repostCount,
+          }),
+        ])
+      } catch (pusherError) {
+        console.error('Error triggering Pusher event:', pusherError)
+        // Don't fail the request if Pusher fails
+      }
+
       return NextResponse.json({
         reposted: true,
-        repostCount: updatedPost?._count.reposts || 0,
+        repostCount,
       })
     }
   } catch (error) {

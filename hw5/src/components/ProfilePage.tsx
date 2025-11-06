@@ -1,11 +1,15 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import PostCard from './PostCard'
 import ReplyModal from './ReplyModal'
 import { User } from '@/types/user'
 import { Post } from '@/types/post'
+import { pusherClient } from '@/lib/pusher/client'
+import { PUSHER_EVENTS, PostLikedPayload, PostRepostedPayload, PostRepliedPayload } from '@/lib/pusher/events'
+import Pusher from 'pusher-js'
 
 interface ProfilePageProps {
   user: User
@@ -16,11 +20,14 @@ interface ProfilePageProps {
 
 export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollowing: initialFollowing }: ProfilePageProps) {
   const router = useRouter()
+  const { data: session } = useSession()
+  const currentUserId = session?.user?.id
   const [activeTab, setActiveTab] = useState<'posts' | 'likes'>('posts')
   const [isFollowing, setIsFollowing] = useState(initialFollowing)
   const [followerCount, setFollowerCount] = useState(user._count.followers)
   const [posts, setPosts] = useState<Post[]>(initialPosts)
   const [replyTarget, setReplyTarget] = useState<Post | null>(null)
+  const pusherChannelRef = useRef<any>(null)
 
   const handleFollow = async () => {
     if (isSelf) return
@@ -232,6 +239,72 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
       throw error
     }
   }
+
+  // Subscribe to Pusher events
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    let pusher: Pusher | null = null
+    try {
+      pusher = pusherClient()
+      const channel = pusher.subscribe('feed')
+
+      pusherChannelRef.current = channel
+
+      // Handle post liked - update if post belongs to this user
+      channel.bind(PUSHER_EVENTS.POST_LIKED, (data: PostLikedPayload) => {
+        setPosts((currentPosts) => {
+          return currentPosts.map((post) => {
+            // Only update if this post belongs to the profile user
+            if (post.id === data.postId && post.authorId === user.id) {
+              return { ...post, likeCount: data.likeCount }
+            }
+            return post
+          })
+        })
+      })
+
+      // Handle post reposted - update if post belongs to this user
+      channel.bind(PUSHER_EVENTS.POST_REPOSTED, (data: PostRepostedPayload) => {
+        setPosts((currentPosts) => {
+          return currentPosts.map((post) => {
+            // Only update if this post belongs to the profile user
+            if (post.id === data.postId && post.authorId === user.id) {
+              return { ...post, repostCount: data.repostCount }
+            }
+            return post
+          })
+        })
+      })
+
+      // Handle post replied - update if post belongs to this user
+      channel.bind(PUSHER_EVENTS.POST_REPLIED, (data: PostRepliedPayload) => {
+        setPosts((currentPosts) => {
+          return currentPosts.map((post) => {
+            // Only update if this post belongs to the profile user
+            if (post.id === data.parentId && post.authorId === user.id) {
+              return { ...post, commentCount: data.commentCount }
+            }
+            return post
+          })
+        })
+      })
+    } catch (error) {
+      console.error('Error setting up Pusher subscription:', error)
+    }
+
+    // Cleanup
+    return () => {
+      if (pusher && pusherChannelRef.current) {
+        try {
+          pusher.unsubscribe('feed')
+        } catch (error) {
+          console.error('Error unsubscribing from Pusher:', error)
+        }
+        pusherChannelRef.current = null
+      }
+    }
+  }, [user.id])
 
   return (
     <div className="flex flex-col">
