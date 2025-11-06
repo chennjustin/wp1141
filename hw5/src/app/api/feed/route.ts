@@ -5,14 +5,12 @@ import { getCurrentUser, unauthorizedResponse } from '@/lib/api-helpers'
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
-    const type = searchParams.get('type') || 'all' // 'all' or 'following'
-    const limit = parseInt(searchParams.get('limit') || '20')
-    const cursor = searchParams.get('cursor')
+    const filter = searchParams.get('filter') // 'following' or null
 
     const user = await getCurrentUser()
 
     // 如果要查看追蹤的人的貼文，需要登入
-    if (type === 'following' && !user) {
+    if (filter === 'following' && !user) {
       return unauthorizedResponse()
     }
 
@@ -20,7 +18,7 @@ export async function GET(req: NextRequest) {
       parentId: null, // 只返回原始貼文，不包含回覆
     }
 
-    if (type === 'following' && user) {
+    if (filter === 'following' && user) {
       // 獲取當前用戶追蹤的所有用戶 ID
       const following = await prisma.follow.findMany({
         where: { followerId: user.id },
@@ -30,10 +28,7 @@ export async function GET(req: NextRequest) {
       const followingIds = following.map((f) => f.followingId)
       if (followingIds.length === 0) {
         // 如果沒有追蹤任何人，返回空列表
-        return NextResponse.json({
-          posts: [],
-          nextCursor: null,
-        })
+        return NextResponse.json([])
       }
 
       where.authorId = {
@@ -43,8 +38,6 @@ export async function GET(req: NextRequest) {
 
     const posts = await prisma.post.findMany({
       where,
-      take: limit + 1,
-      ...(cursor && { cursor: { id: cursor }, skip: 1 }),
       orderBy: { createdAt: 'desc' },
       include: {
         author: {
@@ -65,14 +58,19 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    const hasMore = posts.length > limit
-    const result = hasMore ? posts.slice(0, -1) : posts
-    const nextCursor = hasMore ? result[result.length - 1].id : null
+    // 格式化回傳資料，將 _count 轉換為明確的計數欄位
+    const formattedPosts = posts.map((post) => ({
+      id: post.id,
+      content: post.content,
+      createdAt: post.createdAt,
+      updatedAt: post.updatedAt,
+      author: post.author,
+      likeCount: post._count.likes,
+      repostCount: post._count.reposts,
+      commentCount: post._count.replies,
+    }))
 
-    return NextResponse.json({
-      posts: result,
-      nextCursor,
-    })
+    return NextResponse.json(formattedPosts)
   } catch (error) {
     console.error('Error fetching feed:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import Providers from '@/components/Providers'
+import { PostModalProvider } from '@/components/PostModalProvider'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -18,7 +19,9 @@ export default function RootLayout({
   return (
     <html lang="zh-TW">
       <body className={inter.className}>
-        <Providers>{children}</Providers>
+        <Providers>
+          <PostModalProvider>{children}</PostModalProvider>
+        </Providers>
       </body>
     </html>
   )
