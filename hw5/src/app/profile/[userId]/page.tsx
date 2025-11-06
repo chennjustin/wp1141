@@ -91,13 +91,26 @@ export default async function ProfilePageRoute({ params }: ProfilePageProps) {
     createdAt: user.createdAt.toISOString(),
   }
 
-  // Check if it's own profile
-  const isOwnProfile = user.id === session.user.id
+  // Determine self / following
+  const isSelf = user.userId === session.user.userId
+  let isFollowing = false
+  if (!isSelf) {
+    const follow = await prisma.follow.findUnique({
+      where: {
+        followerId_followingId: {
+        followerId: session.user.id as string,
+          followingId: user.id,
+        },
+      },
+      select: { followerId: true },
+    })
+    isFollowing = !!follow
+  }
 
   return (
     <AppLayout>
       <Navbar type="profile" profileName={user.name || undefined} />
-      <ProfilePage user={formattedUser} posts={posts} isOwnProfile={isOwnProfile} />
+      <ProfilePage user={formattedUser} posts={posts} isSelf={isSelf} isFollowing={isFollowing} />
     </AppLayout>
   )
 }

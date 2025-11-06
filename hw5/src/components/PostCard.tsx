@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import Link from 'next/link'
 import { Post } from '@/types/post'
 
 interface PostCardProps {
@@ -67,13 +68,18 @@ export default function PostCard({ post, onLike, onRepost, onComment }: PostCard
         <div className="flex-1 min-w-0">
           {/* Header */}
           <div className="flex items-center gap-2 mb-1">
-            <span className="font-semibold text-gray-900">{post.author?.name || 'Unknown'}</span>
-            {post.author?.userId && (
-              <>
+            {post.author?.userId ? (
+              <Link
+                href={`/profile/${post.author.userId}`}
+                className="flex items-center gap-2 hover:underline"
+              >
+                <span className="font-semibold text-gray-900">{post.author?.name || 'Unknown'}</span>
                 <span className="text-gray-500">@{post.author?.userId}</span>
-                <span className="text-gray-500">·</span>
-              </>
+              </Link>
+            ) : (
+              <span className="font-semibold text-gray-900">{post.author?.name || 'Unknown'}</span>
             )}
+            <span className="text-gray-500">·</span>
             <span className="text-gray-500">{formatTimeAgo(post.createdAt)}</span>
           </div>
 

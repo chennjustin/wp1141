@@ -9,19 +9,54 @@ import { Post } from '@/types/post'
 interface ProfilePageProps {
   user: User
   posts: Post[]
-  isOwnProfile: boolean
+  isSelf: boolean
+  isFollowing: boolean
 }
 
-export default function ProfilePage({ user, posts: initialPosts, isOwnProfile }: ProfilePageProps) {
+export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollowing: initialFollowing }: ProfilePageProps) {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'posts' | 'likes'>('posts')
-  const [isFollowing, setIsFollowing] = useState(false)
+  const [isFollowing, setIsFollowing] = useState(initialFollowing)
+  const [followerCount, setFollowerCount] = useState(user._count.followers)
   const [posts, setPosts] = useState<Post[]>(initialPosts)
 
-  const handleFollow = () => {
-    console.log('Follow/Unfollow:', user.id)
-    setIsFollowing(!isFollowing)
-    // TODO: Call API
+  const handleFollow = async () => {
+    if (isSelf) return
+
+    const wasFollowing = isFollowing
+    const previousFollowerCount = followerCount
+
+    // Optimistic update
+    setIsFollowing(!wasFollowing)
+    setFollowerCount(wasFollowing ? followerCount - 1 : followerCount + 1)
+
+    try {
+      const response = await fetch('/api/follow', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: user.id }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle follow')
+      }
+
+      const data = await response.json()
+      // Update following state from server; keep followerCount optimistic if API doesn't return it
+      if (typeof data.following === 'boolean') {
+        setIsFollowing(data.following)
+      }
+      if (typeof data.followerCount === 'number') {
+        setFollowerCount(data.followerCount)
+      }
+    } catch (error) {
+      console.error('Error toggling follow:', error)
+      // Rollback
+      setIsFollowing(wasFollowing)
+      setFollowerCount(previousFollowerCount)
+    }
   }
 
   const handleEditProfile = () => {
@@ -126,7 +161,7 @@ export default function ProfilePage({ user, posts: initialPosts, isOwnProfile }:
             )}
           </div>
           <div className="mt-20">
-            {isOwnProfile ? (
+            {isSelf ? (
               <button
                 onClick={handleEditProfile}
                 className="px-4 py-2 rounded-full border border-gray-300 font-semibold hover:bg-gray-50 transition-colors"
@@ -138,8 +173,8 @@ export default function ProfilePage({ user, posts: initialPosts, isOwnProfile }:
                 onClick={handleFollow}
                 className={`px-4 py-2 rounded-full font-semibold transition-colors ${
                   isFollowing
-                    ? 'border border-gray-300 hover:bg-gray-50'
-                    : 'bg-black text-white hover:bg-gray-800'
+                    ? 'border border-gray-300 bg-gray-100 text-gray-900 hover:text-red-600'
+                    : 'bg-blue-500 text-white hover:bg-blue-600'
                 }`}
               >
                 {isFollowing ? 'Following' : 'Follow'}
@@ -158,7 +193,7 @@ export default function ProfilePage({ user, posts: initialPosts, isOwnProfile }:
               <span className="font-semibold text-gray-900">{user._count.following}</span> Following
             </span>
             <span>
-              <span className="font-semibold text-gray-900">{user._count.followers}</span> Followers
+              <span className="font-semibold text-gray-900">{followerCount}</span> Followers
             </span>
           </div>
         </div>
