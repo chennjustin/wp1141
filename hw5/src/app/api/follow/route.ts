@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser, unauthorizedResponse, badRequestResponse, notFoundResponse, forbiddenResponse } from '@/lib/api-helpers'
+import { createNotification } from '@/lib/notification-helpers'
 
 export async function POST(req: NextRequest) {
   try {
@@ -59,6 +60,9 @@ export async function POST(req: NextRequest) {
           followingId: userId,
         },
       })
+
+      // 建立通知
+      await createNotification(prisma, 'follow', user.id, userId, null)
 
       return NextResponse.json({ following: true })
     }

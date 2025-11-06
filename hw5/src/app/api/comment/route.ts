@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getCurrentUser, unauthorizedResponse, badRequestResponse, notFoundResponse } from '@/lib/api-helpers'
 import { pusherServer } from '@/lib/pusher/server'
 import { PUSHER_EVENTS } from '@/lib/pusher/events'
+import { createNotification } from '@/lib/notification-helpers'
 
 export const runtime = 'nodejs'
 
@@ -74,6 +75,11 @@ export async function POST(req: NextRequest) {
     })
 
     const commentCount = updatedParentPost?._count.replies || 0
+
+    // 建立通知（不通知自己）
+    if (parentPost.authorId !== user.id) {
+      await createNotification(prisma, 'comment', user.id, parentPost.authorId, postId)
+    }
 
     // Trigger Pusher events
     try {

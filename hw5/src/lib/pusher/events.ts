@@ -4,6 +4,7 @@ export const PUSHER_EVENTS = {
   POST_LIKED: 'post:liked',
   POST_REPOSTED: 'post:reposted',
   POST_REPLIED: 'post:replied',
+  NOTIFICATION_CREATED: 'notification:created',
 } as const
 
 // Event payload types
@@ -39,5 +40,27 @@ export interface PostRepostedPayload {
 export interface PostRepliedPayload {
   parentId: string
   commentCount: number
+}
+
+export interface NotificationCreatedPayload {
+  notification: {
+    id: string
+    type: 'like' | 'repost' | 'follow' | 'comment'
+    senderId: string
+    receiverId: string
+    postId: string | null
+    read: boolean
+    createdAt: string
+    sender: {
+      id: string
+      userId: string | null
+      name: string | null
+      image: string | null
+    }
+    post?: {
+      id: string
+      content: string
+    } | null
+  }
 }
 

@@ -27,6 +27,8 @@ model User {
   reposts       Repost[]
   followers     Follow[]  @relation("UserFollowing")  // 追蹤我的人 (followingId = user.id)
   following     Follow[]  @relation("UserFollowers")  // 我追蹤的人 (followerId = user.id)
+  sentNotifications     Notification[] @relation("NotificationSender")
+  receivedNotifications Notification[] @relation("NotificationReceiver")
 }
 
 model Account {
@@ -77,6 +79,7 @@ model Post {
   replies  Post[] @relation("PostReplies")
   likes    Like[]
   reposts  Repost[]
+  notifications Notification[]
   
   @@index([authorId])
   @@index([parentId])
@@ -121,5 +124,23 @@ model Repost {
   
   @@unique([userId, postId])
   @@index([postId])
+}
+
+model Notification {
+  id         String   @id @default(cuid())
+  type       String   // 'like' | 'repost' | 'follow' | 'comment'
+  senderId   String
+  receiverId String
+  postId     String?  // 可選，follow 類型不需要
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  
+  sender   User   @relation("NotificationSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User   @relation("NotificationReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  post     Post?  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  @@index([receiverId])
+  @@index([createdAt])
+  @@index([read])
 }
 

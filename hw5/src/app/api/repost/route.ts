@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getCurrentUser, unauthorizedResponse, badRequestResponse, notFoundResponse } from '@/lib/api-helpers'
 import { pusherServer } from '@/lib/pusher/server'
 import { PUSHER_EVENTS } from '@/lib/pusher/events'
+import { createNotification } from '@/lib/notification-helpers'
 
 export const runtime = 'nodejs'
 
@@ -93,6 +94,11 @@ export async function POST(req: NextRequest) {
           postId,
         },
       })
+
+      // 建立通知（不通知自己）
+      if (post.authorId !== user.id) {
+        await createNotification(prisma, 'repost', user.id, post.authorId, postId)
+      }
 
       // 取得更新後的 repostCount
       const updatedPost = await prisma.post.findUnique({

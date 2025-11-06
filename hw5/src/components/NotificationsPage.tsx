@@ -1,0 +1,315 @@
+'use client'
+
+import React, { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
+import { pusherClient } from '@/lib/pusher/client'
+import { PUSHER_EVENTS, NotificationCreatedPayload } from '@/lib/pusher/events'
+import Pusher from 'pusher-js'
+
+interface Notification {
+  id: string
+  type: 'like' | 'repost' | 'follow' | 'comment'
+  senderId: string
+  receiverId: string
+  postId: string | null
+  read: boolean
+  createdAt: string
+  sender: {
+    id: string
+    userId: string | null
+    name: string | null
+    image: string | null
+  }
+  post?: {
+    id: string
+    content: string
+    authorId: string
+  } | null
+}
+
+export default function NotificationsPage() {
+  const router = useRouter()
+  const { data: session } = useSession()
+  const currentUserId = session?.user?.id
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const pusherChannelRef = useRef<any>(null)
+
+  const fetchNotifications = async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      const response = await fetch('/api/notification')
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch notifications')
+      }
+
+      const data = await response.json()
+      setNotifications(data.notifications)
+      setUnreadCount(data.unreadCount)
+    } catch (err) {
+      console.error('Error fetching notifications:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load notifications')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchNotifications()
+  }, [])
+
+  // Subscribe to Pusher notifications
+  useEffect(() => {
+    if (typeof window === 'undefined' || !currentUserId) return
+
+    let pusher: Pusher | null = null
+    try {
+      pusher = pusherClient()
+      const channel = pusher.subscribe(`user-${currentUserId}`)
+
+      pusherChannelRef.current = channel
+
+      // Handle new notification
+      channel.bind(PUSHER_EVENTS.NOTIFICATION_CREATED, (data: NotificationCreatedPayload) => {
+        const newNotification: Notification = {
+          id: data.notification.id,
+          type: data.notification.type,
+          senderId: data.notification.senderId,
+          receiverId: data.notification.receiverId,
+          postId: data.notification.postId,
+          read: data.notification.read,
+          createdAt: data.notification.createdAt,
+          sender: data.notification.sender,
+          post: data.notification.post || null,
+        }
+
+        setNotifications((current) => [newNotification, ...current])
+        setUnreadCount((current) => current + 1)
+      })
+    } catch (error) {
+      console.error('Error setting up Pusher subscription:', error)
+    }
+
+    return () => {
+      if (pusher && pusherChannelRef.current) {
+        try {
+          pusher.unsubscribe(`user-${currentUserId}`)
+        } catch (error) {
+          console.error('Error unsubscribing from Pusher:', error)
+        }
+        pusherChannelRef.current = null
+      }
+    }
+  }, [currentUserId])
+
+  const handleNotificationClick = async (notification: Notification) => {
+    // 標記為已讀
+    if (!notification.read) {
+      try {
+        await fetch('/api/notification', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ notificationId: notification.id }),
+        })
+
+        setNotifications((current) =>
+          current.map((n) => (n.id === notification.id ? { ...n, read: true } : n))
+        )
+        setUnreadCount((current) => Math.max(0, current - 1))
+      } catch (error) {
+        console.error('Error marking notification as read:', error)
+      }
+    }
+
+    // 導向對應的貼文或使用者
+    if (notification.type === 'follow') {
+      // 追蹤通知 → 導向使用者個人頁面
+      if (notification.sender.userId) {
+        router.push(`/profile/${notification.sender.userId}`)
+      }
+    } else if (notification.postId) {
+      // 按讚、轉發、留言通知 → 導向貼文詳情頁
+      router.push(`/post/${notification.postId}`)
+    }
+  }
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString)
+    const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
+    if (seconds < 60) return `${seconds}s`
+    const minutes = Math.floor(seconds / 60)
+    if (minutes < 60) return `${minutes}m`
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) return `${hours}h`
+    const days = Math.floor(hours / 24)
+    return `${days}d`
+  }
+
+  const getNotificationText = (notification: Notification) => {
+    const senderName = notification.sender.name || notification.sender.userId || 'Someone'
+    switch (notification.type) {
+      case 'like':
+        return `${senderName} liked your post`
+      case 'repost':
+        return `${senderName} reposted your post`
+      case 'comment':
+        return `${senderName} commented on your post`
+      case 'follow':
+        return `${senderName} followed you`
+      default:
+        return 'New notification'
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-gray-500">Loading notifications...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">{error}</p>
+          <button
+            onClick={fetchNotifications}
+            className="px-4 py-2 rounded-full bg-blue-500 text-white hover:bg-blue-600"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col">
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3">
+        <h1 className="text-xl font-bold text-gray-900">Notifications</h1>
+        {unreadCount > 0 && (
+          <p className="text-sm text-gray-500 mt-1">{unreadCount} unread</p>
+        )}
+      </div>
+
+      {/* Notifications List */}
+      <div className="flex flex-col">
+        {notifications.length === 0 ? (
+          <div className="p-8 text-center text-gray-500">
+            <p>No notifications yet.</p>
+          </div>
+        ) : (
+          notifications.map((notification) => (
+            <button
+              key={notification.id}
+              onClick={() => handleNotificationClick(notification)}
+              className={`flex gap-3 p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors text-left ${
+                !notification.read ? 'bg-blue-50' : ''
+              }`}
+            >
+              {/* Avatar */}
+              <div className="flex-shrink-0">
+                {notification.sender.image ? (
+                  <img
+                    src={notification.sender.image}
+                    alt={notification.sender.name || 'User'}
+                    className="w-12 h-12 rounded-full"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-gray-300" />
+                )}
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="text-gray-900 font-semibold">
+                    {getNotificationText(notification)}
+                  </p>
+                  {!notification.read && (
+                    <span className="w-2 h-2 rounded-full bg-blue-500" />
+                  )}
+                </div>
+                {notification.post && (
+                  <p className="text-gray-500 text-sm line-clamp-2 mb-1">
+                    {notification.post.content}
+                  </p>
+                )}
+                <p className="text-gray-500 text-sm">{formatTimeAgo(notification.createdAt)}</p>
+              </div>
+
+              {/* Icon */}
+              <div className="flex-shrink-0">
+                {notification.type === 'like' && (
+                  <svg
+                    className="w-6 h-6 text-red-500"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                  </svg>
+                )}
+                {notification.type === 'repost' && (
+                  <svg
+                    className="w-6 h-6 text-green-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>
+                )}
+                {notification.type === 'comment' && (
+                  <svg
+                    className="w-6 h-6 text-blue-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                    />
+                  </svg>
+                )}
+                {notification.type === 'follow' && (
+                  <svg
+                    className="w-6 h-6 text-blue-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                )}
+              </div>
+            </button>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
