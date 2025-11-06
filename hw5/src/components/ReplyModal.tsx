@@ -1,0 +1,173 @@
+'use client'
+
+import React, { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+import { Post } from '@/types/post'
+
+interface ReplyModalProps {
+  open: boolean
+  onClose: () => void
+  parentPost: Post | null
+  onSubmit: (content: string) => Promise<void>
+}
+
+export default function ReplyModal({ open, onClose, parentPost, onSubmit }: ReplyModalProps) {
+  const { data: session } = useSession()
+  const currentUser = session?.user
+  const [content, setContent] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const maxLength = 280
+
+  useEffect(() => {
+    if (!open) {
+      setContent('')
+      setIsSubmitting(false)
+    }
+  }, [open])
+
+  const handleSubmit = async () => {
+    if (content.trim().length === 0 || content.length > maxLength) return
+
+    setIsSubmitting(true)
+    try {
+      await onSubmit(content.trim())
+      setContent('')
+      onClose()
+    } catch (error) {
+      console.error('Error submitting reply:', error)
+      alert(error instanceof Error ? error.message : 'Failed to submit reply')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  if (!open || !parentPost) return null
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            aria-label="Close"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {/* Parent Post Preview */}
+          {parentPost && (
+            <div className="mb-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
+              <div className="flex gap-3">
+                {parentPost.author?.image ? (
+                  <img
+                    src={parentPost.author.image}
+                    alt={parentPost.author?.name || 'User'}
+                    className="w-10 h-10 rounded-full flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-gray-300 flex-shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-semibold text-gray-900 text-sm">
+                      {parentPost.author?.name || 'Unknown'}
+                    </span>
+                    {parentPost.author?.userId && (
+                      <span className="text-gray-500 text-sm">@{parentPost.author.userId}</span>
+                    )}
+                  </div>
+                  <p className="text-gray-900 text-sm whitespace-pre-wrap break-words">
+                    {parentPost.content}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Reply Input */}
+          <div className="flex gap-4">
+            {/* Avatar */}
+            <div className="flex-shrink-0">
+              {currentUser?.image ? (
+                <img
+                  src={currentUser.image}
+                  alt={currentUser.name || 'User'}
+                  className="w-12 h-12 rounded-full"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-gray-300" />
+              )}
+            </div>
+
+            {/* Textarea */}
+            <div className="flex-1">
+              <textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Post your reply"
+                className="w-full min-h-[150px] resize-none border-none outline-none text-lg placeholder-gray-500"
+                maxLength={maxLength}
+                autoFocus
+              />
+              <div className="mt-4 flex items-center justify-between">
+                <span
+                  className={`text-sm ${
+                    content.length > maxLength * 0.9
+                      ? content.length >= maxLength
+                        ? 'text-red-500'
+                        : 'text-yellow-500'
+                      : 'text-gray-500'
+                  }`}
+                >
+                  {content.length}/{maxLength}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-200 flex items-center justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-full font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={content.trim().length === 0 || content.length > maxLength || isSubmitting}
+            className="px-6 py-2 rounded-full font-semibold text-white bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isSubmitting ? 'Posting...' : 'Reply'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+

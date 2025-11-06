@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react'
 import InlineComposer from './InlineComposer'
 import PostCard from './PostCard'
+import ReplyModal from './ReplyModal'
 import { Post } from '@/types/post'
 
 interface HomeFeedProps {
@@ -14,6 +15,7 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
     const [posts, setPosts] = useState<Post[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [replyTarget, setReplyTarget] = useState<Post | null>(null)
 
     const fetchPosts = async () => {
       try {
@@ -129,8 +131,36 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
     }
 
     const handleComment = (postId: string) => {
-      console.log('Comment:', postId)
-      // TODO: Open comment modal or navigate to post detail
+      const post = posts.find((p) => p.id === postId)
+      if (post) {
+        setReplyTarget(post)
+      }
+    }
+
+    const handleReplySubmit = async (content: string) => {
+      if (!replyTarget) return
+
+      try {
+        const response = await fetch('/api/comment', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ postId: replyTarget.id, content }),
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Failed to post reply')
+        }
+
+        // Success - refresh feed or show success message
+        await fetchPosts()
+        // Optional: Show success toast
+      } catch (error) {
+        console.error('Error posting reply:', error)
+        throw error
+      }
     }
 
     return (
@@ -170,6 +200,14 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
             ))
           )}
         </div>
+
+        {/* Reply Modal */}
+        <ReplyModal
+          open={replyTarget !== null}
+          onClose={() => setReplyTarget(null)}
+          parentPost={replyTarget}
+          onSubmit={handleReplySubmit}
+        />
       </div>
     )
   }

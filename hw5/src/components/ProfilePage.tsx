@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import PostCard from './PostCard'
+import ReplyModal from './ReplyModal'
 import { User } from '@/types/user'
 import { Post } from '@/types/post'
 
@@ -19,6 +20,7 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
   const [isFollowing, setIsFollowing] = useState(initialFollowing)
   const [followerCount, setFollowerCount] = useState(user._count.followers)
   const [posts, setPosts] = useState<Post[]>(initialPosts)
+  const [replyTarget, setReplyTarget] = useState<Post | null>(null)
 
   const handleFollow = async () => {
     if (isSelf) return
@@ -137,7 +139,36 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
   }
 
   const handleComment = (postId: string) => {
-    console.log('Comment:', postId)
+    const post = posts.find((p) => p.id === postId)
+    if (post) {
+      setReplyTarget(post)
+    }
+  }
+
+  const handleReplySubmit = async (content: string) => {
+    if (!replyTarget) return
+
+    try {
+      const response = await fetch('/api/comment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ postId: replyTarget.id, content }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to post reply')
+      }
+
+      // Success - refresh posts or show success message
+      // For now, just close modal
+      setReplyTarget(null)
+    } catch (error) {
+      console.error('Error posting reply:', error)
+      throw error
+    }
   }
 
   return (
@@ -190,10 +221,10 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
           {user.bio && <p className="text-gray-900 mb-3">{user.bio}</p>}
           <div className="flex gap-4 text-sm text-gray-500">
             <span>
-              <span className="font-semibold text-gray-900">{user._count.following}</span> Following
+              <span className="font-semibold text-gray-900">{followerCount}</span> Followers
             </span>
             <span>
-              <span className="font-semibold text-gray-900">{followerCount}</span> Followers
+              <span className="font-semibold text-gray-900">{user._count.following}</span> Following
             </span>
           </div>
         </div>
@@ -253,6 +284,14 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
           </div>
         )}
       </div>
+
+      {/* Reply Modal */}
+      <ReplyModal
+        open={replyTarget !== null}
+        onClose={() => setReplyTarget(null)}
+        parentPost={replyTarget}
+        onSubmit={handleReplySubmit}
+      />
     </div>
   )
 }
