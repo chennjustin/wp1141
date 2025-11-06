@@ -196,6 +196,9 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
                 onLike={handleLike}
                 onRepost={handleRepost}
                 onComment={handleComment}
+                onDelete={(postId) => {
+                  setPosts((currentPosts) => currentPosts.filter((p) => p.id !== postId))
+                }}
               />
             ))
           )}

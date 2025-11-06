@@ -275,6 +275,9 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
                 onLike={handleLike}
                 onRepost={handleRepost}
                 onComment={handleComment}
+                onDelete={(postId) => {
+                  setPosts((currentPosts) => currentPosts.filter((p) => p.id !== postId))
+                }}
               />
             ))
           )

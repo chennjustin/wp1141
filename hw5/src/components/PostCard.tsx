@@ -1,8 +1,9 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { Post } from '@/types/post'
 
 interface PostCardProps {
@@ -10,10 +11,17 @@ interface PostCardProps {
   onLike?: (postId: string) => void
   onRepost?: (postId: string) => void
   onComment?: (postId: string) => void
+  onDelete?: (postId: string) => void
 }
 
-export default function PostCard({ post, onLike, onRepost, onComment }: PostCardProps) {
+export default function PostCard({ post, onLike, onRepost, onComment, onDelete }: PostCardProps) {
   const router = useRouter()
+  const { data: session } = useSession()
+  const currentUser = session?.user
+  const [showDeleteMenu, setShowDeleteMenu] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const isAuthor = currentUser?.id === post.authorId
 
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString)
@@ -52,8 +60,37 @@ export default function PostCard({ post, onLike, onRepost, onComment }: PostCard
     }
   }
 
+  const handleDelete = async () => {
+    if (!isAuthor || !onDelete) return
+
+    if (!confirm('Are you sure you want to delete this post?')) {
+      return
+    }
+
+    setIsDeleting(true)
+    try {
+      const response = await fetch(`/api/post/${post.id}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to delete post')
+      }
+
+      // Call onDelete callback to remove from feed
+      onDelete(post.id)
+      setShowDeleteMenu(false)
+    } catch (error) {
+      console.error('Error deleting post:', error)
+      alert(error instanceof Error ? error.message : 'Failed to delete post')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   return (
-    <article className="border-b border-gray-200 p-4 hover:bg-gray-50 transition-colors">
+    <article className="border-b border-gray-200 p-4 hover:bg-gray-50 transition-colors relative">
       <div className="flex gap-3">
         {/* Avatar */}
         <div className="flex-shrink-0">
@@ -71,7 +108,8 @@ export default function PostCard({ post, onLike, onRepost, onComment }: PostCard
         {/* Content */}
         <div className="flex-1 min-w-0">
           {/* Header */}
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
             {post.author?.userId ? (
               <Link
                 href={`/profile/${post.author.userId}`}
@@ -85,6 +123,53 @@ export default function PostCard({ post, onLike, onRepost, onComment }: PostCard
             )}
             <span className="text-gray-500">·</span>
             <span className="text-gray-500">{formatTimeAgo(post.createdAt)}</span>
+            </div>
+            
+            {/* Delete Button (only for author) */}
+            {isAuthor && onDelete && (
+              <div className="relative">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShowDeleteMenu(!showDeleteMenu)
+                  }}
+                  className="p-1 rounded-full hover:bg-gray-200 transition-colors"
+                  aria-label="More options"
+                  disabled={isDeleting}
+                >
+                  <svg
+                    className="w-5 h-5 text-gray-500"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                  </svg>
+                </button>
+
+                {/* Delete Menu */}
+                {showDeleteMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowDeleteMenu(false)}
+                    />
+                    <div className="absolute right-0 top-8 z-20 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden min-w-[120px]">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDelete()
+                        }}
+                        disabled={isDeleting}
+                        className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isDeleting ? 'Deleting...' : 'Delete'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Post Content - Clickable to view post detail */}
