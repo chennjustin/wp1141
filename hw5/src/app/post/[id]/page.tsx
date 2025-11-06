@@ -6,6 +6,7 @@ import AppLayout from '@/components/AppLayout'
 import Navbar from '@/components/Navbar'
 import PostDetailPage from '@/components/PostDetailPage'
 import { Post } from '@/types/post'
+import { getNestedReplies } from '@/lib/post-helpers'
 
 interface PostPageProps {
   params: {
@@ -40,33 +41,7 @@ export default async function PostPage({ params }: PostPageProps) {
           userId: true,
         },
       },
-      replies: {
-        orderBy: { createdAt: 'desc' },
-        include: {
-          author: {
-            select: {
-              id: true,
-              userId: true,
-              name: true,
-              image: true,
-            },
-          },
-          likes: {
-            where: {
-              userId: session.user.id as string,
-            },
-            select: {
-              userId: true,
-            },
-          },
-          _count: {
-            select: {
-              likes: true,
-              replies: true,
-            },
-          },
-        },
-      },
+      // 不直接查詢 replies，改用遞迴查詢所有層級
       _count: {
         select: {
           likes: true,
@@ -95,18 +70,28 @@ export default async function PostPage({ params }: PostPageProps) {
     liked: (postData.likes as any)?.length > 0,
   }
 
-  // Format replies
-  const replies: Post[] = postData.replies.map((reply) => ({
+  // 使用遞迴查詢所有層級的 replies（包括留言的留言）
+  const allReplies = await getNestedReplies(
+    prisma,
+    params.id,
+    session.user.id as string
+  )
+
+  // Format replies（包含 parent 資訊和層級）
+  const replies: Post[] = allReplies.map((reply) => ({
     id: reply.id,
     content: reply.content,
     authorId: reply.authorId,
-    createdAt: reply.createdAt.toISOString(),
-    updatedAt: reply.updatedAt.toISOString(),
+    createdAt: reply.createdAt,
+    updatedAt: reply.updatedAt,
     author: reply.author,
-    likeCount: reply._count.likes,
-    repostCount: 0, // Replies don't have reposts in this structure
-    commentCount: reply._count.replies,
-    liked: (reply.likes as any)?.length > 0,
+    parent: reply.parent || undefined,
+    depth: reply.depth || 0, // 加入層級資訊
+    likeCount: reply.likeCount,
+    repostCount: reply.repostCount,
+    commentCount: reply.commentCount,
+    liked: reply.liked,
+    reposted: reply.reposted,
   }))
 
   return (

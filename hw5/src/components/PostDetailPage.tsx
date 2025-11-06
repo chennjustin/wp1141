@@ -243,6 +243,15 @@ export default function PostDetailPage({ parentPost: initialParentPost, replies:
             ...current,
             repostCount: data.repostCount,
           }))
+        } else {
+          // Update reply repost count
+          setReplies((currentReplies) => {
+            return currentReplies.map((reply) =>
+              reply.id === data.postId
+                ? { ...reply, repostCount: data.repostCount }
+                : reply
+            )
+          })
         }
       }
 
@@ -366,16 +375,25 @@ export default function PostDetailPage({ parentPost: initialParentPost, replies:
             <p>No replies yet. Be the first to reply!</p>
           </div>
         ) : (
-          replies.map((reply) => (
-            <div key={reply.id} className="border-b border-gray-200 pl-12">
-              <PostCard
-                post={reply}
-                onLike={handleLike}
-                onRepost={handleRepost}
-                onComment={handleComment}
-              />
-            </div>
-          ))
+          replies.map((reply) => {
+            // 計算縮排層級（根據 depth 判斷）
+            // depth 0 = 第一層（直接回覆主貼文，不縮排）
+            // depth 1+ = 第二層或更深（留言的留言，需要縮排）
+            const indentLevel = reply.depth || 0
+            const paddingLeft = indentLevel > 0 ? `${indentLevel * 3}rem` : '0'
+            
+            return (
+              <div key={reply.id} className="border-b border-gray-200" style={{ paddingLeft }}>
+                <PostCard
+                  post={reply}
+                  onLike={handleLike}
+                  onRepost={handleRepost}
+                  onComment={handleComment}
+                  showRepostLabel={true}
+                />
+              </div>
+            )
+          })
         )}
       </div>
 

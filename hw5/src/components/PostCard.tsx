@@ -174,7 +174,7 @@ export default function PostCard({ post, onLike, onRepost, onComment, onDelete, 
           </div>
 
           {/* Repost Label */}
-          {showRepostLabel && post.repostedByMe && (
+          {showRepostLabel && (post.repostedByMe || post.reposted) && (
             <div className="mb-2 flex items-center gap-2 text-sm text-gray-500">
               <svg
                 className="w-4 h-4 text-green-500"
@@ -190,6 +190,47 @@ export default function PostCard({ post, onLike, onRepost, onComment, onDelete, 
                 />
               </svg>
               <span>You reposted</span>
+            </div>
+          )}
+
+          {/* Parent Post (if this is a comment) */}
+          {post.parent && (
+            <div className="mb-2 p-3 border-l-4 border-gray-300 bg-gray-50 rounded-r-lg">
+              <div className="flex items-center gap-2 mb-1">
+                {post.parent.author?.image ? (
+                  <img
+                    src={post.parent.author.image}
+                    alt={post.parent.author?.name || 'User'}
+                    className="w-8 h-8 rounded-full"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gray-300" />
+                )}
+                {post.parent.author?.userId ? (
+                  <Link
+                    href={`/profile/${post.parent.author.userId}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="font-semibold text-gray-900 hover:underline"
+                  >
+                    {post.parent.author?.name || 'Unknown'}
+                  </Link>
+                ) : (
+                  <span className="font-semibold text-gray-900">{post.parent.author?.name || 'Unknown'}</span>
+                )}
+                <span className="text-gray-500 text-sm">
+                  {post.parent.author?.userId && `@${post.parent.author.userId}`}
+                </span>
+              </div>
+              <p className="text-gray-700 text-sm line-clamp-2">{post.parent.content}</p>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  router.push(`/post/${post.parent!.id}`)
+                }}
+                className="mt-2 text-sm text-blue-500 hover:underline"
+              >
+                View original post
+              </button>
             </div>
           )}
 

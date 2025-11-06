@@ -11,6 +11,20 @@ export interface Post {
     name: string | null
     image: string | null
   }
+  parent?: {
+    id: string
+    content: string
+    authorId: string
+    createdAt: string
+    updatedAt: string
+    author: {
+      id: string
+      userId: string | null
+      name: string | null
+      image: string | null
+    }
+  } | null // Parent post (if this is a comment/reply)
+  depth?: number // 層級深度（用於縮排顯示）
   likeCount: number
   repostCount: number
   commentCount: number

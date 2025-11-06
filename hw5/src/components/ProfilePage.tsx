@@ -5,11 +5,237 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import PostCard from './PostCard'
 import ReplyModal from './ReplyModal'
+import EditProfileModal from './EditProfileModal'
 import { User } from '@/types/user'
 import { Post } from '@/types/post'
 import { pusherClient } from '@/lib/pusher/client'
 import { PUSHER_EVENTS, PostLikedPayload, PostRepostedPayload, PostRepliedPayload } from '@/lib/pusher/events'
 import Pusher from 'pusher-js'
+
+// LikedPostsTab component
+function LikedPostsTab({ userId }: { userId: string }) {
+  const [likedPosts, setLikedPosts] = useState<Post[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const { data: session } = useSession()
+  const currentUserId = session?.user?.id
+
+  useEffect(() => {
+    const fetchLikedPosts = async () => {
+      try {
+        setIsLoading(true)
+        setError(null)
+        const response = await fetch(`/api/user/${userId}/likes`)
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch liked posts')
+        }
+
+        const data = await response.json()
+        setLikedPosts(data)
+      } catch (err) {
+        console.error('Error fetching liked posts:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load liked posts')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchLikedPosts()
+  }, [userId])
+
+  const handleLike = async (postId: string) => {
+    const postIndex = likedPosts.findIndex((p) => p.id === postId)
+    if (postIndex === -1) return
+
+    const post = likedPosts[postIndex]
+    const wasLiked = post.liked || false
+    const previousLikeCount = post.likeCount
+
+    // Optimistic update
+    const updatedPosts = [...likedPosts]
+    updatedPosts[postIndex] = {
+      ...post,
+      liked: !wasLiked,
+      likeCount: wasLiked ? post.likeCount - 1 : post.likeCount + 1,
+    }
+    setLikedPosts(updatedPosts)
+
+    try {
+      const response = await fetch('/api/like', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ postId }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle like')
+      }
+
+      const data = await response.json()
+
+      // Update with server response
+      setLikedPosts((currentPosts) => {
+        const currentPostIndex = currentPosts.findIndex((p) => p.id === postId)
+        if (currentPostIndex === -1) return currentPosts
+
+        const finalPosts = [...currentPosts]
+        finalPosts[currentPostIndex] = {
+          ...currentPosts[currentPostIndex],
+          liked: data.liked,
+          likeCount: data.likeCount,
+        }
+        return finalPosts
+      })
+
+      // If unliked, remove from list
+      if (!data.liked) {
+        setLikedPosts((currentPosts) => currentPosts.filter((p) => p.id !== postId))
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error)
+      // Rollback
+      setLikedPosts((currentPosts) => {
+        const currentPostIndex = currentPosts.findIndex((p) => p.id === postId)
+        if (currentPostIndex === -1) return currentPosts
+
+        const rollbackPosts = [...currentPosts]
+        rollbackPosts[currentPostIndex] = {
+          ...currentPosts[currentPostIndex],
+          liked: wasLiked,
+          likeCount: previousLikeCount,
+        }
+        return rollbackPosts
+      })
+    }
+  }
+
+  const handleRepost = async (postId: string) => {
+    const postIndex = likedPosts.findIndex((p) => p.id === postId)
+    if (postIndex === -1) return
+
+    const post = likedPosts[postIndex]
+    const wasReposted = post.reposted || false
+    const previousRepostCount = post.repostCount
+
+    // Optimistic update
+    const updatedPosts = [...likedPosts]
+    updatedPosts[postIndex] = {
+      ...post,
+      reposted: !wasReposted,
+      repostCount: wasReposted ? post.repostCount - 1 : post.repostCount + 1,
+    }
+    setLikedPosts(updatedPosts)
+
+    try {
+      const response = await fetch('/api/repost', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ postId }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle repost')
+      }
+
+      const data = await response.json()
+
+      // Update with server response
+      setLikedPosts((currentPosts) => {
+        const currentPostIndex = currentPosts.findIndex((p) => p.id === postId)
+        if (currentPostIndex === -1) return currentPosts
+
+        const finalPosts = [...currentPosts]
+        finalPosts[currentPostIndex] = {
+          ...currentPosts[currentPostIndex],
+          reposted: data.reposted,
+          repostCount: data.repostCount,
+        }
+        return finalPosts
+      })
+    } catch (error) {
+      console.error('Error toggling repost:', error)
+      // Rollback
+      setLikedPosts((currentPosts) => {
+        const currentPostIndex = currentPosts.findIndex((p) => p.id === postId)
+        if (currentPostIndex === -1) return currentPosts
+
+        const rollbackPosts = [...currentPosts]
+        rollbackPosts[currentPostIndex] = {
+          ...currentPosts[currentPostIndex],
+          reposted: wasReposted,
+          repostCount: previousRepostCount,
+        }
+        return rollbackPosts
+      })
+    }
+  }
+
+  const router = useRouter()
+  
+  const handleComment = (postId: string) => {
+    // Navigate to post detail page
+    router.push(`/post/${postId}`)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="border-b border-gray-200 p-4 animate-pulse">
+            <div className="flex gap-3">
+              <div className="w-12 h-12 rounded-full bg-gray-300 flex-shrink-0" />
+              <div className="flex-1">
+                <div className="h-4 bg-gray-300 rounded w-1/4 mb-2" />
+                <div className="h-4 bg-gray-300 rounded w-3/4 mb-2" />
+                <div className="h-4 bg-gray-300 rounded w-1/2 mb-4" />
+                <div className="flex gap-8">
+                  <div className="h-4 bg-gray-300 rounded w-12" />
+                  <div className="h-4 bg-gray-300 rounded w-12" />
+                  <div className="h-4 bg-gray-300 rounded w-12" />
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 text-center text-red-500">
+        <p>{error}</p>
+      </div>
+    )
+  }
+
+  if (likedPosts.length === 0) {
+    return (
+      <div className="p-8 text-center text-gray-500">
+        <p>No liked posts yet.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col">
+      {likedPosts.map((post) => (
+        <PostCard
+          key={post.id}
+          post={post}
+          onLike={handleLike}
+          onRepost={handleRepost}
+          onComment={handleComment}
+        />
+      ))}
+    </div>
+  )
+}
 
 interface ProfilePageProps {
   user: User
@@ -20,13 +246,15 @@ interface ProfilePageProps {
 
 export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollowing: initialFollowing }: ProfilePageProps) {
   const router = useRouter()
-  const { data: session } = useSession()
+  const { data: session, update } = useSession()
   const currentUserId = session?.user?.id
   const [activeTab, setActiveTab] = useState<'posts' | 'likes'>('posts')
   const [isFollowing, setIsFollowing] = useState(initialFollowing)
   const [followerCount, setFollowerCount] = useState(user._count.followers)
   const [posts, setPosts] = useState<Post[]>(initialPosts)
   const [replyTarget, setReplyTarget] = useState<Post | null>(null)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [currentUser, setCurrentUser] = useState<User>(user)
   const pusherChannelRef = useRef<any>(null)
 
   const handleFollow = async () => {
@@ -69,8 +297,45 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
   }
 
   const handleEditProfile = () => {
-    console.log('Edit profile')
-    // TODO: Navigate to edit profile page or open modal
+    setIsEditModalOpen(true)
+  }
+
+  const handleSaveProfile = async (name: string, bio: string | null) => {
+    if (!currentUser) {
+      throw new Error('User not found')
+    }
+
+    const response = await fetch(`/api/user/${currentUser.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name, bio }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Failed to update profile')
+    }
+
+    const updatedUser = await response.json()
+
+    // 更新本地狀態
+    setCurrentUser({
+      ...currentUser,
+      name: updatedUser.name,
+      bio: updatedUser.bio,
+    })
+
+    // 更新 NextAuth session
+    await update({
+      ...session?.user,
+      name: updatedUser.name,
+      bio: updatedUser.bio,
+    })
+
+    // 重新載入頁面以確保所有資料同步
+    router.refresh()
   }
 
   const handleLike = async (postId: string) => {
@@ -313,10 +578,10 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
         {/* Avatar */}
         <div className="flex justify-between items-start -mt-16 mb-4">
           <div className="flex-1">
-            {user.image ? (
+            {currentUser.image ? (
               <img
-                src={user.image}
-                alt={user.name}
+                src={currentUser.image}
+                alt={currentUser.name || 'User'}
                 className="w-32 h-32 rounded-full border-4 border-white"
               />
             ) : (
@@ -348,15 +613,15 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
 
         {/* User Info */}
         <div className="mb-4">
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">{user.name || 'Unknown'}</h1>
-          {user.userId && <p className="text-gray-500 mb-3">@{user.userId}</p>}
-          {user.bio && <p className="text-gray-900 mb-3">{user.bio}</p>}
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">{currentUser.name || 'Unknown'}</h1>
+          {currentUser.userId && <p className="text-gray-500 mb-3">@{currentUser.userId}</p>}
+          {currentUser.bio && <p className="text-gray-900 mb-3 whitespace-pre-wrap">{currentUser.bio}</p>}
           <div className="flex gap-4 text-sm text-gray-500">
             <span>
               <span className="font-semibold text-gray-900">{followerCount}</span> Followers
             </span>
             <span>
-              <span className="font-semibold text-gray-900">{user._count.following}</span> Following
+              <span className="font-semibold text-gray-900">{currentUser._count.following}</span> Following
             </span>
           </div>
         </div>
@@ -415,9 +680,7 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
             ))
           )
         ) : (
-          <div className="p-8 text-center text-gray-500">
-            <p>Likes tab - TODO: Implement liked posts</p>
-          </div>
+          <LikedPostsTab userId={user.id} />
         )}
       </div>
 
@@ -428,6 +691,16 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
         parentPost={replyTarget}
         onSubmit={handleReplySubmit}
       />
+
+      {/* Edit Profile Modal */}
+      {isSelf && (
+        <EditProfileModal
+          open={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          user={currentUser}
+          onSave={handleSaveProfile}
+        />
+      )}
     </div>
   )
 }
