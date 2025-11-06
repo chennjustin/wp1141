@@ -12,10 +12,11 @@ import Pusher from 'pusher-js'
 
 interface HomeFeedProps {
   onRefreshRef?: React.MutableRefObject<(() => void) | null>
+  activeTab?: 'foryou' | 'following'
 }
 
 const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
-  ({ onRefreshRef }, ref) => {
+  ({ onRefreshRef, activeTab = 'foryou' }, ref) => {
     const [posts, setPosts] = useState<Post[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -24,11 +25,17 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
     const currentUserId = session?.user?.id
     const pusherChannelRef = useRef<any>(null)
 
-    const fetchPosts = async () => {
+    const fetchPosts = async (tab: 'foryou' | 'following' = activeTab) => {
       try {
         setIsLoading(true)
         setError(null)
-        const response = await fetch('/api/post')
+        
+        // 根據 activeTab 選擇 API endpoint
+        const apiUrl = tab === 'following' 
+          ? '/api/feed?filter=following'
+          : '/api/post'
+        
+        const response = await fetch(apiUrl)
         
         if (!response.ok) {
           throw new Error('Failed to fetch posts')
@@ -36,6 +43,11 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
 
         const data = await response.json()
         setPosts(data)
+        
+        // 切換後滾動到頂部
+        if (typeof window !== 'undefined') {
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        }
       } catch (err) {
         console.error('Error fetching posts:', err)
         setError(err instanceof Error ? err.message : 'Failed to load posts')
@@ -44,9 +56,11 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
       }
     }
 
+    // 當 activeTab 改變時重新載入
     useEffect(() => {
-      fetchPosts()
-    }, [])
+      fetchPosts(activeTab)
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab])
 
     // Subscribe to Pusher events
     useEffect(() => {
@@ -318,8 +332,25 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
         {/* Post List */}
         <div className="flex flex-col">
           {isLoading ? (
-            <div className="p-8 text-center text-gray-500">
-              <p>Loading posts...</p>
+            <div className="flex flex-col">
+              {/* Loading Skeleton */}
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="border-b border-gray-200 p-4 animate-pulse">
+                  <div className="flex gap-3">
+                    <div className="w-12 h-12 rounded-full bg-gray-300 flex-shrink-0" />
+                    <div className="flex-1">
+                      <div className="h-4 bg-gray-300 rounded w-1/4 mb-2" />
+                      <div className="h-4 bg-gray-300 rounded w-3/4 mb-2" />
+                      <div className="h-4 bg-gray-300 rounded w-1/2 mb-4" />
+                      <div className="flex gap-8">
+                        <div className="h-4 bg-gray-300 rounded w-12" />
+                        <div className="h-4 bg-gray-300 rounded w-12" />
+                        <div className="h-4 bg-gray-300 rounded w-12" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : error ? (
             <div className="p-8 text-center text-red-500">
@@ -333,7 +364,11 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
             </div>
           ) : posts.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
-              <p>No posts yet. Be the first to post!</p>
+              <p>
+                {activeTab === 'following' 
+                  ? "You're not following anyone yet. Follow people to see their posts here!"
+                  : "No posts yet. Be the first to post!"}
+              </p>
             </div>
           ) : (
             posts.map((post) => (

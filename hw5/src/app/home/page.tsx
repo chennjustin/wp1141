@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import AppLayout from '@/components/AppLayout'
@@ -11,6 +11,7 @@ export default function HomePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const refreshFeedRef = useRef<(() => void) | null>(null)
+  const [activeTab, setActiveTab] = useState<'foryou' | 'following'>('foryou')
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -38,8 +39,15 @@ export default function HomePage() {
 
   return (
     <AppLayout onPostCreated={handlePostCreated}>
-      <Navbar type="home" />
-      <HomeFeed onRefreshRef={refreshFeedRef} />
+      <Navbar 
+        type="home" 
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
+      <HomeFeed 
+        onRefreshRef={refreshFeedRef}
+        activeTab={activeTab}
+      />
     </AppLayout>
   )
 }

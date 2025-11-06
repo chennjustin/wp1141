@@ -48,6 +48,26 @@ export async function GET(req: NextRequest) {
             image: true,
           },
         },
+        reposts: user
+          ? {
+              where: {
+                userId: user.id,
+              },
+              select: {
+                userId: true,
+              },
+            }
+          : false,
+        likes: user
+          ? {
+              where: {
+                userId: user.id,
+              },
+              select: {
+                userId: true,
+              },
+            }
+          : false,
         _count: {
           select: {
             likes: true,
@@ -62,12 +82,15 @@ export async function GET(req: NextRequest) {
     const formattedPosts = posts.map((post) => ({
       id: post.id,
       content: post.content,
-      createdAt: post.createdAt,
-      updatedAt: post.updatedAt,
+      authorId: post.authorId,
+      createdAt: post.createdAt.toISOString(),
+      updatedAt: post.updatedAt.toISOString(),
       author: post.author,
       likeCount: post._count.likes,
       repostCount: post._count.reposts,
       commentCount: post._count.replies,
+      reposted: user ? (post.reposts as any)?.length > 0 : false,
+      liked: user ? (post.likes as any)?.length > 0 : false,
     }))
 
     return NextResponse.json(formattedPosts)

@@ -7,11 +7,14 @@ interface NavbarProps {
   type: 'home' | 'profile'
   profileName?: string
   onBack?: () => void
+  activeTab?: 'foryou' | 'following'
+  onTabChange?: (tab: 'foryou' | 'following') => void
 }
 
-export default function Navbar({ type, profileName, onBack }: NavbarProps) {
+export default function Navbar({ type, profileName, onBack, activeTab: externalActiveTab, onTabChange }: NavbarProps) {
   const router = useRouter()
-  const [activeTab, setActiveTab] = React.useState<'foryou' | 'following'>('foryou')
+  const [internalActiveTab, setInternalActiveTab] = React.useState<'foryou' | 'following'>('foryou')
+  const activeTab = externalActiveTab ?? internalActiveTab
 
   const handleBack = () => {
     if (onBack) {
@@ -59,7 +62,13 @@ export default function Navbar({ type, profileName, onBack }: NavbarProps) {
     <nav className="sticky top-0 z-10 bg-white border-b border-gray-200">
       <div className="flex">
         <button
-          onClick={() => setActiveTab('foryou')}
+          onClick={() => {
+            if (onTabChange) {
+              onTabChange('foryou')
+            } else {
+              setInternalActiveTab('foryou')
+            }
+          }}
           className={`flex-1 px-4 py-4 text-center font-semibold transition-colors relative ${
             activeTab === 'foryou'
               ? 'text-gray-900'
@@ -68,11 +77,17 @@ export default function Navbar({ type, profileName, onBack }: NavbarProps) {
         >
           For you
           {activeTab === 'foryou' && (
-            <span className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 rounded-t-full" />
+            <span className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 rounded-t-full transition-all" />
           )}
         </button>
         <button
-          onClick={() => setActiveTab('following')}
+          onClick={() => {
+            if (onTabChange) {
+              onTabChange('following')
+            } else {
+              setInternalActiveTab('following')
+            }
+          }}
           className={`flex-1 px-4 py-4 text-center font-semibold transition-colors relative ${
             activeTab === 'following'
               ? 'text-gray-900'
@@ -81,7 +96,7 @@ export default function Navbar({ type, profileName, onBack }: NavbarProps) {
         >
           Following
           {activeTab === 'following' && (
-            <span className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 rounded-t-full" />
+            <span className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 rounded-t-full transition-all" />
           )}
         </button>
       </div>
