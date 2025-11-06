@@ -4,6 +4,8 @@ import { getCurrentUser, unauthorizedResponse, badRequestResponse } from '@/lib/
 
 export async function GET(req: NextRequest) {
   try {
+    const user = await getCurrentUser()
+
     const posts = await prisma.post.findMany({
       where: {
         parentId: null, // 只返回原始貼文，不包含回覆
@@ -20,6 +22,16 @@ export async function GET(req: NextRequest) {
             image: true,
           },
         },
+        reposts: user
+          ? {
+              where: {
+                userId: user.id,
+              },
+              select: {
+                userId: true,
+              },
+            }
+          : false,
         _count: {
           select: {
             likes: true,
@@ -41,6 +53,7 @@ export async function GET(req: NextRequest) {
       likeCount: post._count.likes,
       repostCount: post._count.reposts,
       commentCount: post._count.replies,
+      reposted: user ? (post.reposts as any)?.length > 0 : false,
     }))
 
     return NextResponse.json(formattedPosts)

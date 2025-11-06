@@ -12,9 +12,10 @@ interface PostCardProps {
   onRepost?: (postId: string) => void
   onComment?: (postId: string) => void
   onDelete?: (postId: string) => void
+  showRepostLabel?: boolean // Show "You reposted" label
 }
 
-export default function PostCard({ post, onLike, onRepost, onComment, onDelete }: PostCardProps) {
+export default function PostCard({ post, onLike, onRepost, onComment, onDelete, showRepostLabel = false }: PostCardProps) {
   const router = useRouter()
   const { data: session } = useSession()
   const currentUser = session?.user
@@ -172,6 +173,26 @@ export default function PostCard({ post, onLike, onRepost, onComment, onDelete }
             )}
           </div>
 
+          {/* Repost Label */}
+          {showRepostLabel && post.repostedByMe && (
+            <div className="mb-2 flex items-center gap-2 text-sm text-gray-500">
+              <svg
+                className="w-4 h-4 text-green-500"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              <span>You reposted</span>
+            </div>
+          )}
+
           {/* Post Content - Clickable to view post detail */}
           <div className="mb-3">
             <button
@@ -222,12 +243,23 @@ export default function PostCard({ post, onLike, onRepost, onComment, onDelete }
 
             {/* Repost */}
             <button
-              onClick={handleRepost}
-              className="flex items-center gap-2 hover:text-green-500 transition-colors group"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleRepost()
+              }}
+              className={`flex items-center gap-2 transition-colors group ${
+                post.reposted
+                  ? 'text-green-500'
+                  : 'text-gray-500 hover:text-green-500'
+              }`}
             >
               <svg
-                className="w-5 h-5 group-hover:bg-green-100 rounded-full p-1"
-                fill="none"
+                className={`w-5 h-5 rounded-full p-1 ${
+                  post.reposted
+                    ? 'bg-green-100'
+                    : 'group-hover:bg-green-100'
+                }`}
+                fill={post.reposted ? 'currentColor' : 'none'}
                 stroke="currentColor"
                 viewBox="0 0 24 24"
                 xmlns="http://www.w3.org/2000/svg"

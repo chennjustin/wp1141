@@ -44,11 +44,14 @@ export default async function ProfilePageRoute({ params }: ProfilePageProps) {
     redirect('/home')
   }
 
-  // Get user's posts from database
+  // Get user's posts and reposts from database
   const postsData = await prisma.post.findMany({
     where: {
-      authorId: user.id,
       parentId: null, // 只返回原始貼文，不包含回覆
+      OR: [
+        { authorId: user.id }, // 使用者自己的貼文
+        { reposts: { some: { userId: user.id } } }, // 使用者轉發的貼文
+      ],
     },
     orderBy: {
       createdAt: 'desc',
@@ -60,6 +63,14 @@ export default async function ProfilePageRoute({ params }: ProfilePageProps) {
           userId: true,
           name: true,
           image: true,
+        },
+      },
+      reposts: {
+        where: {
+          userId: user.id,
+        },
+        select: {
+          userId: true,
         },
       },
       _count: {
@@ -83,6 +94,7 @@ export default async function ProfilePageRoute({ params }: ProfilePageProps) {
     likeCount: post._count.likes,
     repostCount: post._count.reposts,
     commentCount: post._count.replies,
+    repostedByMe: post.reposts.length > 0, // 標記是否為轉發的貼文
   }))
 
   // Format user to match User type

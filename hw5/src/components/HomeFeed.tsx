@@ -125,9 +125,70 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
       }
     }
 
-    const handleRepost = (postId: string) => {
-      console.log('Repost:', postId)
-      // TODO: Call API
+    const handleRepost = async (postId: string) => {
+      // Find the post
+      const postIndex = posts.findIndex((p) => p.id === postId)
+      if (postIndex === -1) return
+
+      const post = posts[postIndex]
+      const wasReposted = post.reposted || false
+      const previousRepostCount = post.repostCount
+
+      // Optimistic update
+      const updatedPosts = [...posts]
+      updatedPosts[postIndex] = {
+        ...post,
+        reposted: !wasReposted,
+        repostCount: wasReposted ? post.repostCount - 1 : post.repostCount + 1,
+      }
+      setPosts(updatedPosts)
+
+      try {
+        const response = await fetch('/api/repost', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ postId }),
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to toggle repost')
+        }
+
+        const data = await response.json()
+
+        // Update with server response (use current state)
+        setPosts((currentPosts) => {
+          const currentPostIndex = currentPosts.findIndex((p) => p.id === postId)
+          if (currentPostIndex === -1) return currentPosts
+
+          const currentPost = currentPosts[currentPostIndex]
+          const finalPosts = [...currentPosts]
+          finalPosts[currentPostIndex] = {
+            ...currentPost,
+            reposted: data.reposted,
+            repostCount: data.repostCount,
+          }
+          return finalPosts
+        })
+      } catch (error) {
+        console.error('Error toggling repost:', error)
+
+        // Rollback on error (use current state)
+        setPosts((currentPosts) => {
+          const currentPostIndex = currentPosts.findIndex((p) => p.id === postId)
+          if (currentPostIndex === -1) return currentPosts
+
+          const rollbackPosts = [...currentPosts]
+          rollbackPosts[currentPostIndex] = {
+            ...currentPosts[currentPostIndex],
+            reposted: wasReposted,
+            repostCount: previousRepostCount,
+          }
+          return rollbackPosts
+        })
+      }
     }
 
     const handleComment = (postId: string) => {
