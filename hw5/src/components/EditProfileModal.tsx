@@ -2,25 +2,32 @@
 
 import React, { useState, useEffect } from 'react'
 import { User } from '@/types/user'
+import MediaUploader from './MediaUploader'
 
 interface EditProfileModalProps {
   open: boolean
   onClose: () => void
   user: User
-  onSave: (name: string, bio: string | null) => Promise<void>
+  onSave: (name: string, bio: string | null, avatarUrl?: string | null, coverUrl?: string | null) => Promise<void>
 }
 
 export default function EditProfileModal({ open, onClose, user, onSave }: EditProfileModalProps) {
   const [name, setName] = useState(user.name || '')
   const [bio, setBio] = useState(user.bio || '')
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(user.avatarUrl || null)
+  const [coverUrl, setCoverUrl] = useState<string | null>(user.coverUrl || null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  const [isUploadingCover, setIsUploadingCover] = useState(false)
 
   // 當 user 或 open 改變時，更新表單值
   useEffect(() => {
     if (open) {
       setName(user.name || '')
       setBio(user.bio || '')
+      setAvatarUrl(user.avatarUrl || null)
+      setCoverUrl(user.coverUrl || null)
       setError(null)
     }
   }, [open, user])
@@ -31,12 +38,70 @@ export default function EditProfileModal({ open, onClose, user, onSave }: EditPr
     setIsSubmitting(true)
 
     try {
-      await onSave(name.trim(), bio.trim() || null)
+      await onSave(name.trim(), bio.trim() || null, avatarUrl, coverUrl)
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update profile')
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleAvatarUpload = async (url: string, type: 'image' | 'video') => {
+    if (type !== 'image') {
+      alert('Avatar must be an image')
+      return
+    }
+    setIsUploadingAvatar(true)
+    setAvatarUrl(url || null)
+    
+    // Immediately update the database
+    try {
+      const response = await fetch(`/api/user/${user.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ avatarUrl: url || null }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update avatar')
+      }
+    } catch (error) {
+      console.error('Error updating avatar:', error)
+      alert('Failed to update avatar')
+    } finally {
+      setIsUploadingAvatar(false)
+    }
+  }
+
+  const handleCoverUpload = async (url: string, type: 'image' | 'video') => {
+    if (type !== 'image') {
+      alert('Cover must be an image')
+      return
+    }
+    setIsUploadingCover(true)
+    setCoverUrl(url || null)
+    
+    // Immediately update the database
+    try {
+      const response = await fetch(`/api/user/${user.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ coverUrl: url || null }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update cover')
+      }
+    } catch (error) {
+      console.error('Error updating cover:', error)
+      alert('Failed to update cover')
+    } finally {
+      setIsUploadingCover(false)
     }
   }
 
@@ -86,33 +151,35 @@ export default function EditProfileModal({ open, onClose, user, onSave }: EditPr
           </div>
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isUploadingAvatar || isUploadingCover}
             className="px-4 py-2 rounded-full bg-gray-900 text-white font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Saving...' : 'Save'}
+            {isSubmitting || isUploadingAvatar || isUploadingCover ? 'Saving...' : 'Save'}
           </button>
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
-          {/* Cover Image Placeholder */}
-          <div className="h-48 bg-gray-200" />
+          {/* Cover Image */}
+          <div className="relative h-48">
+            <MediaUploader
+              type="cover"
+              existingUrl={coverUrl}
+              onUpload={handleCoverUpload}
+              disabled={isSubmitting || isUploadingCover}
+            />
+          </div>
 
           {/* Profile Section */}
           <div className="px-4 pb-4">
             {/* Avatar */}
             <div className="relative -mt-16 mb-4">
-              <div className="w-32 h-32 rounded-full border-4 border-white bg-gray-300 overflow-hidden">
-                {user.image ? (
-                  <img
-                    src={user.image}
-                    alt={user.name || 'User'}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gray-300" />
-                )}
-              </div>
+              <MediaUploader
+                type="avatar"
+                existingUrl={avatarUrl || user.image}
+                onUpload={handleAvatarUpload}
+                disabled={isSubmitting || isUploadingAvatar}
+              />
             </div>
 
             {/* Form */}

@@ -87,6 +87,8 @@ export async function getNestedReplies(
         depth: depth, // 加入層級資訊
         createdAt: reply.createdAt.toISOString(),
         updatedAt: reply.updatedAt.toISOString(),
+        mediaUrl: reply.mediaUrl,
+        mediaType: reply.mediaType as 'image' | 'video' | null,
         author: reply.author,
         parent: reply.parent ? {
           id: reply.parent.id,

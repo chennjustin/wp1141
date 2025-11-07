@@ -300,17 +300,26 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
     setIsEditModalOpen(true)
   }
 
-  const handleSaveProfile = async (name: string, bio: string | null) => {
+  const handleSaveProfile = async (
+    name: string,
+    bio: string | null,
+    avatarUrl?: string | null,
+    coverUrl?: string | null
+  ) => {
     if (!currentUser) {
       throw new Error('User not found')
     }
+
+    const updateData: any = { name, bio }
+    if (avatarUrl !== undefined) updateData.avatarUrl = avatarUrl
+    if (coverUrl !== undefined) updateData.coverUrl = coverUrl
 
     const response = await fetch(`/api/user/${currentUser.id}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ name, bio }),
+      body: JSON.stringify(updateData),
     })
 
     if (!response.ok) {
@@ -325,6 +334,8 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
       ...currentUser,
       name: updatedUser.name,
       bio: updatedUser.bio,
+      avatarUrl: updatedUser.avatarUrl,
+      coverUrl: updatedUser.coverUrl,
     })
 
     // 更新 NextAuth session
@@ -332,6 +343,8 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
       ...session?.user,
       name: updatedUser.name,
       bio: updatedUser.bio,
+      avatarUrl: updatedUser.avatarUrl,
+      coverUrl: updatedUser.coverUrl,
     })
 
     // 重新載入頁面以確保所有資料同步
@@ -577,17 +590,17 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
       <div className="px-4 pb-4 border-b border-gray-200">
         {/* Avatar */}
         <div className="flex justify-between items-start -mt-16 mb-4">
-          <div className="flex-1">
-            {currentUser.image ? (
-              <img
-                src={currentUser.image}
-                alt={currentUser.name || 'User'}
-                className="w-32 h-32 rounded-full border-4 border-white"
-              />
-            ) : (
-              <div className="w-32 h-32 rounded-full border-4 border-white bg-gray-300" />
-            )}
-          </div>
+              <div className="flex-1">
+                {currentUser.avatarUrl || currentUser.image ? (
+                  <img
+                    src={currentUser.avatarUrl || currentUser.image || ''}
+                    alt={currentUser.name || 'User'}
+                    className="w-32 h-32 rounded-full border-4 border-white object-cover"
+                  />
+                ) : (
+                  <div className="w-32 h-32 rounded-full border-4 border-white bg-gray-300" />
+                )}
+              </div>
           <div className="mt-20">
             {isSelf ? (
               <button

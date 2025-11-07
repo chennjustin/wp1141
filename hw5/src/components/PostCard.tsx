@@ -247,6 +247,33 @@ export default function PostCard({ post, onLike, onRepost, onComment, onDelete, 
             </button>
           </div>
 
+          {/* Media */}
+          {post.mediaUrl && (
+            <div className="mb-3">
+              {post.mediaType === 'video' ? (
+                <video
+                  src={post.mediaUrl}
+                  controls
+                  className="rounded-xl max-h-80 w-full object-cover cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    router.push(`/post/${post.id}`)
+                  }}
+                />
+              ) : (
+                <img
+                  src={post.mediaUrl}
+                  alt="Post media"
+                  className="rounded-xl max-h-80 w-full object-cover cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    router.push(`/post/${post.id}`)
+                  }}
+                />
+              )}
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="flex items-center gap-8 text-gray-500">
             {/* Comment */}

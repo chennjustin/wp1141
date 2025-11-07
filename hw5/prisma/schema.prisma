@@ -18,6 +18,8 @@ model User {
   image         String?
   userId        String?   @unique // 使用者自訂的唯一 ID（如 @ric2k1）
   bio           String?   // 自介
+  avatarUrl     String?   @db.Text // 頭像
+  coverUrl      String?   @db.Text // 封面
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   accounts      Account[]
@@ -71,6 +73,8 @@ model Post {
   content   String   @db.Text
   authorId  String
   parentId  String?  // 用於回覆（指向另一個 Post）
+  mediaUrl  String?  @db.Text // 圖片或影片 URL
+  mediaType String?  // 'image' 或 'video'
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   

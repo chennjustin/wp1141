@@ -90,6 +90,8 @@ export async function GET(
         authorId: post.authorId,
         createdAt: post.createdAt.toISOString(),
         updatedAt: post.updatedAt.toISOString(),
+        mediaUrl: post.mediaUrl,
+        mediaType: post.mediaType,
         author: post.author,
         parent: post.parent
           ? {

@@ -85,6 +85,8 @@ export async function GET(req: NextRequest) {
       authorId: post.authorId,
       createdAt: post.createdAt.toISOString(),
       updatedAt: post.updatedAt.toISOString(),
+      mediaUrl: post.mediaUrl,
+      mediaType: post.mediaType,
       author: post.author,
       likeCount: post._count.likes,
       repostCount: post._count.reposts,

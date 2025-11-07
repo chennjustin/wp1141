@@ -5,6 +5,8 @@ export interface Post {
   authorId: string
   createdAt: string // ISO string
   updatedAt: string // ISO string
+  mediaUrl: string | null
+  mediaType: 'image' | 'video' | null
   author: {
     id: string
     userId: string | null

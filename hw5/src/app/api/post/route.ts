@@ -63,6 +63,8 @@ export async function GET(req: NextRequest) {
       authorId: post.authorId,
       createdAt: post.createdAt.toISOString(),
       updatedAt: post.updatedAt.toISOString(),
+      mediaUrl: post.mediaUrl,
+      mediaType: post.mediaType,
       author: post.author,
       likeCount: post._count.likes,
       repostCount: post._count.reposts,
@@ -85,7 +87,7 @@ export async function POST(req: NextRequest) {
       return unauthorizedResponse()
     }
 
-    const { content } = await req.json()
+    const { content, mediaUrl, mediaType } = await req.json()
 
     if (!content || typeof content !== 'string' || content.trim().length === 0) {
       return badRequestResponse('Content is required')
@@ -95,10 +97,19 @@ export async function POST(req: NextRequest) {
       return badRequestResponse('Content must be 280 characters or less')
     }
 
+    // Validate mediaType if provided
+    if (mediaType !== undefined && mediaType !== null) {
+      if (mediaType !== 'image' && mediaType !== 'video') {
+        return badRequestResponse('mediaType must be "image" or "video"')
+      }
+    }
+
     const post = await prisma.post.create({
       data: {
         content: content.trim(),
         authorId: user.id,
+        mediaUrl: mediaUrl || null,
+        mediaType: mediaType || null,
       },
       include: {
         author: {
@@ -125,6 +136,8 @@ export async function POST(req: NextRequest) {
       authorId: post.authorId,
       createdAt: post.createdAt.toISOString(),
       updatedAt: post.updatedAt.toISOString(),
+      mediaUrl: post.mediaUrl,
+      mediaType: post.mediaType,
       author: post.author,
       likeCount: post._count.likes,
       repostCount: post._count.reposts,

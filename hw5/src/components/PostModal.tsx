@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { usePostModal } from './PostModalProvider'
+import MediaUploader from './MediaUploader'
 
 interface PostModalProps {
   onPostCreated?: () => void
@@ -13,6 +14,8 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
   const { data: session } = useSession()
   const currentUser = session?.user
   const [content, setContent] = useState('')
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null)
+  const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const maxLength = 280
 
@@ -20,9 +23,16 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
     if (!isOpen) {
       // Clear content when modal closes
       setContent('')
+      setMediaUrl(null)
+      setMediaType(null)
       setIsSubmitting(false)
     }
   }, [isOpen])
+
+  const handleMediaUpload = (url: string, type: 'image' | 'video') => {
+    setMediaUrl(url || null)
+    setMediaType(url ? type : null)
+  }
 
   const handlePost = async () => {
     if (content.trim().length === 0 || content.length > maxLength) return
@@ -34,7 +44,11 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ content: content.trim() }),
+        body: JSON.stringify({
+          content: content.trim(),
+          mediaUrl: mediaUrl || null,
+          mediaType: mediaType || null,
+        }),
       })
 
       if (!response.ok) {
@@ -43,6 +57,9 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
       }
 
       // Success - close modal and trigger refresh
+      setContent('')
+      setMediaUrl(null)
+      setMediaType(null)
       closeModal()
       if (onPostCreated) {
         onPostCreated()
@@ -57,6 +74,8 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
 
   const handleDiscard = () => {
     setContent('')
+    setMediaUrl(null)
+    setMediaType(null)
     closeModal()
   }
 
@@ -134,6 +153,16 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
                 </span>
               </div>
             </div>
+          </div>
+
+          {/* Media Uploader */}
+          <div className="px-4">
+            <MediaUploader
+              type="post"
+              existingUrl={mediaUrl}
+              onUpload={handleMediaUpload}
+              disabled={isSubmitting}
+            />
           </div>
         </div>
 

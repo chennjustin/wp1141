@@ -63,6 +63,8 @@ export default async function PostPage({ params }: PostPageProps) {
     authorId: postData.authorId,
     createdAt: postData.createdAt.toISOString(),
     updatedAt: postData.updatedAt.toISOString(),
+    mediaUrl: postData.mediaUrl,
+    mediaType: postData.mediaType as 'image' | 'video' | null,
     author: postData.author,
     likeCount: postData._count.likes,
     repostCount: postData._count.reposts,
@@ -84,6 +86,8 @@ export default async function PostPage({ params }: PostPageProps) {
     authorId: reply.authorId,
     createdAt: reply.createdAt,
     updatedAt: reply.updatedAt,
+    mediaUrl: reply.mediaUrl || null,
+    mediaType: reply.mediaType || null,
     author: reply.author,
     parent: reply.parent || undefined,
     depth: reply.depth || 0, // 加入層級資訊

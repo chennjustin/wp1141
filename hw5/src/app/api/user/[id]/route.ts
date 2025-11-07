@@ -16,6 +16,8 @@ export async function GET(
         image: true,
         bio: true,
         email: true,
+        avatarUrl: true,
+        coverUrl: true,
         createdAt: true,
         _count: {
           select: {
@@ -53,7 +55,7 @@ export async function PATCH(
       return forbiddenResponse('Can only update your own profile')
     }
 
-    const { name, bio } = await req.json()
+    const { name, bio, avatarUrl, coverUrl } = await req.json()
 
     // 驗證資料
     const updateData: any = {}
@@ -69,6 +71,18 @@ export async function PATCH(
       }
       updateData.bio = bio.trim() || null
     }
+    if (avatarUrl !== undefined) {
+      if (avatarUrl !== null && typeof avatarUrl !== 'string') {
+        return badRequestResponse('avatarUrl must be a string or null')
+      }
+      updateData.avatarUrl = avatarUrl || null
+    }
+    if (coverUrl !== undefined) {
+      if (coverUrl !== null && typeof coverUrl !== 'string') {
+        return badRequestResponse('coverUrl must be a string or null')
+      }
+      updateData.coverUrl = coverUrl || null
+    }
 
     const updatedUser = await prisma.user.update({
       where: { id: params.id },
@@ -80,6 +94,8 @@ export async function PATCH(
         image: true,
         bio: true,
         email: true,
+        avatarUrl: true,
+        coverUrl: true,
         createdAt: true,
         _count: {
           select: {

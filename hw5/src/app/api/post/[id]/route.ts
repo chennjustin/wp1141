@@ -65,7 +65,33 @@ export async function GET(
       return notFoundResponse('Post not found')
     }
 
-    return NextResponse.json(post)
+    // Format response
+    return NextResponse.json({
+      id: post.id,
+      content: post.content,
+      authorId: post.authorId,
+      createdAt: post.createdAt.toISOString(),
+      updatedAt: post.updatedAt.toISOString(),
+      mediaUrl: post.mediaUrl,
+      mediaType: post.mediaType,
+      author: post.author,
+      parent: post.parent,
+      replies: post.replies.map((reply) => ({
+        id: reply.id,
+        content: reply.content,
+        authorId: reply.authorId,
+        createdAt: reply.createdAt.toISOString(),
+        updatedAt: reply.updatedAt.toISOString(),
+        mediaUrl: reply.mediaUrl,
+        mediaType: reply.mediaType,
+        author: reply.author,
+        likeCount: reply._count.likes,
+        commentCount: reply._count.replies,
+      })),
+      likeCount: post._count.likes,
+      repostCount: post._count.reposts,
+      commentCount: post._count.replies,
+    })
   } catch (error) {
     console.error('Error fetching post:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
