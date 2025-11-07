@@ -14,6 +14,8 @@ export async function GET(
         userId: true,
         name: true,
         image: true,
+        avatarUrl: true,
+        coverUrl: true,
         bio: true,
         email: true,
         createdAt: true,

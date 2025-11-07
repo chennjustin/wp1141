@@ -20,6 +20,8 @@ interface Notification {
     userId: string | null
     name: string | null
     image: string | null
+    avatarUrl: string | null
+    profileImage?: string | null
   }
   post?: {
     id: string
@@ -38,6 +40,20 @@ export default function NotificationsPage() {
   const [unreadCount, setUnreadCount] = useState(0)
   const pusherChannelRef = useRef<any>(null)
 
+  const normalizeNotification = (notification: any): Notification => {
+    return {
+      ...notification,
+      sender: {
+        ...notification.sender,
+        profileImage:
+          notification.sender?.profileImage ??
+          notification.sender?.avatarUrl ??
+          notification.sender?.image ??
+          null,
+      },
+    } as Notification
+  }
+
   const fetchNotifications = async () => {
     try {
       setIsLoading(true)
@@ -49,7 +65,8 @@ export default function NotificationsPage() {
       }
 
       const data = await response.json()
-      setNotifications(data.notifications)
+      const normalized = (data.notifications as Notification[]).map(normalizeNotification)
+      setNotifications(normalized)
       setUnreadCount(data.unreadCount)
     } catch (err) {
       console.error('Error fetching notifications:', err)
@@ -76,17 +93,10 @@ export default function NotificationsPage() {
 
       // Handle new notification
       channel.bind(PUSHER_EVENTS.NOTIFICATION_CREATED, (data: NotificationCreatedPayload) => {
-        const newNotification: Notification = {
-          id: data.notification.id,
-          type: data.notification.type,
-          senderId: data.notification.senderId,
-          receiverId: data.notification.receiverId,
-          postId: data.notification.postId,
-          read: data.notification.read,
-          createdAt: data.notification.createdAt,
-          sender: data.notification.sender,
+        const newNotification: Notification = normalizeNotification({
+          ...data.notification,
           post: data.notification.post || null,
-        }
+        })
 
         setNotifications((current) => [newNotification, ...current])
         setUnreadCount((current) => current + 1)
@@ -219,9 +229,15 @@ export default function NotificationsPage() {
             >
               {/* Avatar */}
               <div className="flex-shrink-0">
-                {notification.sender.image ? (
+                {notification.sender.profileImage ||
+                notification.sender.avatarUrl ||
+                notification.sender.image ? (
                   <img
-                    src={notification.sender.image}
+                    src={
+                      (notification.sender.profileImage ||
+                        notification.sender.avatarUrl ||
+                        notification.sender.image) || ''
+                    }
                     alt={notification.sender.name || 'User'}
                     className="w-12 h-12 rounded-full"
                   />

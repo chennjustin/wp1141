@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser, unauthorizedResponse, badRequestResponse } from '@/lib/api-helpers'
+import { serializeAuthor } from '@/lib/serializers'
 
 export async function GET(req: NextRequest) {
   try {
@@ -30,6 +31,7 @@ export async function GET(req: NextRequest) {
             userId: true,
             name: true,
             image: true,
+            avatarUrl: true,
           },
         },
         post: {
@@ -51,7 +53,7 @@ export async function GET(req: NextRequest) {
       postId: notification.postId,
       read: notification.read,
       createdAt: notification.createdAt.toISOString(),
-      sender: notification.sender,
+      sender: serializeAuthor(notification.sender),
       post: notification.post,
     }))
 

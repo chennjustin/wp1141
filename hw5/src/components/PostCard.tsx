@@ -95,9 +95,11 @@ export default function PostCard({ post, onLike, onRepost, onComment, onDelete, 
       <div className="flex gap-3">
         {/* Avatar */}
         <div className="flex-shrink-0">
-          {post.author?.avatarUrl || post.author?.image ? (
+          {post.author?.profileImage || post.author?.avatarUrl || post.author?.image ? (
             <img
-              src={(post.author?.avatarUrl || post.author?.image) || ''}
+              src={
+                (post.author?.profileImage || post.author?.avatarUrl || post.author?.image) || ''
+              }
               alt={post.author?.name || 'User'}
               className="w-12 h-12 rounded-full"
             />
@@ -197,9 +199,15 @@ export default function PostCard({ post, onLike, onRepost, onComment, onDelete, 
           {post.parent && (
             <div className="mb-2 p-3 border-l-4 border-gray-300 bg-gray-50 rounded-r-lg">
               <div className="flex items-center gap-2 mb-1">
-                {post.parent.author?.avatarUrl || post.parent.author?.image ? (
+                {post.parent.author?.profileImage ||
+                post.parent.author?.avatarUrl ||
+                post.parent.author?.image ? (
                   <img
-                    src={(post.parent.author?.avatarUrl || post.parent.author?.image) || ''}
+                    src={
+                      (post.parent.author?.profileImage ||
+                        post.parent.author?.avatarUrl ||
+                        post.parent.author?.image) || ''
+                    }
                     alt={post.parent.author?.name || 'User'}
                     className="w-8 h-8 rounded-full"
                   />

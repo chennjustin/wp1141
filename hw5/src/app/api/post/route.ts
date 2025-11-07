@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getCurrentUser, unauthorizedResponse, badRequestResponse } from '@/lib/api-helpers'
 import { pusherServer } from '@/lib/pusher/server'
 import { PUSHER_EVENTS } from '@/lib/pusher/events'
+import { serializeAuthor } from '@/lib/serializers'
 
 export const runtime = 'nodejs'
 
@@ -66,7 +67,7 @@ export async function GET(req: NextRequest) {
       updatedAt: post.updatedAt.toISOString(),
       mediaUrl: post.mediaUrl,
       mediaType: post.mediaType,
-      author: post.author,
+      author: serializeAuthor(post.author),
       likeCount: post._count.likes,
       repostCount: post._count.reposts,
       commentCount: post._count.replies,
@@ -140,7 +141,7 @@ export async function POST(req: NextRequest) {
       updatedAt: post.updatedAt.toISOString(),
       mediaUrl: post.mediaUrl,
       mediaType: post.mediaType,
-      author: post.author,
+      author: serializeAuthor(post.author),
       likeCount: post._count.likes,
       repostCount: post._count.reposts,
       commentCount: post._count.replies,

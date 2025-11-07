@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser, unauthorizedResponse, badRequestResponse, notFoundResponse } from '@/lib/api-helpers'
+import { serializeAuthor } from '@/lib/serializers'
 import { pusherServer } from '@/lib/pusher/server'
 import { PUSHER_EVENTS } from '@/lib/pusher/events'
 import { createNotification } from '@/lib/notification-helpers'
@@ -51,6 +52,7 @@ export async function POST(req: NextRequest) {
             userId: true,
             name: true,
             image: true,
+            avatarUrl: true,
           },
         },
         _count: {
@@ -101,7 +103,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(
       {
-        comment,
+        comment: {
+          ...comment,
+          author: serializeAuthor(comment.author),
+        },
         commentCount,
       },
       { status: 201 }

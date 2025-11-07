@@ -20,6 +20,8 @@ export interface PostCreatedPayload {
       userId: string | null
       name: string | null
       image: string | null
+      avatarUrl: string | null
+      profileImage?: string | null
     }
     likeCount: number
     repostCount: number
@@ -56,6 +58,8 @@ export interface NotificationCreatedPayload {
       userId: string | null
       name: string | null
       image: string | null
+      avatarUrl: string | null
+      profileImage?: string | null
     }
     post?: {
       id: string

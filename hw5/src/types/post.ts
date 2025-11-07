@@ -1,4 +1,13 @@
 // Post type matching API response
+export interface BasicAuthor {
+  id: string
+  userId: string | null
+  name: string | null
+  image: string | null
+  avatarUrl: string | null
+  profileImage?: string | null
+}
+
 export interface Post {
   id: string
   content: string
@@ -7,24 +16,14 @@ export interface Post {
   updatedAt: string // ISO string
   mediaUrl: string | null
   mediaType: 'image' | 'video' | null
-  author: {
-    id: string
-    userId: string | null
-    name: string | null
-    image: string | null
-  }
+  author: BasicAuthor
   parent?: {
     id: string
     content: string
     authorId: string
     createdAt: string
     updatedAt: string
-    author: {
-      id: string
-      userId: string | null
-      name: string | null
-      image: string | null
-    }
+    author: BasicAuthor
   } | null // Parent post (if this is a comment/reply)
   depth?: number // 層級深度（用於縮排顯示）
   likeCount: number

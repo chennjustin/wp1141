@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { serializeAuthor } from '@/lib/serializers'
 import AppLayout from '@/components/AppLayout'
 import Navbar from '@/components/Navbar'
 import ProfilePage from '@/components/ProfilePage'
@@ -65,6 +66,7 @@ export default async function ProfilePageRoute({ params }: ProfilePageProps) {
           userId: true,
           name: true,
           image: true,
+          avatarUrl: true,
         },
       },
       reposts: session.user
@@ -106,7 +108,7 @@ export default async function ProfilePageRoute({ params }: ProfilePageProps) {
     updatedAt: post.updatedAt.toISOString(),
     mediaUrl: post.mediaUrl,
     mediaType: post.mediaType as 'image' | 'video' | null,
-    author: post.author,
+    author: serializeAuthor(post.author),
     likeCount: post._count.likes,
     repostCount: post._count.reposts,
     commentCount: post._count.replies,

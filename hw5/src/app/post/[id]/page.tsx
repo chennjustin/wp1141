@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar'
 import PostDetailPage from '@/components/PostDetailPage'
 import { Post } from '@/types/post'
 import { getNestedReplies } from '@/lib/post-helpers'
+import { serializeAuthor } from '@/lib/serializers'
 
 interface PostPageProps {
   params: {
@@ -31,6 +32,7 @@ export default async function PostPage({ params }: PostPageProps) {
           userId: true,
           name: true,
           image: true,
+          avatarUrl: true,
         },
       },
       likes: {
@@ -65,7 +67,7 @@ export default async function PostPage({ params }: PostPageProps) {
     updatedAt: postData.updatedAt.toISOString(),
     mediaUrl: postData.mediaUrl,
     mediaType: postData.mediaType as 'image' | 'video' | null,
-    author: postData.author,
+    author: serializeAuthor(postData.author),
     likeCount: postData._count.likes,
     repostCount: postData._count.reposts,
     commentCount: postData._count.replies,
@@ -88,8 +90,13 @@ export default async function PostPage({ params }: PostPageProps) {
     updatedAt: reply.updatedAt,
     mediaUrl: reply.mediaUrl || null,
     mediaType: reply.mediaType || null,
-    author: reply.author,
-    parent: reply.parent || undefined,
+  author: serializeAuthor(reply.author),
+  parent: reply.parent
+    ? {
+        ...reply.parent,
+        author: serializeAuthor(reply.parent.author),
+      }
+    : undefined,
     depth: reply.depth || 0, // 加入層級資訊
     likeCount: reply.likeCount,
     repostCount: reply.repostCount,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser, unauthorizedResponse, notFoundResponse, forbiddenResponse } from '@/lib/api-helpers'
+import { serializeAuthor } from '@/lib/serializers'
 
 export async function GET(
   req: NextRequest,
@@ -77,8 +78,13 @@ export async function GET(
       updatedAt: post.updatedAt.toISOString(),
       mediaUrl: post.mediaUrl,
       mediaType: post.mediaType,
-      author: post.author,
-      parent: post.parent,
+      author: serializeAuthor(post.author),
+      parent: post.parent
+        ? {
+            ...post.parent,
+            author: serializeAuthor(post.parent.author),
+          }
+        : null,
       replies: post.replies.map((reply) => ({
         id: reply.id,
         content: reply.content,
@@ -87,7 +93,7 @@ export async function GET(
         updatedAt: reply.updatedAt.toISOString(),
         mediaUrl: reply.mediaUrl,
         mediaType: reply.mediaType,
-        author: reply.author,
+        author: serializeAuthor(reply.author),
         likeCount: reply._count.likes,
         commentCount: reply._count.replies,
       })),

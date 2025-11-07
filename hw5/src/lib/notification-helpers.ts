@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 import { pusherServer } from './pusher/server'
 import { PUSHER_EVENTS, NotificationCreatedPayload } from './pusher/events'
+import { serializeAuthor } from './serializers'
 
 /**
  * 建立通知並透過 Pusher 推送
@@ -55,6 +56,7 @@ export async function createNotification(
           userId: true,
           name: true,
           image: true,
+          avatarUrl: true,
         },
       },
       post: postId
@@ -79,7 +81,7 @@ export async function createNotification(
         postId: notification.postId,
         read: notification.read,
         createdAt: notification.createdAt.toISOString(),
-        sender: notification.sender,
+        sender: serializeAuthor(notification.sender),
         post: notification.post || null,
       },
     }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser, unauthorizedResponse } from '@/lib/api-helpers'
+import { serializeAuthor } from '@/lib/serializers'
 
 export async function GET(req: NextRequest) {
   try {
@@ -88,7 +89,7 @@ export async function GET(req: NextRequest) {
       updatedAt: post.updatedAt.toISOString(),
       mediaUrl: post.mediaUrl,
       mediaType: post.mediaType,
-      author: post.author,
+      author: serializeAuthor(post.author),
       likeCount: post._count.likes,
       repostCount: post._count.reposts,
       commentCount: post._count.replies,
