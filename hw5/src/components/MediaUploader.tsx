@@ -94,7 +94,7 @@ export default function MediaUploader({
             {!disabled && (
               <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
                 <CldUploadWidget
-                  uploadPreset="my_X"
+                  uploadPreset="my_Xclone"
                   onSuccess={handleUploadSuccess}
                   onOpen={() => setIsUploading(true)}
                   options={getUploadOptions()}
@@ -157,7 +157,7 @@ export default function MediaUploader({
           </div>
         ) : (
           <CldUploadWidget
-            uploadPreset="my_X"
+            uploadPreset="my_Xclone"
             onSuccess={handleUploadSuccess}
             onOpen={() => setIsUploading(true)}
             options={getUploadOptions()}
@@ -229,7 +229,7 @@ export default function MediaUploader({
             {!disabled && (
               <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity">
                 <CldUploadWidget
-                  uploadPreset="my_X"
+                  uploadPreset="my_Xclone"
                   onSuccess={handleUploadSuccess}
                   onOpen={() => setIsUploading(true)}
                   options={getUploadOptions()}
@@ -293,7 +293,7 @@ export default function MediaUploader({
           </div>
         ) : (
           <CldUploadWidget
-            uploadPreset="my_X"
+            uploadPreset="my_Xclone"
             onSuccess={handleUploadSuccess}
             onOpen={() => setIsUploading(true)}
             options={getUploadOptions()}
@@ -403,7 +403,7 @@ export default function MediaUploader({
         </div>
       ) : (
         <CldUploadWidget
-          uploadPreset="my_X"
+          uploadPreset="my_Xclone"
           onSuccess={handleUploadSuccess}
           onOpen={() => setIsUploading(true)}
           options={getUploadOptions()}
