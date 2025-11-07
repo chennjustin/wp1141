@@ -14,6 +14,11 @@ export async function POST(req: NextRequest) {
       return unauthorizedResponse()
     }
 
+    const currentUserId = user.id
+    if (!currentUserId) {
+      return unauthorizedResponse()
+    }
+
     const { postId } = await req.json()
 
     if (!postId || typeof postId !== 'string') {
@@ -33,7 +38,7 @@ export async function POST(req: NextRequest) {
     const existingLike = await prisma.like.findUnique({
       where: {
         userId_postId: {
-          userId: user.id,
+          userId: currentUserId,
           postId,
         },
       },
@@ -45,7 +50,7 @@ export async function POST(req: NextRequest) {
       await prisma.like.delete({
         where: {
           userId_postId: {
-            userId: user.id,
+            userId: currentUserId,
             postId,
           },
         },
@@ -55,15 +60,15 @@ export async function POST(req: NextRequest) {
       // 按讚
       await prisma.like.create({
         data: {
-          userId: user.id,
+          userId: currentUserId,
           postId,
         },
       })
       liked = true
 
       // 建立通知（不通知自己）
-      if (post.authorId !== user.id) {
-        await createNotification(prisma, 'like', user.id, post.authorId, postId)
+      if (post.authorId && post.authorId !== currentUserId) {
+        await createNotification(prisma, 'like', currentUserId, post.authorId, postId)
       }
     }
 

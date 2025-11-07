@@ -18,9 +18,9 @@ export function CustomPrismaAdapter(prisma: PrismaClient): Adapter {
         },
         select: { user: true },
       })
-      return account?.user ?? null
+      return (account?.user ?? null) as any
     },
-    async linkAccount(account) {
+    async linkAccount(account: any) {
       // linkAccount 只會在已有 User 的情況下被呼叫
       // 我們確保不會透過 email 連結，只透過 provider + providerAccountId
       return await prisma.account.create({
@@ -39,17 +39,17 @@ export function CustomPrismaAdapter(prisma: PrismaClient): Adapter {
         },
       })
     },
-    async createUser(user) {
+    async createUser(user: any) {
       // 建立新 User 時，不檢查 email 是否已存在
       // 直接建立新 User，讓同一個 email 可以有多個 User
-      return await prisma.user.create({
+      return (await prisma.user.create({
         data: {
           email: user.email,
           emailVerified: user.emailVerified,
           name: user.name,
           image: user.image,
         },
-      })
+      })) as any
     },
     async getUserByEmail(email) {
       // 覆蓋這個方法，讓它不透過 email 查找 User

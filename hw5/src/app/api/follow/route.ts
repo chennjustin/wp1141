@@ -10,6 +10,11 @@ export async function POST(req: NextRequest) {
       return unauthorizedResponse()
     }
 
+    const followerId = user.id
+    if (!followerId) {
+      return unauthorizedResponse()
+    }
+
     const { userId } = await req.json()
 
     if (!userId || typeof userId !== 'string') {
@@ -17,7 +22,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 不能追蹤自己
-    if (userId === user.id) {
+    if (userId === followerId) {
       return forbiddenResponse('Cannot follow yourself')
     }
 
@@ -34,7 +39,7 @@ export async function POST(req: NextRequest) {
     const existingFollow = await prisma.follow.findUnique({
       where: {
         followerId_followingId: {
-          followerId: user.id,
+          followerId,
           followingId: userId,
         },
       },
@@ -45,7 +50,7 @@ export async function POST(req: NextRequest) {
       await prisma.follow.delete({
         where: {
           followerId_followingId: {
-            followerId: user.id,
+            followerId,
             followingId: userId,
           },
         },
@@ -56,13 +61,13 @@ export async function POST(req: NextRequest) {
       // 追蹤
       await prisma.follow.create({
         data: {
-          followerId: user.id,
+          followerId,
           followingId: userId,
         },
       })
 
       // 建立通知
-      await createNotification(prisma, 'follow', user.id, userId, null)
+      await createNotification(prisma, 'follow', followerId, userId, null)
 
       return NextResponse.json({ following: true })
     }

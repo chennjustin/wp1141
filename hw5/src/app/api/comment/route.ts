@@ -15,6 +15,11 @@ export async function POST(req: NextRequest) {
       return unauthorizedResponse()
     }
 
+    const authorId = user.id
+    if (!authorId) {
+      return unauthorizedResponse()
+    }
+
     const { postId, content } = await req.json()
 
     if (!postId || typeof postId !== 'string') {
@@ -42,7 +47,7 @@ export async function POST(req: NextRequest) {
     const comment = await prisma.post.create({
       data: {
         content: content.trim(),
-        authorId: user.id,
+        authorId,
         parentId: postId,
       },
       include: {
@@ -53,7 +58,7 @@ export async function POST(req: NextRequest) {
             name: true,
             image: true,
             avatarUrl: true,
-          },
+          } as any,
         },
         _count: {
           select: {
@@ -79,8 +84,8 @@ export async function POST(req: NextRequest) {
     const commentCount = updatedParentPost?._count.replies || 0
 
     // 建立通知（不通知自己）
-    if (parentPost.authorId !== user.id) {
-      await createNotification(prisma, 'comment', user.id, parentPost.authorId, postId)
+    if (parentPost.authorId && parentPost.authorId !== authorId) {
+      await createNotification(prisma, 'comment', authorId, parentPost.authorId, postId)
     }
 
     // Trigger Pusher events
@@ -104,8 +109,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         comment: {
-          ...comment,
-          author: serializeAuthor(comment.author),
+          ...(comment as any),
+          author: serializeAuthor((comment as any).author),
         },
         commentCount,
       },

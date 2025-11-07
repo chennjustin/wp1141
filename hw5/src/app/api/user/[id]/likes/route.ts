@@ -13,6 +13,11 @@ export async function GET(
       return unauthorizedResponse()
     }
 
+    const currentUserId = currentUser.id
+    if (!currentUserId) {
+      return unauthorizedResponse()
+    }
+
     // 檢查使用者是否存在
     const user = await prisma.user.findUnique({
       where: { id: params.id },
@@ -58,7 +63,7 @@ export async function GET(
             },
             likes: {
               where: {
-                userId: currentUser.id,
+                userId: currentUserId,
               },
               select: {
                 userId: true,
@@ -66,7 +71,7 @@ export async function GET(
             },
             reposts: {
               where: {
-                userId: currentUser.id,
+                userId: currentUserId,
               },
               select: {
                 userId: true,

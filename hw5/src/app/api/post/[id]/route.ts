@@ -117,6 +117,11 @@ export async function DELETE(
       return unauthorizedResponse()
     }
 
+    const currentUserId = user.id
+    if (!currentUserId) {
+      return unauthorizedResponse()
+    }
+
     // 檢查貼文是否存在
     const post = await prisma.post.findUnique({
       where: { id: params.id },
@@ -128,7 +133,7 @@ export async function DELETE(
     }
 
     // 檢查是否為作者
-    if (post.authorId !== user.id) {
+    if (post.authorId !== currentUserId) {
       return forbiddenResponse('Only the author can delete this post')
     }
 

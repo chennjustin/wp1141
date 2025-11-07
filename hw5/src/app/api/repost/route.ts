@@ -14,6 +14,11 @@ export async function POST(req: NextRequest) {
       return unauthorizedResponse()
     }
 
+    const currentUserId = user.id
+    if (!currentUserId) {
+      return unauthorizedResponse()
+    }
+
     const { postId } = await req.json()
 
     if (!postId || typeof postId !== 'string') {
@@ -33,7 +38,7 @@ export async function POST(req: NextRequest) {
     const existingRepost = await prisma.repost.findUnique({
       where: {
         userId_postId: {
-          userId: user.id,
+          userId: currentUserId,
           postId,
         },
       },
@@ -44,7 +49,7 @@ export async function POST(req: NextRequest) {
       await prisma.repost.delete({
         where: {
           userId_postId: {
-            userId: user.id,
+            userId: currentUserId,
             postId,
           },
         },
@@ -90,14 +95,14 @@ export async function POST(req: NextRequest) {
       // 轉發
       await prisma.repost.create({
         data: {
-          userId: user.id,
+          userId: currentUserId,
           postId,
         },
       })
 
       // 建立通知（不通知自己）
-      if (post.authorId !== user.id) {
-        await createNotification(prisma, 'repost', user.id, post.authorId, postId)
+      if (post.authorId && post.authorId !== currentUserId) {
+        await createNotification(prisma, 'repost', currentUserId, post.authorId, postId)
       }
 
       // 取得更新後的 repostCount

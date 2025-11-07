@@ -89,6 +89,11 @@ export async function POST(req: NextRequest) {
       return unauthorizedResponse()
     }
 
+    const authorId = user.id
+    if (!authorId) {
+      return unauthorizedResponse()
+    }
+
     const { content, mediaUrl, mediaType } = await req.json()
 
     if (!content || typeof content !== 'string' || content.trim().length === 0) {
@@ -109,7 +114,7 @@ export async function POST(req: NextRequest) {
     const post = await prisma.post.create({
       data: {
         content: content.trim(),
-        authorId: user.id,
+        authorId,
         mediaUrl: mediaUrl || null,
         mediaType: mediaType || null,
       },
@@ -171,6 +176,11 @@ export async function DELETE(req: NextRequest) {
       return unauthorizedResponse()
     }
 
+    const authorId = user.id
+    if (!authorId) {
+      return unauthorizedResponse()
+    }
+
     const { postId } = await req.json()
 
     if (!postId || typeof postId !== 'string') {
@@ -186,7 +196,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Post not found' }, { status: 404 })
     }
 
-    if (post.authorId !== user.id) {
+    if (post.authorId !== authorId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

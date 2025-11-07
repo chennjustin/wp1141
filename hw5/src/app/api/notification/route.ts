@@ -10,6 +10,11 @@ export async function GET(req: NextRequest) {
       return unauthorizedResponse()
     }
 
+    const currentUserId = user.id
+    if (!currentUserId) {
+      return unauthorizedResponse()
+    }
+
     const { searchParams } = new URL(req.url)
     const limit = parseInt(searchParams.get('limit') || '50')
     const skip = parseInt(searchParams.get('skip') || '0')
@@ -17,7 +22,7 @@ export async function GET(req: NextRequest) {
     // 取得使用者的通知
     const notifications = await prisma.notification.findMany({
       where: {
-        receiverId: user.id,
+        receiverId: currentUserId,
       },
       orderBy: {
         createdAt: 'desc',
@@ -60,7 +65,7 @@ export async function GET(req: NextRequest) {
     // 取得未讀通知數量
     const unreadCount = await prisma.notification.count({
       where: {
-        receiverId: user.id,
+        receiverId: currentUserId,
         read: false,
       },
     })
@@ -79,6 +84,11 @@ export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser()
     if (!user) {
+      return unauthorizedResponse()
+    }
+
+    const currentUserId = user.id
+    if (!currentUserId) {
       return unauthorizedResponse()
     }
 
