@@ -17,6 +17,7 @@ export async function GET(
             name: true,
             image: true,
             bio: true,
+            avatarUrl: true,
           },
         },
         parent: {
@@ -27,6 +28,7 @@ export async function GET(
                 userId: true,
                 name: true,
                 image: true,
+                avatarUrl: true,
               },
             },
           },
@@ -41,6 +43,7 @@ export async function GET(
                 userId: true,
                 name: true,
                 image: true,
+                avatarUrl: true,
               },
             },
             _count: {

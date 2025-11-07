@@ -36,6 +36,7 @@ export async function getNestedReplies(
             userId: true,
             name: true,
             image: true,
+            avatarUrl: true,
           },
         },
         parent: {

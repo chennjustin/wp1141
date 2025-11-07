@@ -29,6 +29,8 @@ export default async function ProfilePageRoute({ params }: ProfilePageProps) {
       image: true,
       bio: true,
       email: true,
+      avatarUrl: true,
+      coverUrl: true,
       createdAt: true,
       _count: {
         select: {
@@ -102,6 +104,8 @@ export default async function ProfilePageRoute({ params }: ProfilePageProps) {
     authorId: post.authorId,
     createdAt: post.createdAt.toISOString(),
     updatedAt: post.updatedAt.toISOString(),
+    mediaUrl: post.mediaUrl,
+    mediaType: post.mediaType as 'image' | 'video' | null,
     author: post.author,
     likeCount: post._count.likes,
     repostCount: post._count.reposts,

@@ -119,9 +119,9 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
           <div className="flex gap-4">
             {/* Avatar */}
             <div className="flex-shrink-0">
-              {currentUser?.image ? (
+              {currentUser?.avatarUrl || currentUser?.image ? (
                 <img
-                  src={currentUser.image}
+                  src={(currentUser?.avatarUrl || currentUser?.image) || ''}
                   alt={currentUser.name || 'User'}
                   className="w-12 h-12 rounded-full"
                 />
@@ -139,7 +139,58 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
                 className="w-full min-h-[200px] resize-none border-none outline-none text-lg placeholder-gray-500"
                 maxLength={maxLength}
               />
+              
+              {/* Media Preview */}
+              {mediaUrl && (
+                <div className="relative mt-4 rounded-2xl overflow-hidden">
+                  {mediaType === 'video' ? (
+                    <video
+                      src={mediaUrl}
+                      controls
+                      className="w-full max-h-96 object-cover"
+                    />
+                  ) : (
+                    <img
+                      src={mediaUrl}
+                      alt="Media preview"
+                      className="w-full max-h-96 object-cover"
+                    />
+                  )}
+                  {!isSubmitting && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setMediaUrl(null)
+                        setMediaType(null)
+                      }}
+                      className="absolute top-2 right-2 p-2 bg-black bg-opacity-50 rounded-full hover:bg-opacity-70 transition-opacity"
+                      aria-label="Remove media"
+                    >
+                      <svg
+                        className="w-5 h-5 text-white"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              )}
+              
               <div className="mt-4 flex items-center justify-between">
+                <MediaUploader
+                  type="post"
+                  existingUrl={mediaUrl}
+                  onUpload={handleMediaUpload}
+                  disabled={isSubmitting}
+                />
                 <span
                   className={`text-sm ${
                     content.length > maxLength * 0.9
@@ -153,16 +204,6 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
                 </span>
               </div>
             </div>
-          </div>
-
-          {/* Media Uploader */}
-          <div className="px-4">
-            <MediaUploader
-              type="post"
-              existingUrl={mediaUrl}
-              onUpload={handleMediaUpload}
-              disabled={isSubmitting}
-            />
           </div>
         </div>
 

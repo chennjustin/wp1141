@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
             userId: true,
             name: true,
             image: true,
+            avatarUrl: true,
           },
         },
         reposts: user
@@ -118,6 +119,7 @@ export async function POST(req: NextRequest) {
             userId: true,
             name: true,
             image: true,
+            avatarUrl: true,
           },
         },
         _count: {

@@ -39,6 +39,7 @@ export async function GET(
                 userId: true,
                 name: true,
                 image: true,
+                avatarUrl: true,
               },
             },
             parent: {

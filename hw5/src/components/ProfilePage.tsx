@@ -584,7 +584,16 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
   return (
     <div className="flex flex-col">
       {/* Cover Image */}
-      <div className="h-48 bg-gradient-to-r from-blue-400 to-purple-500" />
+      <div
+        className="h-48 bg-gradient-to-r from-blue-400 to-purple-500 bg-cover bg-center"
+        style={
+          currentUser.coverUrl
+            ? {
+                backgroundImage: `url(${currentUser.coverUrl})`,
+              }
+            : {}
+        }
+      />
 
       {/* Profile Info */}
       <div className="px-4 pb-4 border-b border-gray-200">

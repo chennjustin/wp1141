@@ -53,7 +53,9 @@ export const authOptions: NextAuthOptions = {
             token.name = dbUser.name
             token.email = dbUser.email
             token.image = dbUser.image
-            token.bio = (dbUser as any).bio ?? null // 等待 migration 後更新
+            token.bio = dbUser.bio ?? null
+            token.avatarUrl = dbUser.avatarUrl ?? null
+            token.coverUrl = dbUser.coverUrl ?? null
             token.provider = dbUser.accounts[0]?.provider
           }
         }
@@ -69,6 +71,8 @@ export const authOptions: NextAuthOptions = {
         session.user.email = token.email as string | undefined
         session.user.image = token.image as string | undefined
         session.user.bio = token.bio as string | undefined
+        session.user.avatarUrl = token.avatarUrl as string | undefined
+        session.user.coverUrl = token.coverUrl as string | undefined
         session.user.provider = token.provider as string | undefined
       }
       return session

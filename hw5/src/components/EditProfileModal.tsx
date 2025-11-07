@@ -1,6 +1,8 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { User } from '@/types/user'
 import MediaUploader from './MediaUploader'
 
@@ -12,6 +14,8 @@ interface EditProfileModalProps {
 }
 
 export default function EditProfileModal({ open, onClose, user, onSave }: EditProfileModalProps) {
+  const router = useRouter()
+  const { update } = useSession()
   const [name, setName] = useState(user.name || '')
   const [bio, setBio] = useState(user.bio || '')
   const [avatarUrl, setAvatarUrl] = useState<string | null>(user.avatarUrl || null)
@@ -68,9 +72,62 @@ export default function EditProfileModal({ open, onClose, user, onSave }: EditPr
       if (!response.ok) {
         throw new Error('Failed to update avatar')
       }
+
+      const updatedUser = await response.json()
+      // Update local state immediately
+      setAvatarUrl(updatedUser.avatarUrl)
+      
+      // Update NextAuth session to sync across all components
+      await update({
+        avatarUrl: updatedUser.avatarUrl,
+      })
+      
+      // Refresh server components to update old posts with new avatar
+      router.refresh()
     } catch (error) {
       console.error('Error updating avatar:', error)
       alert('Failed to update avatar')
+      // Rollback on error
+      setAvatarUrl(user.avatarUrl || null)
+    } finally {
+      setIsUploadingAvatar(false)
+    }
+  }
+
+  const handleResetAvatar = async () => {
+    if (!confirm('Reset to default avatar from your OAuth provider?')) {
+      return
+    }
+    
+    setIsUploadingAvatar(true)
+    
+    try {
+      const response = await fetch(`/api/user/${user.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ avatarUrl: null }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to reset avatar')
+      }
+
+      const updatedUser = await response.json()
+      // Update local state immediately
+      setAvatarUrl(null)
+      
+      // Update NextAuth session to sync across all components
+      await update({
+        avatarUrl: null,
+      })
+      
+      // Refresh server components to update old posts with new avatar
+      router.refresh()
+    } catch (error) {
+      console.error('Error resetting avatar:', error)
+      alert('Failed to reset avatar')
     } finally {
       setIsUploadingAvatar(false)
     }
@@ -97,9 +154,15 @@ export default function EditProfileModal({ open, onClose, user, onSave }: EditPr
       if (!response.ok) {
         throw new Error('Failed to update cover')
       }
+
+      const updatedUser = await response.json()
+      // Update local state immediately
+      setCoverUrl(updatedUser.coverUrl)
     } catch (error) {
       console.error('Error updating cover:', error)
       alert('Failed to update cover')
+      // Rollback on error
+      setCoverUrl(user.coverUrl || null)
     } finally {
       setIsUploadingCover(false)
     }
@@ -174,12 +237,24 @@ export default function EditProfileModal({ open, onClose, user, onSave }: EditPr
           <div className="px-4 pb-4">
             {/* Avatar */}
             <div className="relative -mt-16 mb-4">
-              <MediaUploader
-                type="avatar"
-                existingUrl={avatarUrl || user.image}
-                onUpload={handleAvatarUpload}
-                disabled={isSubmitting || isUploadingAvatar}
-              />
+              <div className="flex flex-col items-start gap-3">
+                <MediaUploader
+                  type="avatar"
+                  existingUrl={avatarUrl || user.image}
+                  onUpload={handleAvatarUpload}
+                  disabled={isSubmitting || isUploadingAvatar}
+                />
+                {avatarUrl && (
+                  <button
+                    onClick={handleResetAvatar}
+                    disabled={isSubmitting || isUploadingAvatar}
+                    className="px-4 py-2 text-sm rounded-full border border-gray-300 font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Reset to default avatar"
+                  >
+                    Reset to default
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Form */}

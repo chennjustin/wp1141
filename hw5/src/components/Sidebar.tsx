@@ -117,9 +117,9 @@ export default function Sidebar() {
       {currentUser && (
         <div className="p-4 border-t border-gray-200">
           <div className="flex items-center gap-3 mb-3">
-            {currentUser.image ? (
+            {currentUser?.avatarUrl || currentUser?.image ? (
               <img
-                src={currentUser.image}
+                src={(currentUser?.avatarUrl || currentUser?.image) || ''}
                 alt={currentUser.name || 'User'}
                 className="w-10 h-10 rounded-full"
               />

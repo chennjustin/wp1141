@@ -82,9 +82,9 @@ export default function ReplyModal({ open, onClose, parentPost, onSubmit }: Repl
           {parentPost && (
             <div className="mb-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
               <div className="flex gap-3">
-                {parentPost.author?.image ? (
+                {parentPost.author?.avatarUrl || parentPost.author?.image ? (
                   <img
-                    src={parentPost.author.image}
+                    src={(parentPost.author?.avatarUrl || parentPost.author?.image) || ''}
                     alt={parentPost.author?.name || 'User'}
                     className="w-10 h-10 rounded-full flex-shrink-0"
                   />
@@ -112,9 +112,9 @@ export default function ReplyModal({ open, onClose, parentPost, onSubmit }: Repl
           <div className="flex gap-4">
             {/* Avatar */}
             <div className="flex-shrink-0">
-              {currentUser?.image ? (
+              {currentUser?.avatarUrl || currentUser?.image ? (
                 <img
-                  src={currentUser.image}
+                  src={(currentUser?.avatarUrl || currentUser?.image) || ''}
                   alt={currentUser.name || 'User'}
                   className="w-12 h-12 rounded-full"
                 />

@@ -14,9 +14,9 @@ export default function InlineComposer() {
       <div className="flex gap-4">
         {/* Avatar */}
         <div className="flex-shrink-0">
-          {currentUser?.image ? (
+          {currentUser?.avatarUrl || currentUser?.image ? (
             <img
-              src={currentUser.image}
+              src={(currentUser?.avatarUrl || currentUser?.image) || ''}
               alt={currentUser.name || 'User'}
               className="w-12 h-12 rounded-full"
             />
