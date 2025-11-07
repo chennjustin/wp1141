@@ -29,24 +29,55 @@ export const authOptions: NextAuthOptions = {
     },
     async jwt({ token, user, account, trigger }) {
       // 首次登入時或更新資料時，重新查詢資料庫獲取最新用戶資訊
-      if (user?.id || token?.sub) {
-        const userId = user?.id || token.sub
+      const userId = user?.id || token.sub
+      
+      if (!userId || typeof userId !== 'string') {
+        return token
+      }
+
+      try {
+        // 首次登入時設定過期時間
+        if (user?.id) {
+          token.sub = user.id
+          token.exp = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60 // 7 天
+        }
         
-        if (userId) {
-          // 首次登入時設定過期時間
-          if (user?.id) {
-            token.sub = user.id
-            token.exp = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60 // 7 天
-          }
-          
-          // 每次 JWT 被使用時，都重新查詢資料庫獲取最新資訊
-          // 這樣註冊完成後，JWT 會自動更新為最新資料
-          const dbUser = await prisma.user.findUnique({
-            where: { id: userId as string },
-            include: {
-              accounts: { select: { provider: true }, take: 1 },
-            },
-          })
+        // 只在首次登入、session 更新觸發、或 token 中沒有完整資訊時才查詢資料庫
+        // 避免每次請求都查詢資料庫造成效能問題
+        const shouldRefreshUserData = 
+          user?.id || // 首次登入
+          trigger === 'update' || // 手動更新 session
+          !token.userId || // token 中沒有 userId（可能是舊 token）
+          !token.name // token 中沒有 name（可能是舊 token）
+
+        if (shouldRefreshUserData) {
+          const dbUser = await (prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+              id: true,
+              userId: true,
+              name: true,
+              email: true,
+              image: true,
+              bio: true,
+              avatarUrl: true,
+              coverUrl: true,
+              accounts: {
+                select: { provider: true },
+                take: 1,
+              },
+            } as any,
+          }) as Promise<{
+            id: string
+            userId: string | null
+            name: string | null
+            email: string | null
+            image: string | null
+            bio: string | null
+            avatarUrl: string | null
+            coverUrl: string | null
+            accounts: Array<{ provider: string }>
+          } | null>)
           
           if (dbUser) {
             token.userId = dbUser.userId
@@ -59,7 +90,12 @@ export const authOptions: NextAuthOptions = {
             token.provider = dbUser.accounts[0]?.provider
           }
         }
+      } catch (error) {
+        // 如果資料庫查詢失敗，記錄錯誤但不中斷 auth 流程
+        // 使用 token 中現有的資料
+        console.error('Error refreshing user data in JWT callback:', error)
       }
+      
       return token
     },
     async session({ session, token }) {
