@@ -6,6 +6,7 @@ import { pusherServer } from '@/lib/pusher/server'
 import { PUSHER_EVENTS } from '@/lib/pusher/events'
 import { createNotification } from '@/lib/notification-helpers'
 
+export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {

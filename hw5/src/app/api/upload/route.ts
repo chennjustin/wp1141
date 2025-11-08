@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser, unauthorizedResponse } from '@/lib/api-helpers'
 import { v2 as cloudinary } from 'cloudinary'
 
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 // Configure Cloudinary
 cloudinary.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
