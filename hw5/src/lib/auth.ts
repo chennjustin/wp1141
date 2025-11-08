@@ -5,39 +5,8 @@ import FacebookProvider from 'next-auth/providers/facebook'
 import { prisma } from './prisma'
 import { CustomPrismaAdapter } from './custom-adapter'
 
-// 延遲初始化 adapter：使用函數來延遲執行，避免在 module scope 初始化
-// 這樣可以確保只有在 runtime 時才會初始化 adapter
-function createAdapter() {
-  // 檢查是否在 build 階段（沒有 DATABASE_URL 或 NODE_ENV 是 production 但沒有連線）
-  if (!process.env.DATABASE_URL) {
-    return undefined
-  }
-  
-  try {
-    return CustomPrismaAdapter(prisma)
-  } catch (error) {
-    // 如果初始化失敗（例如 build 階段），返回 undefined
-    console.warn('Failed to initialize adapter (build phase?):', error)
-    return undefined
-  }
-}
-
-// 使用 lazy getter 模式，只在實際需要時才初始化
-let adapterInstance: ReturnType<typeof CustomPrismaAdapter> | undefined
-
-function getAdapter() {
-  if (!adapterInstance) {
-    adapterInstance = createAdapter()
-  }
-  return adapterInstance
-}
-
 export const authOptions: NextAuthOptions = {
-  // 使用 Object.defineProperty 來實現 lazy getter
-  // 這樣 NextAuth 在 build 階段分析時不會觸發初始化
-  get adapter() {
-    return getAdapter()
-  },
+  adapter: CustomPrismaAdapter(prisma),
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "cross-env PORT=3000 next dev",
-    "build": "prisma generate && next build",
+    "build": "next build",
     "start": "cross-env PORT=3000 next start",
     "lint": "next lint"
   },
