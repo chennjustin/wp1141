@@ -1,16 +1,11 @@
 'use client'
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import type { Post } from '@/types/post'
 
 const MAX_LENGTH = 280
-
-type ComposerAction = {
-  label: string
-  icon: JSX.Element
-}
 
 type InlineComposerProps = {
   onPostCreated?: (post: Post) => void
@@ -23,64 +18,6 @@ type MentionSuggestion = {
   avatarUrl: string | null
   image: string | null
 }
-
-const buildComposerActions = (): ComposerAction[] => [
-  {
-    label: 'Add GIF',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h4v8H5zM13 8h6m-6 4h4m-4 4h6" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Create poll',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11h10M7 15h6M7 7h10" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Add emoji',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M12 4a8 8 0 100 16 8 8 0 000-16zm-3 6h.01M15 10h.01M9 15s1.5 2 3 2 3-2 3-2"
-        />
-      </svg>
-    ),
-  },
-  {
-    label: 'Schedule post',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M8 7V5m8 2V5m-9 4h10m-11 0a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2v-7a2 2 0 00-2-2H6z"
-        />
-      </svg>
-    ),
-  },
-  {
-    label: 'Add location',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M12 2a7 7 0 00-7 7c0 4.418 7 11 7 11s7-6.582 7-11a7 7 0 00-7-7zm0 9a2 2 0 110-4 2 2 0 010 4z"
-        />
-      </svg>
-    ),
-  },
-]
 
 const extractMentionInfo = (value: string, cursorPosition: number) => {
   const uptoCursor = value.slice(0, cursorPosition)
@@ -102,7 +39,6 @@ export default function InlineComposer({ onPostCreated }: InlineComposerProps) {
   const { data: session } = useSession()
   const router = useRouter()
   const currentUser = session?.user
-  const actions = useMemo(() => buildComposerActions(), [])
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
@@ -448,32 +384,16 @@ export default function InlineComposer({ onPostCreated }: InlineComposerProps) {
 
           <div className="mt-2 text-sm text-blue-500">Everyone can reply</div>
 
-          <div className="mt-3 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-blue-500">
-              {actions.map((action) => (
-                <button
-                  key={action.label}
-                  type="button"
-                  title={action.label}
-                  className="p-2 rounded-full hover:bg-blue-100 transition-colors disabled:opacity-50"
-                  disabled
-                >
-                  {action.icon}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex items-center gap-3">
-              <span className={`text-sm ${remainingClass}`}>{content.length}/{MAX_LENGTH}</span>
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={isSubmitting || content.trim().length === 0}
-                className="px-5 py-2 rounded-full bg-blue-500 text-white font-semibold hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? 'Posting…' : 'Post'}
-              </button>
-            </div>
+          <div className="mt-3 flex items-center justify-end gap-3">
+            <span className={`text-sm ${remainingClass}`}>{content.length}/{MAX_LENGTH}</span>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSubmitting || content.trim().length === 0}
+              className="px-5 py-2 rounded-full bg-blue-500 text-white font-semibold hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? 'Posting…' : 'Post'}
+            </button>
           </div>
 
           {error && <p className="mt-2 text-sm text-red-500">{error}</p>}

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { usePostModal, DraftPayload } from './PostModalProvider'
@@ -20,77 +20,6 @@ type MentionSuggestion = {
   avatarUrl: string | null
   image: string | null
 }
-
-const buildComposerActions = () => [
-  {
-    label: 'Add image or video',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M4 16.5V7a2 2 0 012-2h12a2 2 0 012 2v9.5M4 16.5l3.5-3.5a1.414 1.414 0 012 0L12 15m8-1.5l-3.5-3.5a1.414 1.414 0 00-2 0L12 12"
-        />
-      </svg>
-    ),
-  },
-  {
-    label: 'Add GIF',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h4v8H5zM13 8h6m-6 4h4m-4 4h6" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Create poll',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11h10M7 15h6M7 7h10" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Add emoji',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M12 4a8 8 0 100 16 8 8 0 000-16zm-3 6h.01M15 10h.01M9 15s1.5 2 3 2 3-2 3-2"
-        />
-      </svg>
-    ),
-  },
-  {
-    label: 'Schedule post',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M8 7V5m8 2V5m-9 4h10m-11 0a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2v-7a2 2 0 00-2-2H6z"
-        />
-      </svg>
-    ),
-  },
-  {
-    label: 'Add location',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M12 2a7 7 0 00-7 7c0 4.418 7 11 7 11s7-6.582 7-11a7 7 0 00-7-7zm0 9a2 2 0 110-4 2 2 0 010 4z"
-        />
-      </svg>
-    ),
-  },
-]
 
 const hasUnsavedChanges = (content: string, mediaUrl: string | null) =>
   (content && content.trim().length > 0) || Boolean(mediaUrl)
@@ -121,7 +50,6 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
   const router = useRouter()
   const currentUser = session?.user
 
-  const actions = useMemo(buildComposerActions, [])
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   const [draftId, setDraftId] = useState<string | null>(null)
@@ -635,7 +563,7 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
                 )}
               </div>
 
-              <div className="flex items-center justify-between text-sm text-blue-500">
+              <div className="flex items-center justify-between text-sm text-blue-500 mt-2">
                 <span>Everyone can reply</span>
               </div>
 
@@ -665,20 +593,12 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
               )}
 
               <div className="mt-4 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-blue-500">
-                  {actions.map((action) => (
-                    <button
-                      key={action.label}
-                      type="button"
-                      onClick={() => {}}
-                      title={action.label}
-                      className="p-2 rounded-full hover:bg-blue-100 transition-colors"
-                      disabled={isSubmitting}
-                    >
-                      {action.icon}
-                    </button>
-                  ))}
-                </div>
+                <MediaUploader
+                  type="post"
+                  existingUrl={mediaUrl}
+                  onUpload={handleMediaUpload}
+                  disabled={isSubmitting}
+                />
                 <span
                   className={`text-sm ${
                     content.length > MAX_LENGTH * 0.9
@@ -690,14 +610,6 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
                 >
                   {content.length}/{MAX_LENGTH}
                 </span>
-              </div>
-              <div className="mt-3">
-                <MediaUploader
-                  type="post"
-                  existingUrl={mediaUrl}
-                  onUpload={handleMediaUpload}
-                  disabled={isSubmitting}
-                />
               </div>
             </div>
           </div>

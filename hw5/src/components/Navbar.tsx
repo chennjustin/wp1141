@@ -27,33 +27,30 @@ export default function Navbar({ type, profileName, onBack, activeTab: externalA
   if (type === 'profile') {
     return (
       <nav className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-200">
-        <div className="max-w-[620px] mx-auto w-full flex items-center px-4 py-3">
-          <div className="flex-shrink-0">
-            <button
-              onClick={handleBack}
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-              aria-label="Back"
+        <div className="w-full flex items-center gap-3 px-4 py-3">
+          <button
+            onClick={handleBack}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors flex-shrink-0"
+            aria-label="Back"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 19l-7-7 7-7"
-                />
-              </svg>
-            </button>
-          </div>
-          <div className="flex-1 flex justify-center">
-            {profileName && <h2 className="text-xl font-bold text-gray-900">{profileName}</h2>}
-          </div>
-          <div className="flex-shrink-0 w-10" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+          </button>
+          {profileName && (
+            <h2 className="text-xl font-bold text-gray-900 flex-shrink-0">{profileName}</h2>
+          )}
         </div>
       </nav>
     )
