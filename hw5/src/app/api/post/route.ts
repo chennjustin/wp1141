@@ -6,6 +6,8 @@ import { PUSHER_EVENTS } from '@/lib/pusher/events'
 import { serializeAuthor } from '@/lib/serializers'
 
 export const dynamic = 'force-dynamic'
+export const fetchCache = 'force-no-store'
+export const revalidate = 0
 export const runtime = 'nodejs'
 
 export async function GET(req: NextRequest) {

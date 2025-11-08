@@ -4,6 +4,8 @@ import { getCurrentUser, unauthorizedResponse } from '@/lib/api-helpers'
 import { serializeAuthor } from '@/lib/serializers'
 
 export const dynamic = 'force-dynamic'
+export const fetchCache = 'force-no-store'
+export const revalidate = 0
 export const runtime = 'nodejs'
 
 export async function GET(req: NextRequest) {
