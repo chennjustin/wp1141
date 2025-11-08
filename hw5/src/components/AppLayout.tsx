@@ -11,19 +11,16 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children, onPostCreated }: AppLayoutProps) {
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      {/* Left Sidebar - Fixed */}
+    <div className="flex min-h-screen bg-white">
       <Sidebar />
 
-      {/* Main Content Area */}
-      <main className="flex-1 ml-[20%] w-[60%] min-h-screen bg-white">
-        {children}
-      </main>
+      <div className="flex-1 flex justify-center ml-[72px] lg:ml-[260px]">
+        <main className="w-full max-w-[620px] min-h-screen border-x border-gray-200">
+          {children}
+        </main>
+        <div className="hidden xl:flex flex-1 bg-white" />
+      </div>
 
-      {/* Right Spacer - Empty for now */}
-      <div className="w-[20%]" />
-
-      {/* Post Modal */}
       <PostModal onPostCreated={onPostCreated} />
     </div>
   )

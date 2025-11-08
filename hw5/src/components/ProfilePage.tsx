@@ -257,20 +257,6 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [currentUser, setCurrentUser] = useState<User>(user)
   const pusherChannelRef = useRef<any>(null)
-  const [relationshipModal, setRelationshipModal] = useState<'followers' | 'following' | null>(null)
-  const [relationshipUsers, setRelationshipUsers] = useState<
-    Array<{
-      id: string
-      userId: string | null
-      name: string | null
-      avatarUrl: string | null
-      bio: string | null
-      isSelf: boolean
-      isFollowing: boolean
-    }>
-  >([])
-  const [isRelationshipLoading, setIsRelationshipLoading] = useState(false)
-  const [relationshipError, setRelationshipError] = useState<string | null>(null)
 
   useEffect(() => {
     setPosts(initialPosts)
@@ -377,51 +363,6 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
 
     // 重新載入頁面以確保所有資料同步
     router.refresh()
-  }
-
-  useEffect(() => {
-    if (!relationshipModal) {
-      return
-    }
-
-    const fetchRelationships = async () => {
-      setIsRelationshipLoading(true)
-      setRelationshipError(null)
-
-      try {
-        const response = await fetch(
-          `/api/user/${user.id}/${relationshipModal === 'followers' ? 'followers' : 'following'}`
-        )
-
-        if (!response.ok) {
-          throw new Error('Failed to load users')
-        }
-
-        const data = await response.json()
-        setRelationshipUsers(data.users || [])
-      } catch (error) {
-        console.error('Error loading relationship users:', error)
-        setRelationshipError(error instanceof Error ? error.message : 'Failed to load users')
-      } finally {
-        setIsRelationshipLoading(false)
-      }
-    }
-
-    fetchRelationships()
-  }, [relationshipModal, user.id])
-
-  const closeRelationshipModal = () => {
-    setRelationshipModal(null)
-    setRelationshipUsers([])
-    setRelationshipError(null)
-  }
-
-  const handleNavigateToProfile = (userId: string | null) => {
-    if (!userId) {
-      return
-    }
-    router.push(`/profile/${userId}`)
-    closeRelationshipModal()
   }
 
   const handleLike = async (postId: string) => {
@@ -744,14 +685,22 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
           <div className="flex gap-4 text-sm text-gray-500">
             <button
               type="button"
-              onClick={() => setRelationshipModal('followers')}
+              onClick={() => {
+                if (currentUser.userId) {
+                  router.push(`/profile/${currentUser.userId}/connections?tab=followers`)
+                }
+              }}
               className="inline-flex items-center gap-1 hover:underline focus:outline-none"
             >
               <span className="font-semibold text-gray-900">{followerCount}</span> Followers
             </button>
             <button
               type="button"
-              onClick={() => setRelationshipModal('following')}
+              onClick={() => {
+                if (currentUser.userId) {
+                  router.push(`/profile/${currentUser.userId}/connections?tab=following`)
+                }
+              }}
               className="inline-flex items-center gap-1 hover:underline focus:outline-none"
             >
               <span className="font-semibold text-gray-900">{followingCount}</span> Following
@@ -835,87 +784,6 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
         />
       )}
 
-      {/* Followers / Following Modal */}
-      {relationshipModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={closeRelationshipModal}
-        >
-          <div
-            className="bg-white rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden shadow-xl"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">
-                {relationshipModal === 'followers' ? 'Followers' : 'Following'}
-              </h2>
-              <button
-                onClick={closeRelationshipModal}
-                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-                aria-label="Close"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="max-h-[70vh] overflow-y-auto">
-              {isRelationshipLoading ? (
-                <div className="p-6 text-center text-gray-500">Loading...</div>
-              ) : relationshipError ? (
-                <div className="p-6 text-center text-red-500">{relationshipError}</div>
-              ) : relationshipUsers.length === 0 ? (
-                <div className="p-6 text-center text-gray-500">
-                  {relationshipModal === 'followers' ? 'No followers yet.' : 'Not following anyone yet.'}
-                </div>
-              ) : (
-                relationshipUsers.map((relationshipUser) => (
-                  <button
-                    key={relationshipUser.id}
-                    type="button"
-                    onClick={() => handleNavigateToProfile(relationshipUser.userId)}
-                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-start gap-3"
-                  >
-                    {relationshipUser.avatarUrl ? (
-                      <img
-                        src={relationshipUser.avatarUrl}
-                        alt={relationshipUser.name || relationshipUser.userId || 'User'}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-gray-300" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-gray-900 truncate">
-                          {relationshipUser.name || relationshipUser.userId || 'Unknown'}
-                        </span>
-                        {relationshipUser.isSelf && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
-                            You
-                          </span>
-                        )}
-                        {!relationshipUser.isSelf && relationshipUser.isFollowing && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 border border-blue-200">
-                            Following
-                          </span>
-                        )}
-                      </div>
-                      {relationshipUser.userId && (
-                        <p className="text-xs text-gray-500 mb-1">@{relationshipUser.userId}</p>
-                      )}
-                      {relationshipUser.bio && (
-                        <p className="text-sm text-gray-600 line-clamp-2">{relationshipUser.bio}</p>
-                      )}
-                    </div>
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

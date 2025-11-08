@@ -26,7 +26,7 @@ export default function Navbar({ type, profileName, onBack, activeTab: externalA
 
   if (type === 'profile') {
     return (
-      <nav className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3">
+      <nav className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-200 px-4 py-3">
         <div className="flex items-center gap-4">
           <button
             onClick={handleBack}
@@ -59,7 +59,7 @@ export default function Navbar({ type, profileName, onBack, activeTab: externalA
   }
 
   return (
-    <nav className="sticky top-0 z-10 bg-white border-b border-gray-200">
+    <nav className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-200">
       <div className="flex">
         <button
           onClick={() => {
