@@ -38,9 +38,8 @@ export default function Sidebar() {
   return (
     <aside className="fixed left-0 top-0 h-screen w-[20%] border-r border-gray-200 bg-white flex flex-col">
       {/* Logo/App Name */}
-      <div className="p-4 flex items-center gap-3">
-        <img src="/assets/C.png" alt="my C logo" className="w-10 h-10 rounded-full object-cover" />
-        <h1 className="text-2xl font-bold text-gray-900">my C</h1>
+      <div className="p-4">
+        <h1 className="text-2xl font-bold text-gray-900">my X</h1>
       </div>
 
       {/* Navigation */}

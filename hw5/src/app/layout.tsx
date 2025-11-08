@@ -7,11 +7,8 @@ import { PostModalProvider } from '@/components/PostModalProvider'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'my C',
-  description: 'A simplified Twitter-like social web app',
-  icons: {
-    icon: '/assets/C.png',
-  },
+  title: 'my X',
+  description: 'A simplified social app inspired by X',
 }
 
 export default function RootLayout({
