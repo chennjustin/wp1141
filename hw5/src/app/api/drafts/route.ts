@@ -29,7 +29,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser()
-    if (!user) {
+    if (!user?.id) {
       return unauthorizedResponse()
     }
 
@@ -40,11 +40,10 @@ export async function POST(req: NextRequest) {
       return badRequestResponse('Draft cannot be empty')
     }
 
-    const data = {
+    const draftData = {
       content: content?.trim() ?? null,
       mediaUrl: mediaUrl ?? null,
       mediaType: mediaType ?? null,
-      userId: user.id,
     }
 
     let draft
@@ -62,11 +61,14 @@ export async function POST(req: NextRequest) {
 
       draft = await prisma.draft.update({
         where: { id },
-        data,
+        data: draftData,
       })
     } else {
       draft = await prisma.draft.create({
-        data,
+        data: {
+          ...draftData,
+          userId: user.id,
+        },
       })
     }
 
