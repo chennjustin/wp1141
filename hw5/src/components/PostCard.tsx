@@ -61,6 +61,34 @@ export default function PostCard({ post, onLike, onRepost, onComment, onDelete, 
     }
   }
 
+  const renderContent = (text: string) => {
+    const tokens = text.split(/([#@][A-Za-z0-9_]+)/g)
+    return tokens.map((token, index) => {
+      if (!token) return null
+      if (token.startsWith('@') && token.length > 1) {
+        const handle = token.slice(1)
+        return (
+          <Link
+            key={`${token}-${index}`}
+            href={`/profile/${handle}`}
+            className="text-blue-500 hover:underline"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {token}
+          </Link>
+        )
+      }
+      if (token.startsWith('#') && token.length > 1) {
+        return (
+          <span key={`${token}-${index}`} className="text-blue-500 hover:underline">
+            {token}
+          </span>
+        )
+      }
+      return <React.Fragment key={`${token}-${index}`}>{token}</React.Fragment>
+    })
+  }
+
   const handleDelete = async () => {
     if (!isAuthor || !onDelete) return
 
@@ -249,8 +277,7 @@ export default function PostCard({ post, onLike, onRepost, onComment, onDelete, 
               className="text-left w-full"
             >
               <p className="text-gray-900 whitespace-pre-wrap break-words hover:underline">
-                {post.content}
-                {/* TODO: Add hashtag/mention highlighting */}
+                {renderContent(post.content)}
               </p>
             </button>
           </div>

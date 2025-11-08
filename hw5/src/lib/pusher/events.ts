@@ -47,7 +47,7 @@ export interface PostRepliedPayload {
 export interface NotificationCreatedPayload {
   notification: {
     id: string
-    type: 'like' | 'repost' | 'follow' | 'comment'
+    type: 'like' | 'repost' | 'follow' | 'comment' | 'mention'
     senderId: string
     receiverId: string
     postId: string | null

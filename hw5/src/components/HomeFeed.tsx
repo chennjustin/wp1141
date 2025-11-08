@@ -160,23 +160,100 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
       fetchPosts()
     }
 
-    const handleLike = async (postId: string) => {
-      // Find the post
-      const postIndex = posts.findIndex((p) => p.id === postId)
-      if (postIndex === -1) return
+    const handlePostCreated = (post: Post) => {
+      setPosts((currentPosts) => {
+        if (currentPosts.some((existing) => existing.id === post.id)) {
+          return currentPosts
+        }
+        return [{ ...post, replies: post.replies ?? [] }, ...currentPosts]
+      })
+    }
 
-      const post = posts[postIndex]
-      const wasLiked = post.liked || false
-      const previousLikeCount = post.likeCount
-
-      // Optimistic update
-      const updatedPosts = [...posts]
-      updatedPosts[postIndex] = {
-        ...post,
-        liked: !wasLiked,
-        likeCount: wasLiked ? post.likeCount - 1 : post.likeCount + 1,
+    const findPostInTree = (tree: Post[], postId: string): Post | null => {
+      for (const post of tree) {
+        if (post.id === postId) {
+          return post
+        }
+        if (post.replies && post.replies.length > 0) {
+          const found = findPostInTree(post.replies, postId)
+          if (found) {
+            return found
+          }
+        }
       }
-      setPosts(updatedPosts)
+      return null
+    }
+
+    const updatePostInTree = (
+      tree: Post[],
+      postId: string,
+      updater: (post: Post) => Post
+    ): Post[] => {
+      return tree.map((post) => {
+        if (post.id === postId) {
+          return updater(post)
+        }
+
+        if (post.replies && post.replies.length > 0) {
+          const updatedReplies = updatePostInTree(post.replies, postId, updater)
+          if (updatedReplies !== post.replies) {
+            return {
+              ...post,
+              replies: updatedReplies,
+            }
+          }
+        }
+
+        return post
+      })
+    }
+
+    const removePostFromTree = (tree: Post[], postId: string): Post[] => {
+      let mutated = false
+      const result = tree.reduce<Post[]>((acc, post) => {
+        if (post.id === postId) {
+          mutated = true
+          return acc
+        }
+
+        if (post.replies && post.replies.length > 0) {
+          const updatedReplies = removePostFromTree(post.replies, postId)
+          if (updatedReplies !== post.replies) {
+            mutated = true
+            acc.push({
+              ...post,
+              replies: updatedReplies,
+            })
+            return acc
+          }
+        }
+
+        acc.push(post)
+        return acc
+      }, [])
+
+      return mutated ? result : tree
+    }
+
+    const handleLike = async (postId: string) => {
+      let wasLiked = false
+      let previousLikeCount = 0
+
+      setPosts((currentPosts) => {
+        const target = findPostInTree(currentPosts, postId)
+        if (!target) {
+          return currentPosts
+        }
+
+        wasLiked = target.liked || false
+        previousLikeCount = target.likeCount
+
+        return updatePostInTree(currentPosts, postId, (post) => ({
+          ...post,
+          liked: !wasLiked,
+          likeCount: wasLiked ? Math.max(0, post.likeCount - 1) : post.likeCount + 1,
+        }))
+      })
 
       try {
         const response = await fetch('/api/like', {
@@ -194,54 +271,46 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
         const data = await response.json()
         
         // Update with server response (use server's likeCount directly)
-        setPosts((currentPosts) => {
-          const currentPostIndex = currentPosts.findIndex((p) => p.id === postId)
-          if (currentPostIndex === -1) return currentPosts
-          
-          const finalPosts = [...currentPosts]
-          finalPosts[currentPostIndex] = {
-            ...currentPosts[currentPostIndex],
+        setPosts((currentPosts) =>
+          updatePostInTree(currentPosts, postId, (post) => ({
+            ...post,
             liked: data.liked,
-            likeCount: data.likeCount, // Use server's count directly
-          }
-          return finalPosts
-        })
+            likeCount: data.likeCount,
+          }))
+        )
       } catch (error) {
         console.error('Error toggling like:', error)
         
         // Rollback on error (use current state)
-        setPosts((currentPosts) => {
-          const currentPostIndex = currentPosts.findIndex((p) => p.id === postId)
-          if (currentPostIndex === -1) return currentPosts
-          
-          const rollbackPosts = [...currentPosts]
-          rollbackPosts[currentPostIndex] = {
-            ...currentPosts[currentPostIndex],
+        setPosts((currentPosts) =>
+          updatePostInTree(currentPosts, postId, (post) => ({
+            ...post,
             liked: wasLiked,
             likeCount: previousLikeCount,
-          }
-          return rollbackPosts
-        })
+          }))
+        )
       }
     }
 
     const handleRepost = async (postId: string) => {
-      // Find the post
-      const postIndex = posts.findIndex((p) => p.id === postId)
-      if (postIndex === -1) return
+      let wasReposted = false
+      let previousRepostCount = 0
 
-      const post = posts[postIndex]
-      const wasReposted = post.reposted || false
-      const previousRepostCount = post.repostCount
+      setPosts((currentPosts) => {
+        const target = findPostInTree(currentPosts, postId)
+        if (!target) {
+          return currentPosts
+        }
 
-      // Optimistic update
-      const updatedPosts = [...posts]
-      updatedPosts[postIndex] = {
-        ...post,
-        reposted: !wasReposted,
-        repostCount: wasReposted ? post.repostCount - 1 : post.repostCount + 1,
-      }
-      setPosts(updatedPosts)
+        wasReposted = target.reposted || false
+        previousRepostCount = target.repostCount
+
+        return updatePostInTree(currentPosts, postId, (post) => ({
+          ...post,
+          reposted: !wasReposted,
+          repostCount: wasReposted ? Math.max(0, post.repostCount - 1) : post.repostCount + 1,
+        }))
+      })
 
       try {
         const response = await fetch('/api/repost', {
@@ -259,40 +328,29 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
         const data = await response.json()
 
         // Update with server response (use current state)
-        setPosts((currentPosts) => {
-          const currentPostIndex = currentPosts.findIndex((p) => p.id === postId)
-          if (currentPostIndex === -1) return currentPosts
-
-          const currentPost = currentPosts[currentPostIndex]
-          const finalPosts = [...currentPosts]
-          finalPosts[currentPostIndex] = {
-            ...currentPost,
+        setPosts((currentPosts) =>
+          updatePostInTree(currentPosts, postId, (post) => ({
+            ...post,
             reposted: data.reposted,
             repostCount: data.repostCount,
-          }
-          return finalPosts
-        })
+          }))
+        )
       } catch (error) {
         console.error('Error toggling repost:', error)
 
         // Rollback on error (use current state)
-        setPosts((currentPosts) => {
-          const currentPostIndex = currentPosts.findIndex((p) => p.id === postId)
-          if (currentPostIndex === -1) return currentPosts
-
-          const rollbackPosts = [...currentPosts]
-          rollbackPosts[currentPostIndex] = {
-            ...currentPosts[currentPostIndex],
+        setPosts((currentPosts) =>
+          updatePostInTree(currentPosts, postId, (post) => ({
+            ...post,
             reposted: wasReposted,
             repostCount: previousRepostCount,
-          }
-          return rollbackPosts
-        })
+          }))
+        )
       }
     }
 
     const handleComment = (postId: string) => {
-      const post = posts.find((p) => p.id === postId)
+      const post = findPostInTree(posts, postId)
       if (post) {
         setReplyTarget(post)
       }
@@ -324,10 +382,33 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
       }
     }
 
+    const renderPostThread = (post: Post, depth = 0) => {
+      const spacingClass = depth > 0 ? 'pl-6 border-l border-gray-200' : ''
+
+      return (
+        <div key={post.id} className={spacingClass}>
+          <PostCard
+            post={post}
+            onLike={handleLike}
+            onRepost={handleRepost}
+            onComment={handleComment}
+            onDelete={(postId) => {
+              setPosts((currentPosts) => removePostFromTree(currentPosts, postId))
+            }}
+          />
+          {post.replies && post.replies.length > 0 && (
+            <div className="flex flex-col">
+              {post.replies.map((reply) => renderPostThread(reply, depth + 1))}
+            </div>
+          )}
+        </div>
+      )
+    }
+
     return (
       <div className="flex flex-col">
         {/* Inline Composer */}
-        <InlineComposer />
+        <InlineComposer onPostCreated={handlePostCreated} />
 
         {/* Post List */}
         <div className="flex flex-col">
@@ -371,18 +452,7 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
               </p>
             </div>
           ) : (
-            posts.map((post) => (
-              <PostCard
-                key={post.id}
-                post={post}
-                onLike={handleLike}
-                onRepost={handleRepost}
-                onComment={handleComment}
-                onDelete={(postId) => {
-                  setPosts((currentPosts) => currentPosts.filter((p) => p.id !== postId))
-                }}
-              />
-            ))
+            posts.map((post) => renderPostThread(post))
           )}
         </div>
 

@@ -14,7 +14,7 @@ import { serializeAuthor } from './serializers'
  */
 export async function createNotification(
   prisma: PrismaClient,
-  type: 'like' | 'repost' | 'follow' | 'comment',
+  type: 'like' | 'repost' | 'follow' | 'comment' | 'mention',
   senderId: string,
   receiverId: string,
   postId?: string | null
@@ -102,7 +102,7 @@ export async function createNotification(
       const payload: NotificationCreatedPayload = {
         notification: {
           id: notification.id,
-          type: notification.type as 'like' | 'repost' | 'follow' | 'comment',
+          type: notification.type as 'like' | 'repost' | 'follow' | 'comment' | 'mention',
           senderId: notification.senderId,
           receiverId: notification.receiverId,
           postId: notification.postId,

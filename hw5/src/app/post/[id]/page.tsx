@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import AppLayout from '@/components/AppLayout'
-import Navbar from '@/components/Navbar'
 import PostDetailPage from '@/components/PostDetailPage'
 import { Post } from '@/types/post'
 import { getNestedReplies } from '@/lib/post-helpers'
@@ -107,7 +106,6 @@ export default async function PostPage({ params }: PostPageProps) {
 
   return (
     <AppLayout>
-      <Navbar type="profile" profileName="Post" />
       <PostDetailPage parentPost={parentPost} replies={replies} />
     </AppLayout>
   )

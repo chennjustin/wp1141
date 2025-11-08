@@ -4,6 +4,7 @@ import { getCurrentUser, unauthorizedResponse, badRequestResponse } from '@/lib/
 import { pusherServer } from '@/lib/pusher/server'
 import { PUSHER_EVENTS } from '@/lib/pusher/events'
 import { serializeAuthor } from '@/lib/serializers'
+import { createNotification } from '@/lib/notification-helpers'
 
 export const runtime = 'nodejs'
 
@@ -58,7 +59,108 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    // 格式化回傳資料
+    const postIds = posts.map((post) => post.id)
+
+    type FormattedReply = {
+      id: string
+      content: string
+      authorId: string
+      createdAt: string
+      updatedAt: string
+      mediaUrl: string | null
+      mediaType: string | null
+      author: ReturnType<typeof serializeAuthor>
+      likeCount: number
+      repostCount: number
+      commentCount: number
+      liked: boolean
+      reposted: boolean
+    }
+
+    const repliesByParent = new Map<string, FormattedReply[]>()
+
+    if (postIds.length > 0) {
+      const replies = await prisma.post.findMany({
+        where: {
+          parentId: {
+            in: postIds,
+          },
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+        include: {
+          author: {
+            select: {
+              id: true,
+              userId: true,
+              name: true,
+              image: true,
+              avatarUrl: true,
+            },
+          },
+          reposts: user
+            ? {
+                where: {
+                  userId: user.id,
+                },
+                select: {
+                  userId: true,
+                },
+              }
+            : false,
+          likes: user
+            ? {
+                where: {
+                  userId: user.id,
+                },
+                select: {
+                  userId: true,
+                },
+              }
+            : false,
+          _count: {
+            select: {
+              likes: true,
+              replies: true,
+              reposts: true,
+            },
+          },
+          parent: {
+            select: {
+              id: true,
+            },
+          },
+        },
+      })
+
+      replies.forEach((reply) => {
+        if (!reply.parent) {
+          return
+        }
+
+        const formattedReply: FormattedReply = {
+          id: reply.id,
+          content: reply.content,
+          authorId: reply.authorId,
+          createdAt: reply.createdAt.toISOString(),
+          updatedAt: reply.updatedAt.toISOString(),
+          mediaUrl: reply.mediaUrl,
+          mediaType: reply.mediaType,
+          author: serializeAuthor(reply.author),
+          likeCount: reply._count.likes,
+          repostCount: reply._count.reposts,
+          commentCount: reply._count.replies,
+          liked: user ? (reply.likes as any)?.length > 0 : false,
+          reposted: user ? (reply.reposts as any)?.length > 0 : false,
+        }
+
+        const existing = repliesByParent.get(reply.parent.id) ?? []
+        existing.push(formattedReply)
+        repliesByParent.set(reply.parent.id, existing)
+      })
+    }
+
     const formattedPosts = posts.map((post) => ({
       id: post.id,
       content: post.content,
@@ -73,6 +175,7 @@ export async function GET(req: NextRequest) {
       commentCount: post._count.replies,
       reposted: user ? (post.reposts as any)?.length > 0 : false,
       liked: user ? (post.likes as any)?.length > 0 : false,
+      replies: repliesByParent.get(post.id) ?? [],
     }))
 
     return NextResponse.json(formattedPosts)
@@ -100,7 +203,9 @@ export async function POST(req: NextRequest) {
       return badRequestResponse('Content is required')
     }
 
-    if (content.length > 280) {
+    const trimmedContent = content.trim()
+
+    if (trimmedContent.length > 280) {
       return badRequestResponse('Content must be 280 characters or less')
     }
 
@@ -113,7 +218,7 @@ export async function POST(req: NextRequest) {
 
     const post = await prisma.post.create({
       data: {
-        content: content.trim(),
+        content: trimmedContent,
         authorId,
         mediaUrl: mediaUrl || null,
         mediaType: mediaType || null,
@@ -150,6 +255,36 @@ export async function POST(req: NextRequest) {
       likeCount: post._count.likes,
       repostCount: post._count.reposts,
       commentCount: post._count.replies,
+    }
+
+    // Send mention notifications
+    const mentionMatches = Array.from(trimmedContent.matchAll(/(^|\s)@([A-Za-z0-9_]{1,32})/g))
+    const mentionHandles = Array.from(
+      new Set(mentionMatches.map((match) => match[2].toLowerCase()))
+    )
+
+    if (mentionHandles.length > 0) {
+      const mentionedUsers = await prisma.user.findMany({
+        where: {
+          OR: mentionHandles.map((handle) => ({
+            userId: {
+              equals: handle,
+              mode: 'insensitive',
+            },
+          })),
+        },
+        select: {
+          id: true,
+        },
+      })
+
+      await Promise.all(
+        mentionedUsers
+          .filter((mentioned) => mentioned.id !== authorId)
+          .map((mentioned) =>
+            createNotification(prisma, 'mention', authorId, mentioned.id, post.id)
+          )
+      )
     }
 
     // Trigger Pusher event

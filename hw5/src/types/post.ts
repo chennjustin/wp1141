@@ -17,6 +17,7 @@ export interface Post {
   mediaUrl: string | null
   mediaType: 'image' | 'video' | null
   author: BasicAuthor
+  replies?: Post[]
   parent?: {
     id: string
     content: string

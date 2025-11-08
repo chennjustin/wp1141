@@ -332,12 +332,20 @@ export default function PostDetailPage({ parentPost: initialParentPost, replies:
     }
   }
 
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back()
+    } else {
+      router.push('/home')
+    }
+  }
+
   return (
     <div className="flex flex-col">
       {/* Back Button */}
       <div className="px-4 py-3 border-b border-gray-200">
         <button
-          onClick={() => router.push('/home')}
+          onClick={handleBack}
           className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors"
         >
           <svg
@@ -354,7 +362,7 @@ export default function PostDetailPage({ parentPost: initialParentPost, replies:
               d="M15 19l-7-7 7-7"
             />
           </svg>
-          <span className="font-semibold">Back</span>
+          <span className="font-semibold">Post</span>
         </button>
       </div>
 

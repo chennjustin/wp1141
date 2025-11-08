@@ -9,7 +9,7 @@ import Pusher from 'pusher-js'
 
 interface Notification {
   id: string
-  type: 'like' | 'repost' | 'follow' | 'comment'
+  type: 'like' | 'repost' | 'follow' | 'comment' | 'mention'
   senderId: string
   receiverId: string
   postId: string | null
@@ -173,6 +173,8 @@ export default function NotificationsPage() {
         return `${senderName} commented on your post`
       case 'follow':
         return `${senderName} followed you`
+      case 'mention':
+        return `${senderName} mentioned you`
       default:
         return 'New notification'
     }
@@ -317,6 +319,27 @@ export default function NotificationsPage() {
                       strokeLinejoin="round"
                       strokeWidth={2}
                       d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                )}
+                {notification.type === 'mention' && (
+                  <svg
+                    className="w-6 h-6 text-blue-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M16 8a4 4 0 00-8 0v3a4 4 0 008 0V9m4-1v3a8 8 0 11-16 0V9"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 12a1 1 0 001-1V8a1 1 0 00-2 0v3a1 1 0 001 1z"
                     />
                   </svg>
                 )}

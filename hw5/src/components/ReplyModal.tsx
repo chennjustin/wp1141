@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { Post } from '@/types/post'
 
@@ -17,20 +17,226 @@ export default function ReplyModal({ open, onClose, parentPost, onSubmit }: Repl
   const [content, setContent] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const maxLength = 280
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null)
+  const [mentionStartIndex, setMentionStartIndex] = useState<number | null>(null)
+  const [suggestions, setSuggestions] = useState<
+    Array<{
+      id: string
+      userId: string
+      name: string | null
+      avatarUrl: string | null
+      image: string | null
+    }>
+  >([])
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false)
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [suggestionPosition, setSuggestionPosition] = useState<{ top: number; left: number }>({
+    top: 0,
+    left: 0,
+  })
 
   useEffect(() => {
     if (!open) {
       setContent('')
       setIsSubmitting(false)
+      setMentionQuery(null)
+      setMentionStartIndex(null)
+      setSuggestions([])
+      setShowSuggestions(false)
     }
   }, [open])
 
+  const extractMentionInfo = (value: string, cursorPosition: number) => {
+    const uptoCursor = value.slice(0, cursorPosition)
+    const mentionMatch = uptoCursor.match(/(^|\s)@([A-Za-z0-9_]{0,32})$/)
+    if (!mentionMatch) {
+      return null
+    }
+
+    const query = mentionMatch[2]
+    const startIndex = cursorPosition - (query.length + 1)
+
+    return {
+      query,
+      startIndex,
+    }
+  }
+
+  const calculateSuggestionPosition = () => {
+    const textarea = textareaRef.current
+    if (!textarea) {
+      return
+    }
+
+    const style = window.getComputedStyle(textarea)
+    const mirror = document.createElement('div')
+    const properties = [
+      'boxSizing',
+      'width',
+      'height',
+      'fontSize',
+      'fontFamily',
+      'fontWeight',
+      'fontStyle',
+      'letterSpacing',
+      'textTransform',
+      'textAlign',
+      'paddingTop',
+      'paddingRight',
+      'paddingBottom',
+      'paddingLeft',
+      'borderTopWidth',
+      'borderRightWidth',
+      'borderBottomWidth',
+      'borderLeftWidth',
+      'lineHeight',
+    ]
+
+    properties.forEach((prop) => {
+      mirror.style.setProperty(prop, style.getPropertyValue(prop))
+    })
+
+    mirror.style.position = 'absolute'
+    mirror.style.visibility = 'hidden'
+    mirror.style.whiteSpace = 'pre-wrap'
+    mirror.style.wordWrap = 'break-word'
+    mirror.style.top = '0'
+    mirror.style.left = '0'
+    mirror.style.pointerEvents = 'none'
+    mirror.style.overflow = 'hidden'
+    mirror.style.width = `${textarea.clientWidth}px`
+
+    const selectionEnd = textarea.selectionStart ?? 0
+    const value = textarea.value
+    mirror.textContent = value.substring(0, selectionEnd)
+
+    const span = document.createElement('span')
+    span.textContent = value.substring(selectionEnd) || '\u200b'
+    mirror.appendChild(span)
+    document.body.appendChild(mirror)
+
+    const spanRect = span.getBoundingClientRect()
+    const mirrorRect = mirror.getBoundingClientRect()
+
+    const top =
+      spanRect.top - mirrorRect.top + textarea.scrollTop + parseFloat(style.lineHeight || '20')
+    const left = spanRect.left - mirrorRect.left + textarea.scrollLeft
+
+    document.body.removeChild(mirror)
+
+    setSuggestionPosition({
+      top,
+      left,
+    })
+  }
+
+  const updateMentionState = (value: string, cursorPosition: number) => {
+    const info = extractMentionInfo(value, cursorPosition)
+    if (!info) {
+      setMentionQuery(null)
+      setMentionStartIndex(null)
+      setShowSuggestions(false)
+      return
+    }
+
+    setMentionQuery(info.query)
+    setMentionStartIndex(info.startIndex)
+    setShowSuggestions(true)
+    calculateSuggestionPosition()
+  }
+
+  useEffect(() => {
+    if (mentionQuery === null) {
+      setSuggestions([])
+      setIsLoadingSuggestions(false)
+      return
+    }
+
+    const controller = new AbortController()
+    const delay = setTimeout(async () => {
+      try {
+        setIsLoadingSuggestions(true)
+        const response = await fetch(
+          `/api/user/mention-suggestions?q=${encodeURIComponent(mentionQuery)}`,
+          { signal: controller.signal }
+        )
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch mention suggestions')
+        }
+
+        const result = await response.json()
+        setSuggestions(result.users || [])
+      } catch (error) {
+        if ((error as any)?.name !== 'AbortError') {
+          console.error('Error fetching mention suggestions:', error)
+        }
+      } finally {
+        setIsLoadingSuggestions(false)
+      }
+    }, 200)
+
+    return () => {
+      controller.abort()
+      clearTimeout(delay)
+    }
+  }, [mentionQuery])
+
+  const handleContentChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = event.target.value
+    setContent(newValue)
+
+    const cursor = event.target.selectionStart ?? newValue.length
+    updateMentionState(newValue, cursor)
+  }
+
+  const handleCaretUpdate = (event: React.SyntheticEvent<HTMLTextAreaElement>) => {
+    const target = event.target as HTMLTextAreaElement
+    const cursor = target.selectionStart ?? content.length
+    updateMentionState(target.value, cursor)
+  }
+
+  const handleMentionSelection = (suggestion: {
+    id: string
+    userId: string
+    name: string | null
+    avatarUrl: string | null
+    image: string | null
+  }) => {
+    if (mentionStartIndex === null) {
+      return
+    }
+
+    const before = content.slice(0, mentionStartIndex)
+    const queryLength = mentionQuery ? mentionQuery.length : 0
+    const after = content.slice(mentionStartIndex + 1 + queryLength)
+    const mentionText = `@${suggestion.userId}`
+    const needsTrailingSpace = after.length === 0 || !/^\s/.test(after)
+    const insertion = mentionText + (needsTrailingSpace ? ' ' : '')
+    const newContent = `${before}${insertion}${after}`
+
+    setContent(newContent)
+    setShowSuggestions(false)
+    setMentionQuery(null)
+    setMentionStartIndex(null)
+
+    requestAnimationFrame(() => {
+      if (textareaRef.current) {
+        const newCursor = before.length + insertion.length
+        textareaRef.current.focus()
+        textareaRef.current.setSelectionRange(newCursor, newCursor)
+      }
+    })
+  }
+
   const handleSubmit = async () => {
-    if (content.trim().length === 0 || content.length > maxLength) return
+    const trimmed = content.trim()
+    if (trimmed.length === 0 || trimmed.length > maxLength) return
 
     setIsSubmitting(true)
     try {
-      await onSubmit(content.trim())
+      await onSubmit(trimmed)
       setContent('')
       onClose()
     } catch (error) {
@@ -128,15 +334,71 @@ export default function ReplyModal({ open, onClose, parentPost, onSubmit }: Repl
             </div>
 
             {/* Textarea */}
-            <div className="flex-1">
+            <div className="flex-1 relative">
               <textarea
+                ref={textareaRef}
                 value={content}
-                onChange={(e) => setContent(e.target.value)}
+                onChange={handleContentChange}
+                onClick={handleCaretUpdate}
+                onKeyUp={handleCaretUpdate}
+                onSelect={handleCaretUpdate}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape' && showSuggestions) {
+                    setShowSuggestions(false)
+                    setMentionQuery(null)
+                    setMentionStartIndex(null)
+                  }
+                }}
                 placeholder="Post your reply"
                 className="w-full min-h-[150px] resize-none border-none outline-none text-lg placeholder-gray-500"
                 maxLength={maxLength}
                 autoFocus
               />
+              {showSuggestions && (isLoadingSuggestions || suggestions.length > 0) && (
+                <div
+                  className="absolute bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden z-20"
+                  style={{
+                    top: suggestionPosition.top + 4,
+                    left: suggestionPosition.left,
+                    minWidth: '220px',
+                    maxWidth: '100%',
+                  }}
+                >
+                  {isLoadingSuggestions ? (
+                    <div className="p-3 text-sm text-gray-500">載入中…</div>
+                  ) : suggestions.length === 0 ? (
+                    <div className="p-3 text-sm text-gray-500">沒有符合的使用者</div>
+                  ) : (
+                    suggestions.map((suggestion) => (
+                      <button
+                        key={suggestion.id}
+                        type="button"
+                        onMouseDown={(event) => {
+                          event.preventDefault()
+                          handleMentionSelection(suggestion)
+                        }}
+                        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
+                      >
+                        {suggestion.avatarUrl || suggestion.image ? (
+                          <img
+                            src={(suggestion.avatarUrl || suggestion.image) || ''}
+                            alt={suggestion.name || suggestion.userId}
+                            className="w-8 h-8 rounded-full"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-gray-200" />
+                        )}
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold text-gray-900">
+                            {suggestion.name || suggestion.userId}
+                          </span>
+                          <span className="text-xs text-gray-500">@{suggestion.userId}</span>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
               <div className="mt-4 flex items-center justify-between">
                 <span
                   className={`text-sm ${
