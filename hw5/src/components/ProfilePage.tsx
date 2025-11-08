@@ -223,7 +223,7 @@ function LikedPostsTab({ userId }: { userId: string }) {
   }
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col max-w-[620px] mx-auto">
       {likedPosts.map((post) => (
         <PostCard
           key={post.id}
@@ -643,17 +643,17 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
       <div className="px-4 pb-4 border-b border-gray-200">
         {/* Avatar */}
         <div className="flex justify-between items-start -mt-16 mb-4">
-              <div className="flex-1">
-                {currentUser.avatarUrl || currentUser.image ? (
-                  <img
-                    src={currentUser.avatarUrl || currentUser.image || ''}
-                    alt={currentUser.name || 'User'}
-                    className="w-32 h-32 rounded-full border-4 border-white object-cover"
-                  />
-                ) : (
-                  <div className="w-32 h-32 rounded-full border-4 border-white bg-gray-300" />
-                )}
-              </div>
+          <div className="flex-1">
+            {currentUser.avatarUrl || currentUser.image ? (
+              <img
+                src={currentUser.avatarUrl || currentUser.image || ''}
+                alt={currentUser.name || 'User'}
+                className="w-32 h-32 rounded-full border-4 border-white object-cover"
+              />
+            ) : (
+              <div className="w-32 h-32 rounded-full border-4 border-white bg-gray-300" />
+            )}
+          </div>
           <div className="mt-20">
             {isSelf ? (
               <button

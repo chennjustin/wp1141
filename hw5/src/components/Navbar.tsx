@@ -26,8 +26,8 @@ export default function Navbar({ type, profileName, onBack, activeTab: externalA
 
   if (type === 'profile') {
     return (
-      <nav className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-200 px-4 py-3">
-        <div className="flex items-center gap-4">
+      <nav className="sticky top-0 z-30 bg-white/90 backdrop-blur">
+        <div className="px-4 py-3 flex items-center gap-4">
           <button
             onClick={handleBack}
             className="p-2 rounded-full hover:bg-gray-100 transition-colors"
@@ -60,7 +60,7 @@ export default function Navbar({ type, profileName, onBack, activeTab: externalA
 
   return (
     <nav className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-200">
-      <div className="flex">
+        <div className="max-w-[620px] mx-auto flex border-b border-gray-200">
         <button
           onClick={() => {
             if (onTabChange) {

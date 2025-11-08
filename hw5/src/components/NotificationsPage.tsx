@@ -117,25 +117,39 @@ export default function NotificationsPage() {
     }
   }, [currentUserId])
 
-  const handleNotificationClick = async (notification: Notification) => {
-    // 標記為已讀
-    if (!notification.read) {
-      try {
-        await fetch('/api/notification', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ notificationId: notification.id }),
-        })
+  const markNotificationAsRead = async (notificationId: string) => {
+    let shouldDecrement = false
+    setNotifications((current) =>
+      current.map((n) => {
+        if (n.id === notificationId) {
+          if (!n.read) {
+            shouldDecrement = true
+          }
+          return { ...n, read: true }
+        }
+        return n
+      })
+    )
+    if (shouldDecrement) {
+      setUnreadCount((current) => Math.max(0, current - 1))
+    }
 
-        setNotifications((current) =>
-          current.map((n) => (n.id === notification.id ? { ...n, read: true } : n))
-        )
-        setUnreadCount((current) => Math.max(0, current - 1))
-      } catch (error) {
-        console.error('Error marking notification as read:', error)
-      }
+    try {
+      await fetch('/api/notification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ notificationId }),
+      })
+    } catch (error) {
+      console.error('Error marking notification as read:', error)
+    }
+  }
+
+  const handleNotificationClick = async (notification: Notification) => {
+    if (!notification.read) {
+      await markNotificationAsRead(notification.id)
     }
 
     // 導向對應的貼文或使用者
@@ -206,13 +220,11 @@ export default function NotificationsPage() {
 
   return (
     <div className="flex flex-col">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3">
-        <h1 className="text-xl font-bold text-gray-900">Notifications</h1>
-        {unreadCount > 0 && (
-          <p className="text-sm text-gray-500 mt-1">{unreadCount} unread</p>
-        )}
-      </div>
+      {unreadCount > 0 && (
+        <div className="px-4 py-3 text-sm text-gray-500 border-b border-gray-200">
+          {unreadCount} unread
+        </div>
+      )}
 
       {/* Notifications List */}
       <div className="flex flex-col">
@@ -267,7 +279,7 @@ export default function NotificationsPage() {
               </div>
 
               {/* Icon */}
-              <div className="flex-shrink-0">
+              <div className="flex-shrink-0 flex flex-col items-end gap-2">
                 {notification.type === 'like' && (
                   <svg
                     className="w-6 h-6 text-red-500"
@@ -342,6 +354,18 @@ export default function NotificationsPage() {
                       d="M12 12a1 1 0 001-1V8a1 1 0 00-2 0v3a1 1 0 001 1z"
                     />
                   </svg>
+                )}
+                {!notification.read && (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      markNotificationAsRead(notification.id)
+                    }}
+                    className="text-xs font-semibold text-blue-500 hover:text-blue-600"
+                  >
+                    Mark read
+                  </button>
                 )}
               </div>
             </button>
