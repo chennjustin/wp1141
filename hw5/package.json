@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "cross-env PORT=3000 next dev",
-    "build": "npx prisma generate && npm run build",
+    "build": "npm run build",
     "start": "cross-env PORT=3000 next start",
     "lint": "next lint"
   },
