@@ -51,6 +51,15 @@ export const authOptions: NextAuthOptions = {
           !token.name // token 中沒有 name（可能是舊 token）
 
         if (shouldRefreshUserData) {
+          // 確保 Prisma 連線（防止 build 階段連線出錯）
+          try {
+            await prisma.$connect()
+          } catch (connectError) {
+            // Build 階段或資料庫未就緒時，跳過查詢
+            console.warn('⚠️ Prisma not connected yet (build phase?):', connectError)
+            return token
+          }
+
           const dbUser = await (prisma.user.findUnique({
             where: { id: userId },
             select: {
