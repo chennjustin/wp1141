@@ -9,7 +9,7 @@ import EditProfileModal from './EditProfileModal'
 import { User } from '@/types/user'
 import { Post } from '@/types/post'
 import { pusherClient } from '@/lib/pusher/client'
-import { PUSHER_EVENTS, PostLikedPayload, PostRepostedPayload, PostRepliedPayload } from '@/lib/pusher/events'
+import { PUSHER_EVENTS, PostCreatedPayload, PostLikedPayload, PostRepostedPayload, PostRepliedPayload } from '@/lib/pusher/events'
 import Pusher from 'pusher-js'
 
 // LikedPostsTab component
@@ -257,6 +257,19 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
   const [currentUser, setCurrentUser] = useState<User>(user)
   const pusherChannelRef = useRef<any>(null)
 
+  useEffect(() => {
+    setPosts(initialPosts)
+  }, [initialPosts])
+
+  useEffect(() => {
+    setCurrentUser(user)
+    setFollowerCount(user._count.followers)
+  }, [user])
+
+  useEffect(() => {
+    setIsFollowing(initialFollowing)
+  }, [initialFollowing])
+
   const handleFollow = async () => {
     if (isSelf) return
 
@@ -329,22 +342,21 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
 
     const updatedUser = await response.json()
 
-    // 更新本地狀態
-    setCurrentUser({
-      ...currentUser,
-      name: updatedUser.name,
-      bio: updatedUser.bio,
-      avatarUrl: updatedUser.avatarUrl,
-      coverUrl: updatedUser.coverUrl,
-    })
+    setCurrentUser((prev) => ({
+      ...prev,
+      ...updatedUser,
+    }))
+    setFollowerCount(updatedUser._count?.followers ?? followerCount)
 
     // 更新 NextAuth session
     await update({
-      ...session?.user,
-      name: updatedUser.name,
-      bio: updatedUser.bio,
-      avatarUrl: updatedUser.avatarUrl,
-      coverUrl: updatedUser.coverUrl,
+      user: {
+        ...(session?.user ?? {}),
+        name: updatedUser.name,
+        bio: updatedUser.bio,
+        avatarUrl: updatedUser.avatarUrl,
+        coverUrl: updatedUser.coverUrl,
+      },
     })
 
     // 重新載入頁面以確保所有資料同步
@@ -526,6 +538,36 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
 
       pusherChannelRef.current = channel
 
+      channel.bind(PUSHER_EVENTS.POST_CREATED, (data: PostCreatedPayload) => {
+        if (data.post.authorId !== user.id) {
+          return
+        }
+        setPosts((currentPosts) => {
+          if (currentPosts.some((post) => post.id === data.post.id)) {
+            return currentPosts
+          }
+          const formattedPost: Post = {
+            id: data.post.id,
+            content: data.post.content,
+            authorId: data.post.authorId,
+            createdAt: data.post.createdAt,
+            updatedAt: data.post.updatedAt,
+            mediaUrl: (data.post as any).mediaUrl ?? null,
+            mediaType: (data.post as any).mediaType ?? null,
+            author: {
+              ...data.post.author,
+            },
+            likeCount: data.post.likeCount,
+            repostCount: data.post.repostCount,
+            commentCount: data.post.commentCount,
+            liked: false,
+            reposted: false,
+            repostedByMe: false,
+          }
+          return [formattedPost, ...currentPosts]
+        })
+      })
+
       // Handle post liked - update if post belongs to this user
       channel.bind(PUSHER_EVENTS.POST_LIKED, (data: PostLikedPayload) => {
         setPosts((currentPosts) => {
@@ -579,7 +621,7 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
         pusherChannelRef.current = null
       }
     }
-  }, [user.id])
+  }, [user.id, currentUserId])
 
   return (
     <div className="flex flex-col">

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { usePostModal } from './PostModalProvider'
 import MediaUploader from './MediaUploader'
 
@@ -12,6 +13,7 @@ interface PostModalProps {
 export default function PostModal({ onPostCreated }: PostModalProps) {
   const { isOpen, closeModal } = usePostModal()
   const { data: session } = useSession()
+  const router = useRouter()
   const currentUser = session?.user
   const [content, setContent] = useState('')
   const [mediaUrl, setMediaUrl] = useState<string | null>(null)
@@ -64,6 +66,7 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
       if (onPostCreated) {
         onPostCreated()
       }
+      router.refresh()
     } catch (error) {
       console.error('Error creating post:', error)
       alert(error instanceof Error ? error.message : 'Failed to create post')
