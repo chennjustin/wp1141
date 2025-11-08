@@ -2,11 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser, unauthorizedResponse, badRequestResponse, notFoundResponse, forbiddenResponse } from '@/lib/api-helpers'
 
-export const dynamic = 'force-dynamic'
-export const fetchCache = 'force-no-store'
-export const revalidate = 0
-export const runtime = 'nodejs'
-
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
