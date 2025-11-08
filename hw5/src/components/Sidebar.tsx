@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { usePostModal } from './PostModalProvider'
@@ -10,6 +11,29 @@ export default function Sidebar() {
   const { openModal } = usePostModal()
   const { data: session } = useSession()
   const currentUser = session?.user
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
+  const accountSectionRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        accountSectionRef.current &&
+        event.target instanceof Node &&
+        !accountSectionRef.current.contains(event.target)
+      ) {
+        setIsAccountMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
+  const handleAccountClick = () => {
+    setIsAccountMenuOpen((prev) => !prev)
+  }
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-[20%] border-r border-gray-200 bg-white flex flex-col">
@@ -92,7 +116,7 @@ export default function Sidebar() {
 
         {/* Post Button - Highlighted */}
         <button
-          onClick={openModal}
+          onClick={() => openModal()}
           className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors font-semibold"
         >
           <svg
@@ -115,8 +139,14 @@ export default function Sidebar() {
 
       {/* User Info */}
       {currentUser && (
-        <div className="p-4 border-t border-gray-200">
-          <div className="flex items-center gap-3 mb-3">
+        <div className="p-4 border-t border-gray-200 relative" ref={accountSectionRef}>
+          <button
+            type="button"
+            onClick={handleAccountClick}
+            className="w-full flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-gray-100 transition-colors focus:outline-none"
+            aria-expanded={isAccountMenuOpen}
+            aria-haspopup="true"
+          >
             {currentUser?.avatarUrl || currentUser?.image ? (
               <img
                 src={(currentUser?.avatarUrl || currentUser?.image) || ''}
@@ -126,18 +156,40 @@ export default function Sidebar() {
             ) : (
               <div className="w-10 h-10 rounded-full bg-gray-300" />
             )}
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 text-left">
               <p className="text-sm font-semibold text-gray-900 truncate">
                 {currentUser.name || 'Unknown'}
               </p>
               {currentUser.userId && (
-                <p className="text-sm text-gray-500 truncate">
-                  @{currentUser.userId}
-                </p>
+                <p className="text-sm text-gray-500 truncate">@{currentUser.userId}</p>
               )}
             </div>
-          </div>
-          <LogoutButton />
+            <svg
+              className={`w-4 h-4 text-gray-500 transition-transform ${isAccountMenuOpen ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {isAccountMenuOpen && (
+            <div className="absolute bottom-full left-4 right-4 mb-3 rounded-xl border border-gray-200 bg-white shadow-xl">
+              <div className="px-4 py-3">
+                <p className="text-sm font-semibold text-gray-900 truncate">
+                  {currentUser.name || 'Unknown'}
+                </p>
+                {currentUser.userId && (
+                  <p className="text-sm text-gray-500 truncate">@{currentUser.userId}</p>
+                )}
+              </div>
+              <div className="border-t border-gray-200 px-4 py-3">
+                <LogoutButton />
+              </div>
+            </div>
+          )}
         </div>
       )}
     </aside>
