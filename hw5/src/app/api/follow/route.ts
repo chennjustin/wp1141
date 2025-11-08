@@ -3,6 +3,11 @@ import { prisma } from '@/lib/prisma'
 import { getCurrentUser, unauthorizedResponse, badRequestResponse, notFoundResponse, forbiddenResponse } from '@/lib/api-helpers'
 import { createNotification } from '@/lib/notification-helpers'
 
+export const dynamic = 'force-dynamic'
+export const fetchCache = 'force-no-store'
+export const revalidate = 0
+export const runtime = 'nodejs'
+
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser()

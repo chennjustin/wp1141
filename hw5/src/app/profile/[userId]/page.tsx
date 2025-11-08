@@ -7,6 +7,10 @@ import AppLayout from '@/components/AppLayout'
 import Navbar from '@/components/Navbar'
 import ProfilePage from '@/components/ProfilePage'
 
+export const dynamic = 'force-dynamic'
+export const fetchCache = 'force-no-store'
+export const revalidate = 0
+
 interface ProfilePageProps {
   params: {
     userId: string

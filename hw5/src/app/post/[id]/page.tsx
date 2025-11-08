@@ -9,6 +9,10 @@ import { Post } from '@/types/post'
 import { getNestedReplies } from '@/lib/post-helpers'
 import { serializeAuthor } from '@/lib/serializers'
 
+export const dynamic = 'force-dynamic'
+export const fetchCache = 'force-no-store'
+export const revalidate = 0
+
 interface PostPageProps {
   params: {
     id: string

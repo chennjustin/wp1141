@@ -5,6 +5,10 @@ import Link from 'next/link'
 import AuthButtons from '@/components/AuthButtons'
 import UserIdLogin from '@/components/UserIdLogin'
 
+export const dynamic = 'force-dynamic'
+export const fetchCache = 'force-no-store'
+export const revalidate = 0
+
 export default async function LoginPage() {
   const session = await getServerSession(authOptions)
 
