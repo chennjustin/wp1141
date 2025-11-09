@@ -1,14 +1,14 @@
 'use client'
 
-import React, { useState, useEffect, useImperativeHandle, forwardRef, useRef } from 'react'
+import React, { useState, useEffect, useImperativeHandle, forwardRef, useRef, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import InlineComposer from './InlineComposer'
 import PostCard from './PostCard'
 import ReplyModal from './ReplyModal'
 import { Post } from '@/types/post'
-import { pusherClient } from '@/lib/pusher/client'
 import { PUSHER_EVENTS, PostCreatedPayload, PostLikedPayload, PostRepostedPayload, PostRepliedPayload } from '@/lib/pusher/events'
-import Pusher from 'pusher-js'
+import { usePusherSubscription } from '@/hooks/usePusherSubscription'
 
 interface HomeFeedProps {
   onRefreshRef?: React.MutableRefObject<(() => void) | null>
@@ -21,9 +21,15 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [replyTarget, setReplyTarget] = useState<Post | null>(null)
+    const [followingIds, setFollowingIds] = useState<Set<string>>(new Set())
+    const followingIdsRef = useRef<Set<string>>(new Set())
+    const [newPostNotice, setNewPostNotice] = useState<{
+      authors: Array<{ id: string; name: string | null; userId: string | null; avatarUrl: string | null; image: string | null }>
+      postId: string | null
+    } | null>(null)
     const { data: session } = useSession()
+    const router = useRouter()
     const currentUserId = session?.user?.id
-    const pusherChannelRef = useRef<any>(null)
 
     const fetchPosts = async (tab: 'foryou' | 'following' = activeTab) => {
       try {
@@ -56,6 +62,27 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
       }
     }
 
+    // Fetch following IDs
+    useEffect(() => {
+      if (!currentUserId) return
+
+      const fetchFollowing = async () => {
+        try {
+          const response = await fetch('/api/user/me/following-ids')
+          if (response.ok) {
+            const data = await response.json()
+            const ids = new Set(data.followingIds || [])
+            setFollowingIds(ids)
+            followingIdsRef.current = ids
+          }
+        } catch (error) {
+          console.error('Error fetching following:', error)
+        }
+      }
+
+      fetchFollowing()
+    }, [currentUserId])
+
     // 當 activeTab 改變時重新載入
     useEffect(() => {
       fetchPosts(activeTab)
@@ -63,86 +90,110 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
     }, [activeTab])
 
     // Subscribe to Pusher events
-    useEffect(() => {
-      if (typeof window === 'undefined') return
-
-      let pusher: Pusher | null = null
-      try {
-        pusher = pusherClient()
-        const channel = pusher.subscribe('feed')
-
-        pusherChannelRef.current = channel
-
-        // Handle new post created
-        channel.bind(PUSHER_EVENTS.POST_CREATED, (data: PostCreatedPayload) => {
-          // Skip if this is our own post (already added via optimistic update)
-          if (data.post.authorId === currentUserId) {
-            return
-          }
-
-          setPosts((currentPosts) => {
-            // Check if post already exists
-            if (currentPosts.some((p) => p.id === data.post.id)) {
-              return currentPosts
-            }
-            // Add new post at the top
-            return [data.post as Post, ...currentPosts]
-          })
-        })
-
-        // Handle post liked
-        // Only update if this is not the current user's action (to avoid double updates)
-        channel.bind(PUSHER_EVENTS.POST_LIKED, (data: PostLikedPayload) => {
-          setPosts((currentPosts) => {
-            return currentPosts.map((post) => {
-              if (post.id === data.postId) {
-                // Don't update if this post is currently being processed by the user
-                // The optimistic update and API response will handle it
-                // Only update the count from other users' actions
-                return { ...post, likeCount: data.likeCount }
-              }
-              return post
-            })
-          })
-        })
-
-        // Handle post reposted
-        channel.bind(PUSHER_EVENTS.POST_REPOSTED, (data: PostRepostedPayload) => {
-          setPosts((currentPosts) => {
-            return currentPosts.map((post) =>
-              post.id === data.postId
-                ? { ...post, repostCount: data.repostCount }
-                : post
-            )
-          })
-        })
-
-        // Handle post replied
-        channel.bind(PUSHER_EVENTS.POST_REPLIED, (data: PostRepliedPayload) => {
-          setPosts((currentPosts) => {
-            return currentPosts.map((post) =>
-              post.id === data.parentId
-                ? { ...post, commentCount: data.commentCount }
-                : post
-            )
-          })
-        })
-      } catch (error) {
-        console.error('Error setting up Pusher subscription:', error)
-      }
-
-      // Cleanup on unmount
-      return () => {
-        if (pusher && pusherChannelRef.current) {
-          try {
-            pusher.unsubscribe('feed')
-          } catch (error) {
-            console.error('Error unsubscribing from Pusher:', error)
-          }
-          pusherChannelRef.current = null
+    usePusherSubscription(
+      'feed',
+      PUSHER_EVENTS.POST_CREATED,
+      useCallback((data: PostCreatedPayload) => {
+        // Skip if this is our own post (already added via optimistic update)
+        if (data.post.authorId === currentUserId) {
+          return
         }
-      }
-    }, [currentUserId])
+
+        // Check if the author is someone we're following
+        if (followingIdsRef.current.has(data.post.authorId)) {
+          // Add to new post notice
+          setNewPostNotice((prev) => {
+            const author = {
+              id: data.post.author.id,
+              name: data.post.author.name,
+              userId: data.post.author.userId,
+              avatarUrl: data.post.author.avatarUrl || data.post.author.image,
+              image: data.post.author.image,
+            }
+
+            if (!prev) {
+              return {
+                authors: [author],
+                postId: data.post.id,
+              }
+            }
+
+            // Check if author already exists
+            const existingIndex = prev.authors.findIndex((a) => a.id === author.id)
+            if (existingIndex !== -1) {
+              // Move to front
+              const updatedAuthors = [
+                author,
+                ...prev.authors.filter((a) => a.id !== author.id),
+              ].slice(0, 3) // Keep only first 3
+              return {
+                authors: updatedAuthors,
+                postId: data.post.id,
+              }
+            }
+
+            // Add new author, keep only first 3
+            const updatedAuthors = [author, ...prev.authors].slice(0, 3)
+            return {
+              authors: updatedAuthors,
+              postId: data.post.id,
+            }
+          })
+        }
+
+        setPosts((currentPosts) => {
+          // Check if post already exists
+          if (currentPosts.some((p) => p.id === data.post.id)) {
+            return currentPosts
+          }
+          // Add new post at the top
+          return [data.post as Post, ...currentPosts]
+        })
+      }, [currentUserId])
+    )
+
+    usePusherSubscription(
+      'feed',
+      PUSHER_EVENTS.POST_LIKED,
+      useCallback((data: PostLikedPayload) => {
+        setPosts((currentPosts) => {
+          return currentPosts.map((post) => {
+            if (post.id === data.postId) {
+              return { ...post, likeCount: data.likeCount }
+            }
+            return post
+          })
+        })
+      }, [])
+    )
+
+    usePusherSubscription(
+      'feed',
+      PUSHER_EVENTS.POST_REPOSTED,
+      useCallback((data: PostRepostedPayload) => {
+        setPosts((currentPosts) => {
+          return currentPosts.map((post) =>
+            post.id === data.postId
+              ? { ...post, repostCount: data.repostCount }
+              : post
+          )
+        })
+      }, [])
+    )
+
+    usePusherSubscription(
+      'feed',
+      PUSHER_EVENTS.POST_REPLIED,
+      useCallback((data: PostRepliedPayload) => {
+        setPosts((currentPosts) => {
+          return currentPosts.map((post) =>
+            post.id === data.parentId
+              ? { ...post, commentCount: data.commentCount }
+              : post
+          )
+        })
+      }, [])
+    )
 
     // Expose refresh function to parent
     useImperativeHandle(ref, () => ({
@@ -154,7 +205,7 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
       if (onRefreshRef) {
         onRefreshRef.current = fetchPosts
       }
-    }, [onRefreshRef])
+    }, [onRefreshRef, fetchPosts])
 
     const handleRefresh = () => {
       fetchPosts()
@@ -333,6 +384,67 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
 
     return (
       <div className="flex flex-col">
+        {/* New Post Notice */}
+        {newPostNotice && newPostNotice.authors.length > 0 && (
+          <div className="px-4 py-3 border-b border-gray-200 bg-blue-50 flex items-center justify-between">
+            <button
+              onClick={() => {
+                if (newPostNotice.postId) {
+                  router.push(`/post/${newPostNotice.postId}`)
+                }
+              }}
+              className="flex items-center gap-2 flex-1 hover:bg-blue-100 rounded-lg px-2 py-1 transition-colors"
+            >
+              <div className="flex -space-x-2">
+                {newPostNotice.authors.slice(0, 3).map((author, index) => (
+                  <div
+                    key={author.id}
+                    className="w-8 h-8 rounded-full border-2 border-white overflow-hidden bg-gray-200"
+                    style={{ zIndex: 3 - index }}
+                  >
+                    {author.avatarUrl || author.image ? (
+                      <img
+                        src={author.avatarUrl || author.image || ''}
+                        alt={author.name || 'User'}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gray-300" />
+                    )}
+                  </div>
+                ))}
+              </div>
+              <span className="text-sm text-gray-700 font-medium">
+                {newPostNotice.authors.length === 1
+                  ? `${newPostNotice.authors[0].name || 'Someone'} posted`
+                  : newPostNotice.authors.length === 2
+                  ? `${newPostNotice.authors[0].name || 'Someone'} and ${newPostNotice.authors[1].name || 'someone'} posted`
+                  : `${newPostNotice.authors[0].name || 'Someone'} and ${newPostNotice.authors.length - 1} others posted`}
+              </span>
+            </button>
+            <button
+              onClick={() => setNewPostNotice(null)}
+              className="ml-2 p-1 rounded-full hover:bg-blue-200 transition-colors"
+              aria-label="Close"
+            >
+              <svg
+                className="w-4 h-4 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        )}
+
         {/* Inline Composer */}
         <InlineComposer onPostCreated={handlePostCreated} />
 

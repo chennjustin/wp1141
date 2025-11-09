@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser, unauthorizedResponse, badRequestResponse } from '@/lib/api-helpers'
 import { serializeAuthor } from '@/lib/serializers'
+import { pusherServer } from '@/lib/pusher/server'
+import { PUSHER_EVENTS } from '@/lib/pusher/events'
 
 export async function GET(req: NextRequest) {
   try {
@@ -108,7 +110,30 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    return NextResponse.json({ success: true, notification })
+    // 取得更新後的未讀通知數量
+    const unreadCount = await prisma.notification.count({
+      where: {
+        receiverId: currentUserId,
+        read: false,
+      },
+    })
+
+    // 透過 Pusher 推送通知已讀事件
+    try {
+      await pusherServer().trigger(
+        `user-${currentUserId}`,
+        PUSHER_EVENTS.NOTIFICATION_READ,
+        {
+          notificationId,
+          unreadCount,
+        }
+      )
+    } catch (pusherError) {
+      console.error('Error triggering Pusher notification read event:', pusherError)
+      // Pusher 失敗不應該影響標記已讀的操作
+    }
+
+    return NextResponse.json({ success: true, notification, unreadCount })
   } catch (error) {
     console.error('Error marking notification as read:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

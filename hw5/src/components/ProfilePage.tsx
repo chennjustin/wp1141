@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import PostCard from './PostCard'
@@ -8,9 +8,8 @@ import ReplyModal from './ReplyModal'
 import EditProfileModal from './EditProfileModal'
 import { User } from '@/types/user'
 import { Post } from '@/types/post'
-import { pusherClient } from '@/lib/pusher/client'
 import { PUSHER_EVENTS, PostCreatedPayload, PostLikedPayload, PostRepostedPayload, PostRepliedPayload } from '@/lib/pusher/events'
-import Pusher from 'pusher-js'
+import { usePusherSubscription } from '@/hooks/usePusherSubscription'
 
 // LikedPostsTab component
 function LikedPostsTab({ userId }: { userId: string }) {
@@ -223,7 +222,7 @@ function LikedPostsTab({ userId }: { userId: string }) {
   }
 
   return (
-    <div className="flex flex-col max-w-[620px] mx-auto">
+    <div className="flex flex-col">
       {likedPosts.map((post) => (
         <PostCard
           key={post.id}
@@ -256,7 +255,6 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
   const [replyTarget, setReplyTarget] = useState<Post | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [currentUser, setCurrentUser] = useState<User>(user)
-  const pusherChannelRef = useRef<any>(null)
 
   useEffect(() => {
     setPosts(initialPosts)
@@ -530,100 +528,84 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
   }
 
   // Subscribe to Pusher events
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    let pusher: Pusher | null = null
-    try {
-      pusher = pusherClient()
-      const channel = pusher.subscribe('feed')
-
-      pusherChannelRef.current = channel
-
-      channel.bind(PUSHER_EVENTS.POST_CREATED, (data: PostCreatedPayload) => {
-        if (data.post.authorId !== user.id) {
-          return
-        }
-        setPosts((currentPosts) => {
-          if (currentPosts.some((post) => post.id === data.post.id)) {
-            return currentPosts
-          }
-          const formattedPost: Post = {
-            id: data.post.id,
-            content: data.post.content,
-            authorId: data.post.authorId,
-            createdAt: data.post.createdAt,
-            updatedAt: data.post.updatedAt,
-            mediaUrl: (data.post as any).mediaUrl ?? null,
-            mediaType: (data.post as any).mediaType ?? null,
-            author: {
-              ...data.post.author,
-            },
-            likeCount: data.post.likeCount,
-            repostCount: data.post.repostCount,
-            commentCount: data.post.commentCount,
-            liked: false,
-            reposted: false,
-            repostedByMe: false,
-          }
-          return [formattedPost, ...currentPosts]
-        })
-      })
-
-      // Handle post liked - update if post belongs to this user
-      channel.bind(PUSHER_EVENTS.POST_LIKED, (data: PostLikedPayload) => {
-        setPosts((currentPosts) => {
-          return currentPosts.map((post) => {
-            // Only update if this post belongs to the profile user
-            if (post.id === data.postId && post.authorId === user.id) {
-              return { ...post, likeCount: data.likeCount }
-            }
-            return post
-          })
-        })
-      })
-
-      // Handle post reposted - update if post belongs to this user
-      channel.bind(PUSHER_EVENTS.POST_REPOSTED, (data: PostRepostedPayload) => {
-        setPosts((currentPosts) => {
-          return currentPosts.map((post) => {
-            // Only update if this post belongs to the profile user
-            if (post.id === data.postId && post.authorId === user.id) {
-              return { ...post, repostCount: data.repostCount }
-            }
-            return post
-          })
-        })
-      })
-
-      // Handle post replied - update if post belongs to this user
-      channel.bind(PUSHER_EVENTS.POST_REPLIED, (data: PostRepliedPayload) => {
-        setPosts((currentPosts) => {
-          return currentPosts.map((post) => {
-            // Only update if this post belongs to the profile user
-            if (post.id === data.parentId && post.authorId === user.id) {
-              return { ...post, commentCount: data.commentCount }
-            }
-            return post
-          })
-        })
-      })
-    } catch (error) {
-      console.error('Error setting up Pusher subscription:', error)
-    }
-
-    // Cleanup
-    return () => {
-      if (pusher && pusherChannelRef.current) {
-        try {
-          pusher.unsubscribe('feed')
-        } catch (error) {
-          console.error('Error unsubscribing from Pusher:', error)
-        }
-        pusherChannelRef.current = null
+  usePusherSubscription(
+    'feed',
+    PUSHER_EVENTS.POST_CREATED,
+    useCallback((data: PostCreatedPayload) => {
+      if (data.post.authorId !== user.id) {
+        return
       }
-    }
-  }, [user.id, currentUserId])
+      setPosts((currentPosts) => {
+        if (currentPosts.some((post) => post.id === data.post.id)) {
+          return currentPosts
+        }
+        const formattedPost: Post = {
+          id: data.post.id,
+          content: data.post.content,
+          authorId: data.post.authorId,
+          createdAt: data.post.createdAt,
+          updatedAt: data.post.updatedAt,
+          mediaUrl: (data.post as any).mediaUrl ?? null,
+          mediaType: (data.post as any).mediaType ?? null,
+          author: {
+            ...data.post.author,
+          },
+          likeCount: data.post.likeCount,
+          repostCount: data.post.repostCount,
+          commentCount: data.post.commentCount,
+          liked: false,
+          reposted: false,
+          repostedByMe: false,
+        }
+        return [formattedPost, ...currentPosts]
+      })
+    }, [user.id])
+  )
+
+  usePusherSubscription(
+    'feed',
+    PUSHER_EVENTS.POST_LIKED,
+    useCallback((data: PostLikedPayload) => {
+      setPosts((currentPosts) => {
+        return currentPosts.map((post) => {
+          if (post.id === data.postId && post.authorId === user.id) {
+            return { ...post, likeCount: data.likeCount }
+          }
+          return post
+        })
+      })
+    }, [user.id])
+  )
+
+  usePusherSubscription(
+    'feed',
+    PUSHER_EVENTS.POST_REPOSTED,
+    useCallback((data: PostRepostedPayload) => {
+      setPosts((currentPosts) => {
+        return currentPosts.map((post) => {
+          if (post.id === data.postId && post.authorId === user.id) {
+            return { ...post, repostCount: data.repostCount }
+          }
+          return post
+        })
+      })
+    }, [user.id])
+  )
+
+  usePusherSubscription(
+    'feed',
+    PUSHER_EVENTS.POST_REPLIED,
+    useCallback((data: PostRepliedPayload) => {
+      setPosts((currentPosts) => {
+        return currentPosts.map((post) => {
+          if (post.id === data.parentId && post.authorId === user.id) {
+            return { ...post, commentCount: data.commentCount }
+          }
+          return post
+        })
+      })
+    }, [user.id])
+  )
 
   return (
     <div className="flex flex-col">

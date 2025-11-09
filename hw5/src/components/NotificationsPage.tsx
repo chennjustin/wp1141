@@ -1,11 +1,11 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { pusherClient } from '@/lib/pusher/client'
-import { PUSHER_EVENTS, NotificationCreatedPayload } from '@/lib/pusher/events'
-import Pusher from 'pusher-js'
+import { usePusherSubscription } from '@/hooks/usePusherSubscription'
+import { useNotifications } from '@/contexts/NotificationContext'
+import { PUSHER_EVENTS, NotificationCreatedPayload, NotificationReadPayload } from '@/lib/pusher/events'
 
 interface Notification {
   id: string
@@ -34,11 +34,10 @@ export default function NotificationsPage() {
   const router = useRouter()
   const { data: session } = useSession()
   const currentUserId = session?.user?.id
+  const { unreadCount, refreshUnreadCount } = useNotifications()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [unreadCount, setUnreadCount] = useState(0)
-  const pusherChannelRef = useRef<any>(null)
 
   const normalizeNotification = (notification: any): Notification => {
     return {
@@ -67,7 +66,7 @@ export default function NotificationsPage() {
       const data = await response.json()
       const normalized = (data.notifications as Notification[]).map(normalizeNotification)
       setNotifications(normalized)
-      setUnreadCount(data.unreadCount)
+      await refreshUnreadCount()
     } catch (err) {
       console.error('Error fetching notifications:', err)
       setError(err instanceof Error ? err.message : 'Failed to load notifications')
@@ -81,58 +80,32 @@ export default function NotificationsPage() {
   }, [])
 
   // Subscribe to Pusher notifications
-  useEffect(() => {
-    if (typeof window === 'undefined' || !currentUserId) return
-
-    let pusher: Pusher | null = null
-    try {
-      pusher = pusherClient()
-      const channel = pusher.subscribe(`user-${currentUserId}`)
-
-      pusherChannelRef.current = channel
-
-      // Handle new notification
-      channel.bind(PUSHER_EVENTS.NOTIFICATION_CREATED, (data: NotificationCreatedPayload) => {
-        const newNotification: Notification = normalizeNotification({
-          ...data.notification,
-          post: data.notification.post || null,
-        })
-
-        setNotifications((current) => [newNotification, ...current])
-        setUnreadCount((current) => current + 1)
+  usePusherSubscription(
+    currentUserId ? `user-${currentUserId}` : null,
+    PUSHER_EVENTS.NOTIFICATION_CREATED,
+    useCallback((data: NotificationCreatedPayload) => {
+      const newNotification: Notification = normalizeNotification({
+        ...data.notification,
+        post: data.notification.post || null,
       })
-    } catch (error) {
-      console.error('Error setting up Pusher subscription:', error)
-    }
+      setNotifications((current) => [newNotification, ...current])
+    }, [])
+  )
 
-    return () => {
-      if (pusher && pusherChannelRef.current) {
-        try {
-          pusher.unsubscribe(`user-${currentUserId}`)
-        } catch (error) {
-          console.error('Error unsubscribing from Pusher:', error)
-        }
-        pusherChannelRef.current = null
-      }
-    }
-  }, [currentUserId])
+  usePusherSubscription(
+    currentUserId ? `user-${currentUserId}` : null,
+    PUSHER_EVENTS.NOTIFICATION_READ,
+    useCallback((data: NotificationReadPayload) => {
+      setNotifications((current) =>
+        current.map((n) => (n.id === data.notificationId ? { ...n, read: true } : n))
+      )
+    }, [])
+  )
 
   const markNotificationAsRead = async (notificationId: string) => {
-    let shouldDecrement = false
     setNotifications((current) =>
-      current.map((n) => {
-        if (n.id === notificationId) {
-          if (!n.read) {
-            shouldDecrement = true
-          }
-          return { ...n, read: true }
-        }
-        return n
-      })
+      current.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
     )
-    if (shouldDecrement) {
-      setUnreadCount((current) => Math.max(0, current - 1))
-    }
 
     try {
       await fetch('/api/notification', {

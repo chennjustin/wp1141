@@ -5,6 +5,7 @@ export const PUSHER_EVENTS = {
   POST_REPOSTED: 'post:reposted',
   POST_REPLIED: 'post:replied',
   NOTIFICATION_CREATED: 'notification:created',
+  NOTIFICATION_READ: 'notification:read',
 } as const
 
 // Event payload types
@@ -66,5 +67,10 @@ export interface NotificationCreatedPayload {
       content: string
     } | null
   }
+}
+
+export interface NotificationReadPayload {
+  notificationId: string
+  unreadCount: number
 }
 

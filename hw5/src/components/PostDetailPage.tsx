@@ -1,14 +1,13 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import PostCard from './PostCard'
 import ReplyModal from './ReplyModal'
 import { Post } from '@/types/post'
-import { pusherClient } from '@/lib/pusher/client'
 import { PUSHER_EVENTS, PostLikedPayload, PostRepostedPayload, PostRepliedPayload } from '@/lib/pusher/events'
-import Pusher from 'pusher-js'
+import { usePusherSubscription } from '@/hooks/usePusherSubscription'
 
 interface PostDetailPageProps {
   parentPost: Post
@@ -23,8 +22,6 @@ export default function PostDetailPage({ parentPost: initialParentPost, replies:
   const [replies, setReplies] = useState<Post[]>(initialReplies)
   const [replyTarget, setReplyTarget] = useState<Post | null>(null)
   const [displayedRepliesCount, setDisplayedRepliesCount] = useState<number>(10) // 預設顯示 10 則留言
-  const feedChannelRef = useRef<any>(null)
-  const postChannelRef = useRef<any>(null)
 
   // 只顯示第一層留言（depth === 0 或 undefined）
   const firstLevelReplies = replies.filter((reply) => (reply.depth ?? 0) === 0)
@@ -214,94 +211,55 @@ export default function PostDetailPage({ parentPost: initialParentPost, replies:
   }
 
   // Subscribe to Pusher events
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    let pusher: Pusher | null = null
-    try {
-      pusher = pusherClient()
-      const feedChannel = pusher.subscribe('feed')
-      const postChannel = pusher.subscribe(`post-${parentPost.id}`)
-
-      feedChannelRef.current = feedChannel
-      postChannelRef.current = postChannel
-
-      const handlePostLiked = (data: PostLikedPayload) => {
-        if (data.postId === parentPost.id) {
-          setParentPost((current) => ({
-            ...current,
-            likeCount: data.likeCount,
-          }))
-        } else {
-          setReplies((currentReplies) => {
-            return currentReplies.map((reply) =>
-              reply.id === data.postId
-                ? { ...reply, likeCount: data.likeCount }
-                : reply
-            )
-          })
-        }
-      }
-
-      const handlePostReposted = (data: PostRepostedPayload) => {
-        if (data.postId === parentPost.id) {
-          setParentPost((current) => ({
-            ...current,
-            repostCount: data.repostCount,
-          }))
-        } else {
-          // Update reply repost count
-          setReplies((currentReplies) => {
-            return currentReplies.map((reply) =>
-              reply.id === data.postId
-                ? { ...reply, repostCount: data.repostCount }
-                : reply
-            )
-          })
-        }
-      }
-
-      const handlePostReplied = (data: PostRepliedPayload) => {
-        if (data.parentId === parentPost.id) {
-          setParentPost((current) => ({
-            ...current,
-            commentCount: data.commentCount,
-          }))
-          // Optionally refresh replies
-          // For now, just update the count
-        }
-      }
-
-      // Bind events on both channels
-      feedChannel.bind(PUSHER_EVENTS.POST_LIKED, handlePostLiked)
-      feedChannel.bind(PUSHER_EVENTS.POST_REPOSTED, handlePostReposted)
-      feedChannel.bind(PUSHER_EVENTS.POST_REPLIED, handlePostReplied)
-
-      postChannel.bind(PUSHER_EVENTS.POST_LIKED, handlePostLiked)
-      postChannel.bind(PUSHER_EVENTS.POST_REPOSTED, handlePostReposted)
-      postChannel.bind(PUSHER_EVENTS.POST_REPLIED, handlePostReplied)
-    } catch (error) {
-      console.error('Error setting up Pusher subscription:', error)
-    }
-
-    // Cleanup
-    return () => {
-      if (pusher) {
-        try {
-          if (feedChannelRef.current) {
-            pusher.unsubscribe('feed')
-            feedChannelRef.current = null
-          }
-          if (postChannelRef.current) {
-            pusher.unsubscribe(`post-${parentPost.id}`)
-            postChannelRef.current = null
-          }
-        } catch (error) {
-          console.error('Error unsubscribing from Pusher:', error)
-        }
-      }
+  const handlePostLiked = useCallback((data: PostLikedPayload) => {
+    if (data.postId === parentPost.id) {
+      setParentPost((current) => ({
+        ...current,
+        likeCount: data.likeCount,
+      }))
+    } else {
+      setReplies((currentReplies) => {
+        return currentReplies.map((reply) =>
+          reply.id === data.postId
+            ? { ...reply, likeCount: data.likeCount }
+            : reply
+        )
+      })
     }
   }, [parentPost.id])
+
+  const handlePostReposted = useCallback((data: PostRepostedPayload) => {
+    if (data.postId === parentPost.id) {
+      setParentPost((current) => ({
+        ...current,
+        repostCount: data.repostCount,
+      }))
+    } else {
+      setReplies((currentReplies) => {
+        return currentReplies.map((reply) =>
+          reply.id === data.postId
+            ? { ...reply, repostCount: data.repostCount }
+            : reply
+        )
+      })
+    }
+  }, [parentPost.id])
+
+  const handlePostReplied = useCallback((data: PostRepliedPayload) => {
+    if (data.parentId === parentPost.id) {
+      setParentPost((current) => ({
+        ...current,
+        commentCount: data.commentCount,
+      }))
+    }
+  }, [parentPost.id])
+
+  usePusherSubscription('feed', PUSHER_EVENTS.POST_LIKED, handlePostLiked)
+  usePusherSubscription('feed', PUSHER_EVENTS.POST_REPOSTED, handlePostReposted)
+  usePusherSubscription('feed', PUSHER_EVENTS.POST_REPLIED, handlePostReplied)
+  usePusherSubscription(`post-${parentPost.id}`, PUSHER_EVENTS.POST_LIKED, handlePostLiked)
+  usePusherSubscription(`post-${parentPost.id}`, PUSHER_EVENTS.POST_REPOSTED, handlePostReposted)
+  usePusherSubscription(`post-${parentPost.id}`, PUSHER_EVENTS.POST_REPLIED, handlePostReplied)
 
   const handleComment = (postId: string) => {
     // 如果點擊的是留言，則 route 到該留言的詳情頁
