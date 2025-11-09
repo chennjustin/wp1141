@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import type { Post } from '@/types/post'
+import MediaUploader from './MediaUploader'
 
 const MAX_LENGTH = 280
 
@@ -45,6 +46,8 @@ export default function InlineComposer({ onPostCreated }: InlineComposerProps) {
   const [content, setContent] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null)
+  const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null)
 
   const [mentionQuery, setMentionQuery] = useState<string | null>(null)
   const [mentionStartIndex, setMentionStartIndex] = useState<number | null>(null)
@@ -172,8 +175,15 @@ export default function InlineComposer({ onPostCreated }: InlineComposerProps) {
     }
   }, [mentionQuery])
 
+  const handleMediaUpload = (url: string, type: 'image' | 'video') => {
+    setMediaUrl(url || null)
+    setMediaType(url ? type : null)
+  }
+
   const resetComposer = () => {
     setContent('')
+    setMediaUrl(null)
+    setMediaType(null)
     setError(null)
     setMentionQuery(null)
     setMentionStartIndex(null)
@@ -269,8 +279,8 @@ export default function InlineComposer({ onPostCreated }: InlineComposerProps) {
         },
         body: JSON.stringify({
           content: trimmed,
-          mediaUrl: null,
-          mediaType: null,
+          mediaUrl: mediaUrl || null,
+          mediaType: mediaType || null,
         }),
       })
 
@@ -382,18 +392,24 @@ export default function InlineComposer({ onPostCreated }: InlineComposerProps) {
             )}
           </div>
 
-          <div className="mt-2 text-sm text-blue-500">Everyone can reply</div>
-
-          <div className="mt-3 flex items-center justify-end gap-3">
-            <span className={`text-sm ${remainingClass}`}>{content.length}/{MAX_LENGTH}</span>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isSubmitting || content.trim().length === 0}
-              className="px-5 py-2 rounded-full bg-blue-500 text-white font-semibold hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? 'Posting…' : 'Post'}
-            </button>
+          <div className="mt-4 flex items-center justify-between">
+            <MediaUploader
+              type="post"
+              existingUrl={mediaUrl}
+              onUpload={handleMediaUpload}
+              disabled={isSubmitting}
+            />
+            <div className="flex items-center gap-3">
+              <span className={`text-sm ${remainingClass}`}>{content.length}/{MAX_LENGTH}</span>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={isSubmitting || content.trim().length === 0}
+                className="px-5 py-2 rounded-full bg-blue-500 text-white font-semibold hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed h-[36px] flex items-center justify-center"
+              >
+                {isSubmitting ? 'Posting…' : 'Post'}
+              </button>
+            </div>
           </div>
 
           {error && <p className="mt-2 text-sm text-red-500">{error}</p>}

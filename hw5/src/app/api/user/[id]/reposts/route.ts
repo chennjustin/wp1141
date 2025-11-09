@@ -37,6 +37,15 @@ export async function GET(
         createdAt: 'desc',
       },
       include: {
+        user: {
+          select: {
+            id: true,
+            userId: true,
+            name: true,
+            image: true,
+            avatarUrl: true,
+          },
+        },
         post: {
           include: {
             author: {
@@ -92,6 +101,7 @@ export async function GET(
     // 格式化回傳資料
     const posts = reposts.map((repost) => {
       const post = repost.post
+      const isCurrentUserRepost = currentUserId === repost.userId
       return {
         id: post.id,
         content: post.content,
@@ -116,7 +126,8 @@ export async function GET(
         commentCount: post._count.replies,
         liked: (post.likes as any)?.length > 0,
         reposted: (post.reposts as any)?.length > 0,
-        repostedByMe: true,
+        repostedByMe: isCurrentUserRepost,
+        repostedBy: isCurrentUserRepost ? undefined : serializeAuthor(repost.user),
       }
     })
 

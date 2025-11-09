@@ -21,6 +21,8 @@ export async function GET(req: NextRequest) {
     }
 
     // 獲取所有被 repost 的貼文和留言
+    // 在 home feed 中，只顯示貼文（parentId: null），留言不會被顯示
+    // 在 following feed 中，如果留言被追蹤的人 repost，則可以顯示
     let repostedPostsWhere: any = {}
     if (user && filter === 'following') {
       // 獲取當前用戶追蹤的所有用戶 ID
@@ -42,6 +44,13 @@ export async function GET(req: NextRequest) {
             in: [],
           },
         }
+      }
+    } else {
+      // 在 home feed (filter !== 'following') 中，只顯示貼文，不顯示留言
+      repostedPostsWhere = {
+        post: {
+          parentId: null, // 只顯示貼文，不顯示留言
+        },
       }
     }
 
@@ -111,9 +120,6 @@ export async function GET(req: NextRequest) {
           },
         },
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
     })
 
     // 獲取原始貼文（沒有被 repost 的）
@@ -141,7 +147,7 @@ export async function GET(req: NextRequest) {
             id: post.id,
             content: post.content,
             authorId: post.authorId,
-            createdAt: repost.createdAt.toISOString(), // 使用 repost 時間排序
+            createdAt: post.createdAt.toISOString(), // 使用原始貼文時間，不使用 repost 時間
             updatedAt: post.updatedAt.toISOString(),
             mediaUrl: post.mediaUrl,
             mediaType: post.mediaType,
@@ -216,15 +222,19 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    // 格式化 reposted posts - 在 home feed 中不顯示 repostedBy，只標記 repostedByMe
+    // 格式化 reposted posts
+    // 在 following feed 中，如果 repost 是由追蹤的用戶發起，則顯示 repostedBy
+    // 使用原始貼文的時間，不使用 repost 時間
     const formattedReposts = repostedPosts.map((repost) => {
       const post = repost.post
       const isCurrentUserRepost = user && repost.userId === user.id
+      const repostAuthor = serializeAuthor(repost.user)
+      
       return {
         id: post.id,
         content: post.content,
         authorId: post.authorId,
-        createdAt: repost.createdAt.toISOString(), // 使用 repost 時間排序
+        createdAt: post.createdAt.toISOString(), // 使用原始貼文時間，不使用 repost 時間
         updatedAt: post.updatedAt.toISOString(),
         mediaUrl: post.mediaUrl,
         mediaType: post.mediaType,
@@ -245,8 +255,9 @@ export async function GET(req: NextRequest) {
         commentCount: post._count.replies,
         reposted: user ? (post.reposts as any)?.length > 0 : false,
         repostedByMe: isCurrentUserRepost || false,
+        // 在 following feed 中，如果 repost 不是當前用戶發起的，則顯示 repostedBy
+        repostedBy: filter === 'following' && !isCurrentUserRepost ? repostAuthor : undefined,
         liked: user ? (post.likes as any)?.length > 0 : false,
-        // 不在 home feed 中顯示 repostedBy
       }
     })
 

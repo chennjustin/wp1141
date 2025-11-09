@@ -12,7 +12,7 @@ import { PUSHER_EVENTS, PostCreatedPayload, PostLikedPayload, PostRepostedPayloa
 import { usePusherSubscription } from '@/hooks/usePusherSubscription'
 
 // RepliesTab component
-function RepliesTab({ userId }: { userId: string }) {
+function RepliesTab({ userId, isSelf }: { userId: string; isSelf: boolean }) {
   const [replies, setReplies] = useState<Post[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -89,7 +89,8 @@ function RepliesTab({ userId }: { userId: string }) {
         return finalReplies
       })
 
-      if (!data.liked) {
+      // Only remove from list if viewing own profile and unliked
+      if (isSelf && !data.liked) {
         setReplies((currentReplies) => currentReplies.filter((p) => p.id !== postId))
       }
     } catch (error) {
@@ -230,7 +231,7 @@ function RepliesTab({ userId }: { userId: string }) {
 }
 
 // RepostsTab component
-function RepostsTab({ userId }: { userId: string }) {
+function RepostsTab({ userId, isSelf }: { userId: string; isSelf: boolean }) {
   const [reposts, setReposts] = useState<Post[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -307,9 +308,7 @@ function RepostsTab({ userId }: { userId: string }) {
         return finalReposts
       })
 
-      if (!data.liked) {
-        setReposts((currentReposts) => currentReposts.filter((p) => p.id !== postId))
-      }
+      // 不移除項目，只有在刷新後才會移除
     } catch (error) {
       console.error('Error toggling like:', error)
       setReposts((currentReposts) => {
@@ -372,10 +371,7 @@ function RepostsTab({ userId }: { userId: string }) {
         return finalReposts
       })
 
-      // If un-reposted, remove from list
-      if (!data.reposted) {
-        setReposts((currentReposts) => currentReposts.filter((p) => p.id !== postId))
-      }
+      // 不移除項目，只有在刷新後才會移除
     } catch (error) {
       console.error('Error toggling repost:', error)
       setReposts((currentReposts) => {
@@ -454,7 +450,7 @@ function RepostsTab({ userId }: { userId: string }) {
 }
 
 // LikedPostsTab component
-function LikedPostsTab({ userId }: { userId: string }) {
+function LikedPostsTab({ userId, isSelf }: { userId: string; isSelf: boolean }) {
   const [likedPosts, setLikedPosts] = useState<Post[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -531,10 +527,7 @@ function LikedPostsTab({ userId }: { userId: string }) {
         return finalPosts
       })
 
-      // If unliked, remove from list
-      if (!data.liked) {
-        setLikedPosts((currentPosts) => currentPosts.filter((p) => p.id !== postId))
-      }
+      // 不移除項目，只有在刷新後才會移除
     } catch (error) {
       console.error('Error toggling like:', error)
       // Rollback
@@ -697,6 +690,17 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
   const [replyTarget, setReplyTarget] = useState<Post | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [currentUser, setCurrentUser] = useState<User>(user)
+
+  // 如果查看他人頁面且 activeTab 是 'likes'，則切換到 'posts'
+  // 如果查看他人頁面且未追蹤，則切換到 'posts'（因為沒有 tabs）
+  useEffect(() => {
+    if (!isSelf && activeTab === 'likes') {
+      setActiveTab('posts')
+    }
+    if (!isSelf && !isFollowing && activeTab !== 'posts') {
+      setActiveTab('posts')
+    }
+  }, [isSelf, isFollowing, activeTab])
 
   useEffect(() => {
     setPosts(initialPosts)
@@ -1134,68 +1138,103 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200">
-        <button
-          onClick={() => setActiveTab('posts')}
-          className={`flex-1 px-4 py-4 text-center font-semibold transition-colors relative ${
-            activeTab === 'posts'
-              ? 'text-gray-900'
-              : 'text-gray-500 hover:bg-gray-50'
-          }`}
-        >
-          Posts
-          {activeTab === 'posts' && (
-            <span className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 rounded-t-full" />
+      {(isSelf || isFollowing) && (
+        <div className="flex border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab('posts')}
+            className={`flex-1 px-4 py-4 text-center font-semibold transition-colors relative ${
+              activeTab === 'posts'
+                ? 'text-gray-900'
+                : 'text-gray-500 hover:bg-gray-50'
+            }`}
+          >
+            Posts
+            {activeTab === 'posts' && (
+              <span className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 rounded-t-full" />
+            )}
+          </button>
+          {isSelf ? (
+            <>
+              <button
+                onClick={() => setActiveTab('replies')}
+                className={`flex-1 px-4 py-4 text-center font-semibold transition-colors relative ${
+                  activeTab === 'replies'
+                    ? 'text-gray-900'
+                    : 'text-gray-500 hover:bg-gray-50'
+                }`}
+              >
+                Replies
+                {activeTab === 'replies' && (
+                  <span className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 rounded-t-full" />
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab('reposts')}
+                className={`flex-1 px-4 py-4 text-center font-semibold transition-colors relative ${
+                  activeTab === 'reposts'
+                    ? 'text-gray-900'
+                    : 'text-gray-500 hover:bg-gray-50'
+                }`}
+              >
+                Reposts
+                {activeTab === 'reposts' && (
+                  <span className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 rounded-t-full" />
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab('likes')}
+                className={`flex-1 px-4 py-4 text-center font-semibold transition-colors relative ${
+                  activeTab === 'likes'
+                    ? 'text-gray-900'
+                    : 'text-gray-500 hover:bg-gray-50'
+                }`}
+              >
+                Likes
+                {activeTab === 'likes' && (
+                  <span className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 rounded-t-full" />
+                )}
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setActiveTab('replies')}
+                className={`flex-1 px-4 py-4 text-center font-semibold transition-colors relative ${
+                  activeTab === 'replies'
+                    ? 'text-gray-900'
+                    : 'text-gray-500 hover:bg-gray-50'
+                }`}
+              >
+                Replies
+                {activeTab === 'replies' && (
+                  <span className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 rounded-t-full" />
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab('reposts')}
+                className={`flex-1 px-4 py-4 text-center font-semibold transition-colors relative ${
+                  activeTab === 'reposts'
+                    ? 'text-gray-900'
+                    : 'text-gray-500 hover:bg-gray-50'
+                }`}
+              >
+                Reposts
+                {activeTab === 'reposts' && (
+                  <span className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 rounded-t-full" />
+                )}
+              </button>
+            </>
           )}
-        </button>
-        {isSelf && (
-          <>
-            <button
-              onClick={() => setActiveTab('replies')}
-              className={`flex-1 px-4 py-4 text-center font-semibold transition-colors relative ${
-                activeTab === 'replies'
-                  ? 'text-gray-900'
-                  : 'text-gray-500 hover:bg-gray-50'
-              }`}
-            >
-              Replies
-              {activeTab === 'replies' && (
-                <span className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 rounded-t-full" />
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('reposts')}
-              className={`flex-1 px-4 py-4 text-center font-semibold transition-colors relative ${
-                activeTab === 'reposts'
-                  ? 'text-gray-900'
-                  : 'text-gray-500 hover:bg-gray-50'
-              }`}
-            >
-              Reposts
-              {activeTab === 'reposts' && (
-                <span className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 rounded-t-full" />
-              )}
-            </button>
-          </>
-        )}
-        <button
-          onClick={() => setActiveTab('likes')}
-          className={`flex-1 px-4 py-4 text-center font-semibold transition-colors relative ${
-            activeTab === 'likes'
-              ? 'text-gray-900'
-              : 'text-gray-500 hover:bg-gray-50'
-          }`}
-        >
-          Likes
-          {activeTab === 'likes' && (
-            <span className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 rounded-t-full" />
-          )}
-        </button>
-      </div>
+        </div>
+      )}
 
       {/* Posts List */}
       <div className="flex flex-col">
-        {activeTab === 'posts' ? (
+        {!isSelf && !isFollowing ? (
+          <div className="p-8 text-center text-gray-500">
+            <p>Follow this user to see their posts, replies, and reposts.</p>
+          </div>
+        ) : activeTab === 'posts' ? (
           posts.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
               <p>No posts yet.</p>
@@ -1208,19 +1247,19 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
                 onLike={handleLike}
                 onRepost={handleRepost}
                 onComment={handleComment}
-                onDelete={(postId) => {
+                onDelete={isSelf ? (postId) => {
                   setPosts((currentPosts) => currentPosts.filter((p) => p.id !== postId))
-                }}
+                } : undefined}
                 showRepostLabel={true}
               />
             ))
           )
         ) : activeTab === 'replies' ? (
-          <RepliesTab userId={user.id} />
+          <RepliesTab userId={user.id} isSelf={isSelf} />
         ) : activeTab === 'reposts' ? (
-          <RepostsTab userId={user.id} />
+          <RepostsTab userId={user.id} isSelf={isSelf} />
         ) : (
-          <LikedPostsTab userId={user.id} />
+          <LikedPostsTab userId={user.id} isSelf={isSelf} />
         )}
       </div>
 

@@ -320,7 +320,7 @@ export default function MediaUploader({
                 if (!disabled && !isUploading) open()
               }}
               disabled={disabled || isUploading}
-              className="p-2 rounded-full text-blue-500 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2 rounded-full text-blue-500 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed h-[36px] flex items-center justify-center"
               aria-label="Add media"
             >
               {isUploading ? (

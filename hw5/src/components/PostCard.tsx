@@ -39,16 +39,12 @@ export default function PostCard({ post, onLike, onRepost, onComment, onDelete, 
   const handleLike = () => {
     if (onLike) {
       onLike(post.id)
-    } else {
-      console.log('Like clicked:', post.id)
     }
   }
 
   const handleRepost = () => {
     if (onRepost) {
       onRepost(post.id)
-    } else {
-      console.log('Repost clicked:', post.id)
     }
   }
 
@@ -203,8 +199,8 @@ export default function PostCard({ post, onLike, onRepost, onComment, onDelete, 
             )}
           </div>
 
-          {/* Repost Label - Only show "You reposted" in home feed, not who reposted */}
-          {showRepostLabel && (post.repostedByMe || post.reposted) && (
+          {/* Repost Label */}
+          {showRepostLabel && (post.repostedByMe || post.repostedBy) && (
             <div className="mb-2 flex items-center gap-2 text-sm text-gray-500">
               <svg
                 className="w-4 h-4 text-green-500"
@@ -220,7 +216,20 @@ export default function PostCard({ post, onLike, onRepost, onComment, onDelete, 
                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                 />
               </svg>
-              <span>You reposted</span>
+              {post.repostedByMe ? (
+                <span>You reposted</span>
+              ) : post.repostedBy ? (
+                <span>
+                  <Link
+                    href={`/profile/${post.repostedBy.userId}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="font-semibold text-gray-900 hover:underline"
+                  >
+                    {post.repostedBy.userId}
+                  </Link>
+                  {' '}reposted
+                </span>
+              ) : null}
             </div>
           )}
 

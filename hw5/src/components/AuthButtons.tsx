@@ -1,10 +1,17 @@
 'use client'
 
 import { signIn } from 'next-auth/react'
+import { useState } from 'react'
 
 // OAuth 登入按鈕
 export default function AuthButtons() {
-  const handleOAuthLogin = (provider: string) => {
+  const [tooltip, setTooltip] = useState<{ show: boolean; x: number; y: number }>({
+    show: false,
+    x: 0,
+    y: 0,
+  })
+
+  const handleOAuthLogin = (provider: 'google' | 'github') => {
     // 直接點擊 Google 登入按鈕時，顯示帳號選擇器
     if (provider === 'google') {
       signIn('google', {
@@ -14,8 +21,28 @@ export default function AuthButtons() {
         },
       })
     } else {
-      signIn(provider as 'github' | 'facebook', { callbackUrl: '/' })
+      signIn(provider, { callbackUrl: '/' })
     }
+  }
+
+  const handleFacebookMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    setTooltip({
+      show: true,
+      x: e.clientX + 10,
+      y: e.clientY + 10,
+    })
+  }
+
+  const handleFacebookMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
+    setTooltip({
+      show: true,
+      x: e.clientX + 10,
+      y: e.clientY + 10,
+    })
+  }
+
+  const handleFacebookMouseLeave = () => {
+    setTooltip({ show: false, x: 0, y: 0 })
   }
 
   return (
@@ -59,15 +86,34 @@ export default function AuthButtons() {
         使用 GitHub 登入
       </button>
 
-      <button
-        onClick={() => handleOAuthLogin('facebook')}
-        className="w-full flex items-center justify-center gap-3 bg-blue-600 border border-blue-600 rounded-lg px-6 py-3 text-white font-medium hover:bg-blue-700 transition-colors shadow-sm"
+      <div 
+        className="relative"
+        onMouseEnter={handleFacebookMouseEnter}
+        onMouseMove={handleFacebookMouseMove}
+        onMouseLeave={handleFacebookMouseLeave}
       >
-        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-        </svg>
-        使用 Facebook 登入
-      </button>
+        <button
+          disabled
+          className="w-full flex items-center justify-center gap-3 bg-blue-600 border border-blue-600 rounded-lg px-6 py-3 text-white font-medium hover:bg-blue-700 transition-colors shadow-sm cursor-not-allowed"
+        >
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+          </svg>
+          使用 Facebook 登入
+        </button>
+        
+        {tooltip.show && (
+          <div
+            className="fixed z-[9999] px-2 py-1 bg-gray-900 text-white text-xs rounded shadow-lg pointer-events-none whitespace-nowrap"
+            style={{
+              left: `${tooltip.x}px`,
+              top: `${tooltip.y}px`,
+            }}
+          >
+            待開發
+          </div>
+        )}
+      </div>
     </div>
   )
 }

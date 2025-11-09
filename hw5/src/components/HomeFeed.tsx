@@ -48,7 +48,15 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
         }
 
         const data = await response.json()
-        setPosts(data)
+        
+        // 處理不同的 API 響應格式
+        if (tab === 'following') {
+          // feed API 返回的是 posts 數組
+          setPosts(data)
+        } else {
+          // post API 現在返回的是 posts 數組
+          setPosts(data || [])
+        }
         
         // 切換後滾動到頂部
         if (typeof window !== 'undefined') {
@@ -316,18 +324,27 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
 
         const data = await response.json()
 
-        // Update with server response
+        // 如果是貼文被 repost，移到最上面
         setPosts((currentPosts) => {
           const currentPostIndex = currentPosts.findIndex((p) => p.id === postId)
           if (currentPostIndex === -1) return currentPosts
 
           const finalPosts = [...currentPosts]
-          finalPosts[currentPostIndex] = {
+          const repostedPost = {
             ...currentPosts[currentPostIndex],
             reposted: data.reposted,
             repostCount: data.repostCount,
           }
-          return finalPosts
+          
+          // Remove from current position
+          finalPosts.splice(currentPostIndex, 1)
+          
+          // If reposted, move to top; otherwise keep in place
+          if (data.reposted) {
+            return [repostedPost, ...finalPosts]
+          } else {
+            return finalPosts
+          }
         })
       } catch (error) {
         console.error('Error toggling repost:', error)

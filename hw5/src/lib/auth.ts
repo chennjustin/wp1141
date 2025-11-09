@@ -1,7 +1,6 @@
 import { NextAuthOptions } from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
 import GitHubProvider from 'next-auth/providers/github'
-import FacebookProvider from 'next-auth/providers/facebook'
 import { prisma } from './prisma'
 import { CustomPrismaAdapter } from './custom-adapter'
 
@@ -15,10 +14,6 @@ export const authOptions: NextAuthOptions = {
     GitHubProvider({
       clientId: process.env.GITHUB_CLIENT_ID!,
       clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-    }),
-    FacebookProvider({
-      clientId: process.env.FACEBOOK_CLIENT_ID!,
-      clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
     }),
   ],
   // 關閉 email linking：同一個 email 用不同 provider 會建立不同帳號

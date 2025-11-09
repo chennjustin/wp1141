@@ -563,35 +563,6 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
                 )}
               </div>
 
-              <div className="flex items-center justify-between text-sm text-blue-500 mt-2">
-                <span>Everyone can reply</span>
-              </div>
-
-              {mediaUrl && (
-                <div className="relative mt-4 rounded-2xl overflow-hidden">
-                  {mediaType === 'video' ? (
-                    <video src={mediaUrl} controls className="w-full max-h-96 object-cover" />
-                  ) : (
-                    <img src={mediaUrl} alt="Media preview" className="w-full max-h-96 object-cover" />
-                  )}
-                  {!isSubmitting && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setMediaUrl(null)
-                        setMediaType(null)
-                      }}
-                      className="absolute top-2 right-2 p-2 bg-black/60 rounded-full hover:bg-black/80 transition-colors"
-                      aria-label="Remove media"
-                    >
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-              )}
-
               <div className="mt-4 flex items-center justify-between">
                 <MediaUploader
                   type="post"
@@ -626,7 +597,7 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
           <button
             onClick={handlePost}
             disabled={isSubmitting || (!hasUnsavedChanges(content, mediaUrl) && !draftId)}
-            className="px-6 py-2 rounded-full font-semibold text-white bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-6 py-2 rounded-full font-semibold text-white bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-[36px] flex items-center justify-center"
           >
             {isSubmitting ? 'Posting…' : 'Post'}
           </button>

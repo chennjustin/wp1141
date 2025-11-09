@@ -12,8 +12,13 @@ export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUser()
 
-    // 獲取所有被 repost 的貼文和留言
+    // 獲取所有被 repost 的貼文（只顯示貼文，不顯示留言）
     const repostedPosts = await prisma.repost.findMany({
+      where: {
+        post: {
+          parentId: null, // 只顯示貼文，不顯示留言
+        },
+      },
       include: {
         post: {
           include: {
@@ -24,19 +29,6 @@ export async function GET(req: NextRequest) {
                 name: true,
                 image: true,
                 avatarUrl: true,
-              },
-            },
-            parent: {
-              include: {
-                author: {
-                  select: {
-                    id: true,
-                    userId: true,
-                    name: true,
-                    image: true,
-                    avatarUrl: true,
-                  },
-                },
               },
             },
             reposts: user
@@ -83,9 +75,45 @@ export async function GET(req: NextRequest) {
       },
     })
 
+    // 使用 Map 來去重，保留最新的 repost 記錄
+    const repostedPostsMap = new Map<string, any>()
+    
+    repostedPosts.forEach((repost) => {
+      const post = repost.post
+      const postId = post.id
+      
+      // 如果這個貼文已經在 map 中，跳過（因為我們已經有了最新的 repost）
+      if (!repostedPostsMap.has(postId)) {
+        const isCurrentUserRepost = user && repost.userId === user.id
+        repostedPostsMap.set(postId, {
+          id: post.id,
+          content: post.content,
+          authorId: post.authorId,
+          createdAt: post.createdAt.toISOString(), // 使用原始貼文時間，不使用 repost 時間
+          updatedAt: post.updatedAt.toISOString(),
+          mediaUrl: post.mediaUrl,
+          mediaType: post.mediaType,
+          author: serializeAuthor(post.author),
+          likeCount: post._count.likes,
+          repostCount: post._count.reposts,
+          commentCount: post._count.replies,
+          reposted: user ? (post.reposts as any)?.length > 0 : false,
+          repostedByMe: isCurrentUserRepost || false,
+          liked: user ? (post.likes as any)?.length > 0 : false,
+        })
+      }
+    })
+
+    const repostedPostsList = Array.from(repostedPostsMap.values())
+
+    // 獲取原始貼文（沒有被 repost 的）
+    const repostedPostIds = new Set(repostedPostsList.map((p) => p.id))
     const posts = await prisma.post.findMany({
       where: {
         parentId: null, // 只返回原始貼文，不包含回覆
+        id: {
+          notIn: Array.from(repostedPostIds),
+        },
       },
       orderBy: {
         createdAt: 'desc',
@@ -130,62 +158,39 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    // 格式化 reposted posts - 在 home feed 中不顯示 repostedBy，只標記 repostedByMe
-    const formattedReposts = repostedPosts.map((repost) => {
-      const post = repost.post
-      const isCurrentUserRepost = user && repost.userId === user.id
-      return {
-        id: post.id,
-        content: post.content,
-        authorId: post.authorId,
-        createdAt: repost.createdAt.toISOString(), // 使用 repost 時間排序
-        updatedAt: post.updatedAt.toISOString(),
-        mediaUrl: post.mediaUrl,
-        mediaType: post.mediaType,
-        author: serializeAuthor(post.author),
-        parent: post.parent
-          ? {
-              id: post.parent.id,
-              content: post.parent.content,
-              authorId: post.parent.authorId,
-              createdAt: post.parent.createdAt.toISOString(),
-              updatedAt: post.parent.updatedAt.toISOString(),
-              author: serializeAuthor(post.parent.author),
-            }
-          : null,
-        depth: post.parentId ? 0 : undefined,
-        likeCount: post._count.likes,
-        repostCount: post._count.reposts,
-        commentCount: post._count.replies,
-        reposted: user ? (post.reposts as any)?.length > 0 : false,
-        repostedByMe: isCurrentUserRepost || false,
-        liked: user ? (post.likes as any)?.length > 0 : false,
-        // 不在 home feed 中顯示 repostedBy
+    // 格式化原始貼文
+    const formattedPosts = posts.map((post) => ({
+      id: post.id,
+      content: post.content,
+      authorId: post.authorId,
+      createdAt: post.createdAt.toISOString(),
+      updatedAt: post.updatedAt.toISOString(),
+      mediaUrl: post.mediaUrl,
+      mediaType: post.mediaType,
+      author: serializeAuthor(post.author),
+      likeCount: post._count.likes,
+      repostCount: post._count.reposts,
+      commentCount: post._count.replies,
+      reposted: user ? (post.reposts as any)?.length > 0 : false,
+      liked: user ? (post.likes as any)?.length > 0 : false,
+    }))
+
+    // 合併貼文並去重，然後排序（按時間降序）
+    const allPostsMap = new Map<string, any>()
+    
+    // 先添加 reposted posts
+    repostedPostsList.forEach((post) => {
+      allPostsMap.set(post.id, post)
+    })
+    
+    // 再添加原始貼文（如果還沒有被添加）
+    formattedPosts.forEach((post) => {
+      if (!allPostsMap.has(post.id)) {
+        allPostsMap.set(post.id, post)
       }
     })
-
-    // 格式化原始貼文（排除已被 repost 的）
-    const repostedPostIds = new Set(repostedPosts.map((r) => r.postId))
-    const formattedPosts = posts
-      .filter((post) => !repostedPostIds.has(post.id))
-      .map((post) => ({
-        id: post.id,
-        content: post.content,
-        authorId: post.authorId,
-        createdAt: post.createdAt.toISOString(),
-        updatedAt: post.updatedAt.toISOString(),
-        mediaUrl: post.mediaUrl,
-        mediaType: post.mediaType,
-        author: serializeAuthor(post.author),
-        likeCount: post._count.likes,
-        repostCount: post._count.reposts,
-        commentCount: post._count.replies,
-        reposted: user ? (post.reposts as any)?.length > 0 : false,
-        liked: user ? (post.likes as any)?.length > 0 : false,
-      }))
-
-    // 合併並排序（按時間降序）
-    const allPosts = [...formattedReposts, ...formattedPosts].sort(
+    
+    const allPosts = Array.from(allPostsMap.values()).sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     )
 
