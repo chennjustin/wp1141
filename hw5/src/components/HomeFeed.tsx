@@ -71,7 +71,7 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
           const response = await fetch('/api/user/me/following-ids')
           if (response.ok) {
             const data = await response.json()
-            const ids = new Set(data.followingIds || [])
+            const ids = new Set<string>(data.followingIds || [])
             setFollowingIds(ids)
             followingIdsRef.current = ids
           }
