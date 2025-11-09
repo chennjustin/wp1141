@@ -22,8 +22,14 @@ export default function PostDetailPage({ parentPost: initialParentPost, replies:
   const [parentPost, setParentPost] = useState<Post>(initialParentPost)
   const [replies, setReplies] = useState<Post[]>(initialReplies)
   const [replyTarget, setReplyTarget] = useState<Post | null>(null)
+  const [displayedRepliesCount, setDisplayedRepliesCount] = useState<number>(10) // 預設顯示 10 則留言
   const feedChannelRef = useRef<any>(null)
   const postChannelRef = useRef<any>(null)
+
+  // 只顯示第一層留言（depth === 0 或 undefined）
+  const firstLevelReplies = replies.filter((reply) => (reply.depth ?? 0) === 0)
+  const displayedReplies = firstLevelReplies.slice(0, displayedRepliesCount)
+  const hasMoreReplies = firstLevelReplies.length > displayedRepliesCount
 
   const handleLike = async (postId: string) => {
     // Find the post (could be parent or reply)
@@ -298,11 +304,16 @@ export default function PostDetailPage({ parentPost: initialParentPost, replies:
   }, [parentPost.id])
 
   const handleComment = (postId: string) => {
-    // For replies, open reply modal
-    // For parent post, also open reply modal
-    const post = postId === parentPost.id ? parentPost : replies.find((p) => p.id === postId)
-    if (post) {
-      setReplyTarget(post)
+    // 如果點擊的是留言，則 route 到該留言的詳情頁
+    const reply = replies.find((p) => p.id === postId)
+    if (reply) {
+      router.push(`/post/${reply.id}`)
+      return
+    }
+    
+    // 如果點擊的是主貼文，則開啟回覆視窗
+    if (postId === parentPost.id) {
+      setReplyTarget(parentPost)
     }
   }
 
@@ -378,20 +389,14 @@ export default function PostDetailPage({ parentPost: initialParentPost, replies:
 
       {/* Replies */}
       <div className="flex flex-col">
-        {replies.length === 0 ? (
+        {firstLevelReplies.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
             <p>No replies yet. Be the first to reply!</p>
           </div>
         ) : (
-          replies.map((reply) => {
-            // 計算縮排層級（根據 depth 判斷）
-            // depth 0 = 第一層（直接回覆主貼文，不縮排）
-            // depth 1+ = 第二層或更深（留言的留言，需要縮排）
-            const indentLevel = reply.depth || 0
-            const paddingLeft = indentLevel > 0 ? `${indentLevel * 3}rem` : '0'
-            
-            return (
-              <div key={reply.id} className="border-b border-gray-200" style={{ paddingLeft }}>
+          <>
+            {displayedReplies.map((reply) => (
+              <div key={reply.id} className="border-b border-gray-200">
                 <PostCard
                   post={reply}
                   onLike={handleLike}
@@ -400,8 +405,18 @@ export default function PostDetailPage({ parentPost: initialParentPost, replies:
                   showRepostLabel={true}
                 />
               </div>
-            )
-          })
+            ))}
+            {hasMoreReplies && (
+              <div className="p-4 text-center border-b border-gray-200">
+                <button
+                  onClick={() => setDisplayedRepliesCount((prev) => prev + 10)}
+                  className="text-blue-500 hover:text-blue-600 font-semibold transition-colors"
+                >
+                  顯示更多回應
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
