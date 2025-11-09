@@ -33,5 +33,6 @@ export interface Post {
   liked?: boolean // Whether current user has liked this post
   reposted?: boolean // Whether current user has reposted this post
   repostedByMe?: boolean // Whether this post was reposted by the current user (for profile page)
+  repostedBy?: BasicAuthor // Who reposted this post (if displayed in feed)
 }
 

@@ -11,6 +11,448 @@ import { Post } from '@/types/post'
 import { PUSHER_EVENTS, PostCreatedPayload, PostLikedPayload, PostRepostedPayload, PostRepliedPayload } from '@/lib/pusher/events'
 import { usePusherSubscription } from '@/hooks/usePusherSubscription'
 
+// RepliesTab component
+function RepliesTab({ userId }: { userId: string }) {
+  const [replies, setReplies] = useState<Post[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const { data: session } = useSession()
+  const currentUserId = session?.user?.id
+  const router = useRouter()
+
+  useEffect(() => {
+    const fetchReplies = async () => {
+      try {
+        setIsLoading(true)
+        setError(null)
+        const response = await fetch(`/api/user/${userId}/replies`)
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch replies')
+        }
+
+        const data = await response.json()
+        setReplies(data)
+      } catch (err) {
+        console.error('Error fetching replies:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load replies')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchReplies()
+  }, [userId])
+
+  const handleLike = async (postId: string) => {
+    const replyIndex = replies.findIndex((p) => p.id === postId)
+    if (replyIndex === -1) return
+
+    const reply = replies[replyIndex]
+    const wasLiked = reply.liked || false
+    const previousLikeCount = reply.likeCount
+
+    // Optimistic update
+    const updatedReplies = [...replies]
+    updatedReplies[replyIndex] = {
+      ...reply,
+      liked: !wasLiked,
+      likeCount: wasLiked ? reply.likeCount - 1 : reply.likeCount + 1,
+    }
+    setReplies(updatedReplies)
+
+    try {
+      const response = await fetch('/api/like', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ postId }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle like')
+      }
+
+      const data = await response.json()
+
+      setReplies((currentReplies) => {
+        const currentReplyIndex = currentReplies.findIndex((p) => p.id === postId)
+        if (currentReplyIndex === -1) return currentReplies
+
+        const finalReplies = [...currentReplies]
+        finalReplies[currentReplyIndex] = {
+          ...currentReplies[currentReplyIndex],
+          liked: data.liked,
+          likeCount: data.likeCount,
+        }
+        return finalReplies
+      })
+
+      if (!data.liked) {
+        setReplies((currentReplies) => currentReplies.filter((p) => p.id !== postId))
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error)
+      setReplies((currentReplies) => {
+        const currentReplyIndex = currentReplies.findIndex((p) => p.id === postId)
+        if (currentReplyIndex === -1) return currentReplies
+
+        const rollbackReplies = [...currentReplies]
+        rollbackReplies[currentReplyIndex] = {
+          ...currentReplies[currentReplyIndex],
+          liked: wasLiked,
+          likeCount: previousLikeCount,
+        }
+        return rollbackReplies
+      })
+    }
+  }
+
+  const handleRepost = async (postId: string) => {
+    const replyIndex = replies.findIndex((p) => p.id === postId)
+    if (replyIndex === -1) return
+
+    const reply = replies[replyIndex]
+    const wasReposted = reply.reposted || false
+    const previousRepostCount = reply.repostCount
+
+    // Optimistic update
+    const updatedReplies = [...replies]
+    updatedReplies[replyIndex] = {
+      ...reply,
+      reposted: !wasReposted,
+      repostCount: wasReposted ? reply.repostCount - 1 : reply.repostCount + 1,
+    }
+    setReplies(updatedReplies)
+
+    try {
+      const response = await fetch('/api/repost', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ postId }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle repost')
+      }
+
+      const data = await response.json()
+
+      setReplies((currentReplies) => {
+        const currentReplyIndex = currentReplies.findIndex((p) => p.id === postId)
+        if (currentReplyIndex === -1) return currentReplies
+
+        const finalReplies = [...currentReplies]
+        finalReplies[currentReplyIndex] = {
+          ...currentReplies[currentReplyIndex],
+          reposted: data.reposted,
+          repostCount: data.repostCount,
+        }
+        return finalReplies
+      })
+    } catch (error) {
+      console.error('Error toggling repost:', error)
+      setReplies((currentReplies) => {
+        const currentReplyIndex = currentReplies.findIndex((p) => p.id === postId)
+        if (currentReplyIndex === -1) return currentReplies
+
+        const rollbackReplies = [...currentReplies]
+        rollbackReplies[currentReplyIndex] = {
+          ...currentReplies[currentReplyIndex],
+          reposted: wasReposted,
+          repostCount: previousRepostCount,
+        }
+        return rollbackReplies
+      })
+    }
+  }
+
+  const handleComment = (postId: string) => {
+    router.push(`/post/${postId}`)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="border-b border-gray-200 p-4 animate-pulse">
+            <div className="flex gap-3">
+              <div className="w-12 h-12 rounded-full bg-gray-300 flex-shrink-0" />
+              <div className="flex-1">
+                <div className="h-4 bg-gray-300 rounded w-1/4 mb-2" />
+                <div className="h-4 bg-gray-300 rounded w-3/4 mb-2" />
+                <div className="h-4 bg-gray-300 rounded w-1/2 mb-4" />
+                <div className="flex gap-8">
+                  <div className="h-4 bg-gray-300 rounded w-12" />
+                  <div className="h-4 bg-gray-300 rounded w-12" />
+                  <div className="h-4 bg-gray-300 rounded w-12" />
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 text-center text-red-500">
+        <p>{error}</p>
+      </div>
+    )
+  }
+
+  if (replies.length === 0) {
+    return (
+      <div className="p-8 text-center text-gray-500">
+        <p>No replies yet.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col">
+      {replies.map((reply) => (
+        <PostCard
+          key={reply.id}
+          post={reply}
+          onLike={handleLike}
+          onRepost={handleRepost}
+          onComment={handleComment}
+        />
+      ))}
+    </div>
+  )
+}
+
+// RepostsTab component
+function RepostsTab({ userId }: { userId: string }) {
+  const [reposts, setReposts] = useState<Post[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const { data: session } = useSession()
+  const currentUserId = session?.user?.id
+  const router = useRouter()
+
+  useEffect(() => {
+    const fetchReposts = async () => {
+      try {
+        setIsLoading(true)
+        setError(null)
+        const response = await fetch(`/api/user/${userId}/reposts`)
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch reposts')
+        }
+
+        const data = await response.json()
+        setReposts(data)
+      } catch (err) {
+        console.error('Error fetching reposts:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load reposts')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchReposts()
+  }, [userId])
+
+  const handleLike = async (postId: string) => {
+    const repostIndex = reposts.findIndex((p) => p.id === postId)
+    if (repostIndex === -1) return
+
+    const repost = reposts[repostIndex]
+    const wasLiked = repost.liked || false
+    const previousLikeCount = repost.likeCount
+
+    // Optimistic update
+    const updatedReposts = [...reposts]
+    updatedReposts[repostIndex] = {
+      ...repost,
+      liked: !wasLiked,
+      likeCount: wasLiked ? repost.likeCount - 1 : repost.likeCount + 1,
+    }
+    setReposts(updatedReposts)
+
+    try {
+      const response = await fetch('/api/like', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ postId }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle like')
+      }
+
+      const data = await response.json()
+
+      setReposts((currentReposts) => {
+        const currentRepostIndex = currentReposts.findIndex((p) => p.id === postId)
+        if (currentRepostIndex === -1) return currentReposts
+
+        const finalReposts = [...currentReposts]
+        finalReposts[currentRepostIndex] = {
+          ...currentReposts[currentRepostIndex],
+          liked: data.liked,
+          likeCount: data.likeCount,
+        }
+        return finalReposts
+      })
+
+      if (!data.liked) {
+        setReposts((currentReposts) => currentReposts.filter((p) => p.id !== postId))
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error)
+      setReposts((currentReposts) => {
+        const currentRepostIndex = currentReposts.findIndex((p) => p.id === postId)
+        if (currentRepostIndex === -1) return currentReposts
+
+        const rollbackReposts = [...currentReposts]
+        rollbackReposts[currentRepostIndex] = {
+          ...currentReposts[currentRepostIndex],
+          liked: wasLiked,
+          likeCount: previousLikeCount,
+        }
+        return rollbackReposts
+      })
+    }
+  }
+
+  const handleRepost = async (postId: string) => {
+    const repostIndex = reposts.findIndex((p) => p.id === postId)
+    if (repostIndex === -1) return
+
+    const repost = reposts[repostIndex]
+    const wasReposted = repost.reposted || false
+    const previousRepostCount = repost.repostCount
+
+    // Optimistic update
+    const updatedReposts = [...reposts]
+    updatedReposts[repostIndex] = {
+      ...repost,
+      reposted: !wasReposted,
+      repostCount: wasReposted ? repost.repostCount - 1 : repost.repostCount + 1,
+    }
+    setReposts(updatedReposts)
+
+    try {
+      const response = await fetch('/api/repost', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ postId }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle repost')
+      }
+
+      const data = await response.json()
+
+      setReposts((currentReposts) => {
+        const currentRepostIndex = currentReposts.findIndex((p) => p.id === postId)
+        if (currentRepostIndex === -1) return currentReposts
+
+        const finalReposts = [...currentReposts]
+        finalReposts[currentRepostIndex] = {
+          ...currentReposts[currentRepostIndex],
+          reposted: data.reposted,
+          repostCount: data.repostCount,
+        }
+        return finalReposts
+      })
+
+      // If un-reposted, remove from list
+      if (!data.reposted) {
+        setReposts((currentReposts) => currentReposts.filter((p) => p.id !== postId))
+      }
+    } catch (error) {
+      console.error('Error toggling repost:', error)
+      setReposts((currentReposts) => {
+        const currentRepostIndex = currentReposts.findIndex((p) => p.id === postId)
+        if (currentRepostIndex === -1) return currentReposts
+
+        const rollbackReposts = [...currentReposts]
+        rollbackReposts[currentRepostIndex] = {
+          ...currentReposts[currentRepostIndex],
+          reposted: wasReposted,
+          repostCount: previousRepostCount,
+        }
+        return rollbackReposts
+      })
+    }
+  }
+
+  const handleComment = (postId: string) => {
+    router.push(`/post/${postId}`)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="border-b border-gray-200 p-4 animate-pulse">
+            <div className="flex gap-3">
+              <div className="w-12 h-12 rounded-full bg-gray-300 flex-shrink-0" />
+              <div className="flex-1">
+                <div className="h-4 bg-gray-300 rounded w-1/4 mb-2" />
+                <div className="h-4 bg-gray-300 rounded w-3/4 mb-2" />
+                <div className="h-4 bg-gray-300 rounded w-1/2 mb-4" />
+                <div className="flex gap-8">
+                  <div className="h-4 bg-gray-300 rounded w-12" />
+                  <div className="h-4 bg-gray-300 rounded w-12" />
+                  <div className="h-4 bg-gray-300 rounded w-12" />
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 text-center text-red-500">
+        <p>{error}</p>
+      </div>
+    )
+  }
+
+  if (reposts.length === 0) {
+    return (
+      <div className="p-8 text-center text-gray-500">
+        <p>No reposts yet.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col">
+      {reposts.map((repost) => (
+        <PostCard
+          key={repost.id}
+          post={repost}
+          onLike={handleLike}
+          onRepost={handleRepost}
+          onComment={handleComment}
+          showRepostLabel={true}
+        />
+      ))}
+    </div>
+  )
+}
+
 // LikedPostsTab component
 function LikedPostsTab({ userId }: { userId: string }) {
   const [likedPosts, setLikedPosts] = useState<Post[]>([])
@@ -247,7 +689,7 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
   const router = useRouter()
   const { data: session, update } = useSession()
   const currentUserId = session?.user?.id
-  const [activeTab, setActiveTab] = useState<'posts' | 'likes'>('posts')
+  const [activeTab, setActiveTab] = useState<'posts' | 'replies' | 'reposts' | 'likes'>('posts')
   const [isFollowing, setIsFollowing] = useState(initialFollowing)
   const [followerCount, setFollowerCount] = useState(user._count.followers)
   const [followingCount, setFollowingCount] = useState(user._count.following)
@@ -706,6 +1148,36 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
             <span className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 rounded-t-full" />
           )}
         </button>
+        {isSelf && (
+          <>
+            <button
+              onClick={() => setActiveTab('replies')}
+              className={`flex-1 px-4 py-4 text-center font-semibold transition-colors relative ${
+                activeTab === 'replies'
+                  ? 'text-gray-900'
+                  : 'text-gray-500 hover:bg-gray-50'
+              }`}
+            >
+              Replies
+              {activeTab === 'replies' && (
+                <span className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 rounded-t-full" />
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('reposts')}
+              className={`flex-1 px-4 py-4 text-center font-semibold transition-colors relative ${
+                activeTab === 'reposts'
+                  ? 'text-gray-900'
+                  : 'text-gray-500 hover:bg-gray-50'
+              }`}
+            >
+              Reposts
+              {activeTab === 'reposts' && (
+                <span className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 rounded-t-full" />
+              )}
+            </button>
+          </>
+        )}
         <button
           onClick={() => setActiveTab('likes')}
           className={`flex-1 px-4 py-4 text-center font-semibold transition-colors relative ${
@@ -743,6 +1215,10 @@ export default function ProfilePage({ user, posts: initialPosts, isSelf, isFollo
               />
             ))
           )
+        ) : activeTab === 'replies' ? (
+          <RepliesTab userId={user.id} />
+        ) : activeTab === 'reposts' ? (
+          <RepostsTab userId={user.id} />
         ) : (
           <LikedPostsTab userId={user.id} />
         )}

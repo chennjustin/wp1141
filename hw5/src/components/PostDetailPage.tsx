@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import PostCard from './PostCard'
 import ReplyModal from './ReplyModal'
@@ -312,7 +313,7 @@ export default function PostDetailPage({ parentPost: initialParentPost, replies:
   return (
     <div className="flex flex-col">
       {/* Back Button */}
-      <div className="px-4 py-3 border-b border-gray-200">
+      <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
         <button
           onClick={handleBack}
           className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors"
@@ -333,6 +334,14 @@ export default function PostDetailPage({ parentPost: initialParentPost, replies:
           </svg>
           <span className="font-semibold">Post</span>
         </button>
+        {parentPost.parent && (
+          <Link
+            href={`/post/${parentPost.parent.id}`}
+            className="text-sm text-blue-500 hover:underline"
+          >
+            View original post
+          </Link>
+        )}
       </div>
 
       {/* Parent Post */}

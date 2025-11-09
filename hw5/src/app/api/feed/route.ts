@@ -20,8 +20,108 @@ export async function GET(req: NextRequest) {
       return unauthorizedResponse()
     }
 
+    // 獲取所有被 repost 的貼文和留言
+    let repostedPostsWhere: any = {}
+    if (user && filter === 'following') {
+      // 獲取當前用戶追蹤的所有用戶 ID
+      const following = await prisma.follow.findMany({
+        where: { followerId: user.id },
+        select: { followingId: true },
+      })
+      const followingIds = following.map((f) => f.followingId)
+      if (followingIds.length > 0) {
+        repostedPostsWhere = {
+          userId: {
+            in: followingIds,
+          },
+        }
+      } else {
+        // 如果沒有追蹤任何人，只返回空列表
+        repostedPostsWhere = {
+          userId: {
+            in: [],
+          },
+        }
+      }
+    }
+
+    const repostedPosts = await prisma.repost.findMany({
+      where: repostedPostsWhere,
+      include: {
+        post: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                userId: true,
+                name: true,
+                image: true,
+                avatarUrl: true,
+              },
+            },
+            parent: {
+              include: {
+                author: {
+                  select: {
+                    id: true,
+                    userId: true,
+                    name: true,
+                    image: true,
+                    avatarUrl: true,
+                  },
+                },
+              },
+            },
+            reposts: user
+              ? {
+                  where: {
+                    userId: user.id,
+                  },
+                  select: {
+                    userId: true,
+                  },
+                }
+              : false,
+            likes: user
+              ? {
+                  where: {
+                    userId: user.id,
+                  },
+                  select: {
+                    userId: true,
+                  },
+                }
+              : false,
+            _count: {
+              select: {
+                likes: true,
+                replies: true,
+                reposts: true, // 留言的 repost count 就是 repost 該留言的數量
+              },
+            },
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            userId: true,
+            name: true,
+            image: true,
+            avatarUrl: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    })
+
+    // 獲取原始貼文（沒有被 repost 的）
     const where: any = {
       parentId: null, // 只返回原始貼文，不包含回覆
+      reposts: {
+        none: {}, // 沒有被 repost 的貼文
+      },
     }
 
     if (filter === 'following' && user) {
@@ -33,8 +133,39 @@ export async function GET(req: NextRequest) {
 
       const followingIds = following.map((f) => f.followingId)
       if (followingIds.length === 0) {
-        // 如果沒有追蹤任何人，返回空列表
-        return NextResponse.json([])
+        // 如果沒有追蹤任何人，只返回 reposted posts
+        const formattedReposts = repostedPosts.map((repost) => {
+          const post = repost.post
+          const isCurrentUserRepost = user && repost.userId === user.id
+          return {
+            id: post.id,
+            content: post.content,
+            authorId: post.authorId,
+            createdAt: repost.createdAt.toISOString(), // 使用 repost 時間排序
+            updatedAt: post.updatedAt.toISOString(),
+            mediaUrl: post.mediaUrl,
+            mediaType: post.mediaType,
+            author: serializeAuthor(post.author),
+            parent: post.parent
+              ? {
+                  id: post.parent.id,
+                  content: post.parent.content,
+                  authorId: post.parent.authorId,
+                  createdAt: post.parent.createdAt.toISOString(),
+                  updatedAt: post.parent.updatedAt.toISOString(),
+                  author: serializeAuthor(post.parent.author),
+                }
+              : null,
+            depth: post.parentId ? 0 : undefined,
+            likeCount: post._count.likes,
+            repostCount: post._count.reposts,
+            commentCount: post._count.replies,
+            reposted: user ? (post.reposts as any)?.length > 0 : false,
+            repostedByMe: isCurrentUserRepost || false,
+            liked: user ? (post.likes as any)?.length > 0 : false,
+          }
+        })
+        return NextResponse.json(formattedReposts)
       }
 
       where.authorId = {
@@ -85,7 +216,41 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    // 格式化回傳資料，將 _count 轉換為明確的計數欄位
+    // 格式化 reposted posts - 在 home feed 中不顯示 repostedBy，只標記 repostedByMe
+    const formattedReposts = repostedPosts.map((repost) => {
+      const post = repost.post
+      const isCurrentUserRepost = user && repost.userId === user.id
+      return {
+        id: post.id,
+        content: post.content,
+        authorId: post.authorId,
+        createdAt: repost.createdAt.toISOString(), // 使用 repost 時間排序
+        updatedAt: post.updatedAt.toISOString(),
+        mediaUrl: post.mediaUrl,
+        mediaType: post.mediaType,
+        author: serializeAuthor(post.author),
+        parent: post.parent
+          ? {
+              id: post.parent.id,
+              content: post.parent.content,
+              authorId: post.parent.authorId,
+              createdAt: post.parent.createdAt.toISOString(),
+              updatedAt: post.parent.updatedAt.toISOString(),
+              author: serializeAuthor(post.parent.author),
+            }
+          : null,
+        depth: post.parentId ? 0 : undefined,
+        likeCount: post._count.likes,
+        repostCount: post._count.reposts,
+        commentCount: post._count.replies,
+        reposted: user ? (post.reposts as any)?.length > 0 : false,
+        repostedByMe: isCurrentUserRepost || false,
+        liked: user ? (post.likes as any)?.length > 0 : false,
+        // 不在 home feed 中顯示 repostedBy
+      }
+    })
+
+    // 格式化原始貼文
     const formattedPosts = posts.map((post) => ({
       id: post.id,
       content: post.content,
@@ -96,13 +261,18 @@ export async function GET(req: NextRequest) {
       mediaType: post.mediaType,
       author: serializeAuthor(post.author),
       likeCount: post._count.likes,
-      repostCount: post._count.reposts,
+      repostCount: post._count.reposts, // 這個已經是正確的，因為只計算 repost 該貼文的數量
       commentCount: post._count.replies,
       reposted: user ? (post.reposts as any)?.length > 0 : false,
       liked: user ? (post.likes as any)?.length > 0 : false,
     }))
 
-    return NextResponse.json(formattedPosts)
+    // 合併並排序（按時間降序）
+    const allPosts = [...formattedReposts, ...formattedPosts].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+
+    return NextResponse.json(allPosts)
   } catch (error) {
     console.error('Error fetching feed:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

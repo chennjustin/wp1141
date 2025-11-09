@@ -34,6 +34,27 @@ export default async function PostPage({ params }: PostPageProps) {
           avatarUrl: true,
         },
       },
+      parent: {
+        include: {
+          author: {
+            select: {
+              id: true,
+              userId: true,
+              name: true,
+              image: true,
+              avatarUrl: true,
+            },
+          },
+        },
+      },
+      reposts: {
+        where: {
+          userId: session.user.id as string,
+        },
+        select: {
+          userId: true,
+        },
+      },
       likes: {
         where: {
           userId: session.user.id as string,
@@ -67,10 +88,21 @@ export default async function PostPage({ params }: PostPageProps) {
     mediaUrl: postData.mediaUrl,
     mediaType: postData.mediaType as 'image' | 'video' | null,
     author: serializeAuthor(postData.author),
+    parent: postData.parent
+      ? {
+          id: postData.parent.id,
+          content: postData.parent.content,
+          authorId: postData.parent.authorId,
+          createdAt: postData.parent.createdAt.toISOString(),
+          updatedAt: postData.parent.updatedAt.toISOString(),
+          author: serializeAuthor(postData.parent.author),
+        }
+      : null,
     likeCount: postData._count.likes,
     repostCount: postData._count.reposts,
     commentCount: postData._count.replies,
     liked: (postData.likes as any)?.length > 0,
+    reposted: (postData.reposts as any)?.length > 0,
   }
 
   // 使用遞迴查詢所有層級的 replies（包括留言的留言）
