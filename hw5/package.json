@@ -18,12 +18,14 @@
     "pusher": "^5.2.0",
     "pusher-js": "^8.4.0",
     "react": "^18.3.0",
-    "react-dom": "^18.3.0"
+    "react-dom": "^18.3.0",
+    "react-easy-crop": "^5.5.3"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
+    "@types/react-easy-crop": "^1.16.0",
     "autoprefixer": "^10.4.0",
     "cross-env": "^7.0.3",
     "eslint": "^8.57.0",

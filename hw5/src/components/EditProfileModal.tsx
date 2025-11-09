@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { User } from '@/types/user'
-import MediaUploader from './MediaUploader'
+import AvatarCoverUploader from './AvatarCoverUploader'
 
 interface EditProfileModalProps {
   open: boolean
@@ -51,15 +51,9 @@ export default function EditProfileModal({ open, onClose, user, onSave }: EditPr
     }
   }
 
-  const handleAvatarUpload = async (url: string, type: 'image' | 'video') => {
-    if (type !== 'image') {
-      alert('Avatar must be an image')
-      return
-    }
+  const handleAvatarUpload = async (url: string) => {
     setIsUploadingAvatar(true)
-    setAvatarUrl(url || null)
     
-    // Immediately update the database
     try {
       const response = await fetch(`/api/user/${user.id}`, {
         method: 'PATCH',
@@ -74,7 +68,6 @@ export default function EditProfileModal({ open, onClose, user, onSave }: EditPr
       }
 
       const updatedUser = await response.json()
-      // Update local state immediately
       setAvatarUrl(updatedUser.avatarUrl)
       
       // Update NextAuth session to sync across all components
@@ -87,7 +80,6 @@ export default function EditProfileModal({ open, onClose, user, onSave }: EditPr
     } catch (error) {
       console.error('Error updating avatar:', error)
       alert('Failed to update avatar')
-      // Rollback on error
       setAvatarUrl(user.avatarUrl || null)
     } finally {
       setIsUploadingAvatar(false)
@@ -115,15 +107,12 @@ export default function EditProfileModal({ open, onClose, user, onSave }: EditPr
       }
 
       const updatedUser = await response.json()
-      // Update local state immediately
       setAvatarUrl(null)
       
-      // Update NextAuth session to sync across all components
       await update({
         avatarUrl: null,
       })
       
-      // Refresh server components to update old posts with new avatar
       router.refresh()
     } catch (error) {
       console.error('Error resetting avatar:', error)
@@ -133,15 +122,9 @@ export default function EditProfileModal({ open, onClose, user, onSave }: EditPr
     }
   }
 
-  const handleCoverUpload = async (url: string, type: 'image' | 'video') => {
-    if (type !== 'image') {
-      alert('Cover must be an image')
-      return
-    }
+  const handleCoverUpload = async (url: string) => {
     setIsUploadingCover(true)
-    setCoverUrl(url || null)
     
-    // Immediately update the database
     try {
       const response = await fetch(`/api/user/${user.id}`, {
         method: 'PATCH',
@@ -156,12 +139,10 @@ export default function EditProfileModal({ open, onClose, user, onSave }: EditPr
       }
 
       const updatedUser = await response.json()
-      // Update local state immediately
       setCoverUrl(updatedUser.coverUrl)
     } catch (error) {
       console.error('Error updating cover:', error)
       alert('Failed to update cover')
-      // Rollback on error
       setCoverUrl(user.coverUrl || null)
     } finally {
       setIsUploadingCover(false)
@@ -225,11 +206,12 @@ export default function EditProfileModal({ open, onClose, user, onSave }: EditPr
         <div className="flex-1 overflow-y-auto">
           {/* Cover Image */}
           <div className="relative h-48">
-            <MediaUploader
+            <AvatarCoverUploader
               type="cover"
               existingUrl={coverUrl}
               onUpload={handleCoverUpload}
               disabled={isSubmitting || isUploadingCover}
+              userId={user.id}
             />
           </div>
 
@@ -238,11 +220,12 @@ export default function EditProfileModal({ open, onClose, user, onSave }: EditPr
             {/* Avatar */}
             <div className="relative -mt-16 mb-4">
               <div className="flex flex-col items-start gap-3">
-                <MediaUploader
+                <AvatarCoverUploader
                   type="avatar"
                   existingUrl={avatarUrl || user.image}
                   onUpload={handleAvatarUpload}
                   disabled={isSubmitting || isUploadingAvatar}
+                  userId={user.id}
                 />
                 {avatarUrl && (
                   <button

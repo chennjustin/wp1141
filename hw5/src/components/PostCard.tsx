@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Post } from '@/types/post'
+import { parseContent } from '@/lib/content-parser'
 
 interface PostCardProps {
   post: Post
@@ -58,31 +59,7 @@ export default function PostCard({ post, onLike, onRepost, onComment, onDelete, 
   }
 
   const renderContent = (text: string) => {
-    const tokens = text.split(/([#@][A-Za-z0-9_]+)/g)
-    return tokens.map((token, index) => {
-      if (!token) return null
-      if (token.startsWith('@') && token.length > 1) {
-        const handle = token.slice(1)
-        return (
-          <Link
-            key={`${token}-${index}`}
-            href={`/profile/${handle}`}
-            className="text-blue-500 hover:underline"
-            onClick={(event) => event.stopPropagation()}
-          >
-            {token}
-          </Link>
-        )
-      }
-      if (token.startsWith('#') && token.length > 1) {
-        return (
-          <span key={`${token}-${index}`} className="text-blue-500 hover:underline">
-            {token}
-          </span>
-        )
-      }
-      return <React.Fragment key={`${token}-${index}`}>{token}</React.Fragment>
-    })
+    return parseContent(text)
   }
 
   const handleDelete = async () => {

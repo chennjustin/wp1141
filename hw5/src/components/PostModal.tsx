@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { usePostModal, DraftPayload } from './PostModalProvider'
 import MediaUploader from './MediaUploader'
 import { Draft } from '@/types/draft'
+import { calculateEffectiveLength } from '@/lib/content-parser'
+import HighlightedTextarea from './HighlightedTextarea'
 
 interface PostModalProps {
   onPostCreated?: () => void
@@ -291,7 +293,8 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
   const handlePost = async () => {
     const trimmed = content.trim()
     if (trimmed.length === 0 && !mediaUrl) return
-    if (trimmed.length > MAX_LENGTH) return
+    const effectiveLength = calculateEffectiveLength(trimmed)
+    if (effectiveLength > MAX_LENGTH) return
 
     setIsSubmitting(true)
     try {
@@ -494,7 +497,7 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
 
             <div className="flex-1">
               <div className="relative">
-                <textarea
+                <HighlightedTextarea
                   ref={textareaRef}
                   value={content}
                   onChange={handleContentChange}
@@ -570,17 +573,21 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
                   onUpload={handleMediaUpload}
                   disabled={isSubmitting}
                 />
-                <span
-                  className={`text-sm ${
-                    content.length > MAX_LENGTH * 0.9
-                      ? content.length >= MAX_LENGTH
-                        ? 'text-red-500'
-                        : 'text-yellow-500'
-                      : 'text-gray-500'
-                  }`}
-                >
-                  {content.length}/{MAX_LENGTH}
-                </span>
+                {(() => {
+                  const effectiveLength = calculateEffectiveLength(content)
+                  const remaining = MAX_LENGTH - effectiveLength
+                  const remainingClass =
+                    remaining < 0
+                      ? 'text-red-500'
+                      : remaining <= MAX_LENGTH * 0.1
+                        ? 'text-yellow-500'
+                        : 'text-gray-500'
+                  return (
+                    <span className={`text-sm ${remainingClass}`}>
+                      {effectiveLength}/{MAX_LENGTH}
+                    </span>
+                  )
+                })()}
               </div>
             </div>
           </div>

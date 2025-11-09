@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { Post } from '@/types/post'
+import { calculateEffectiveLength } from '@/lib/content-parser'
+import HighlightedTextarea from './HighlightedTextarea'
 
 interface ReplyModalProps {
   open: boolean
@@ -232,7 +234,13 @@ export default function ReplyModal({ open, onClose, parentPost, onSubmit }: Repl
 
   const handleSubmit = async () => {
     const trimmed = content.trim()
-    if (trimmed.length === 0 || trimmed.length > maxLength) return
+    if (trimmed.length === 0) {
+      return
+    }
+    const effectiveLength = calculateEffectiveLength(trimmed)
+    if (effectiveLength > maxLength) {
+      return
+    }
 
     setIsSubmitting(true)
     try {
@@ -335,7 +343,7 @@ export default function ReplyModal({ open, onClose, parentPost, onSubmit }: Repl
 
             {/* Textarea */}
             <div className="flex-1 relative">
-              <textarea
+              <HighlightedTextarea
                 ref={textareaRef}
                 value={content}
                 onChange={handleContentChange}
@@ -400,17 +408,21 @@ export default function ReplyModal({ open, onClose, parentPost, onSubmit }: Repl
                 </div>
               )}
               <div className="mt-4 flex items-center justify-between">
-                <span
-                  className={`text-sm ${
-                    content.length > maxLength * 0.9
-                      ? content.length >= maxLength
-                        ? 'text-red-500'
-                        : 'text-yellow-500'
-                      : 'text-gray-500'
-                  }`}
-                >
-                  {content.length}/{maxLength}
-                </span>
+                {(() => {
+                  const effectiveLength = calculateEffectiveLength(content)
+                  const remaining = maxLength - effectiveLength
+                  const remainingClass =
+                    remaining < 0
+                      ? 'text-red-500'
+                      : remaining <= maxLength * 0.1
+                        ? 'text-yellow-500'
+                        : 'text-gray-500'
+                  return (
+                    <span className={`text-sm ${remainingClass}`}>
+                      {effectiveLength}/{maxLength}
+                    </span>
+                  )
+                })()}
               </div>
             </div>
           </div>
@@ -426,7 +438,7 @@ export default function ReplyModal({ open, onClose, parentPost, onSubmit }: Repl
           </button>
           <button
             onClick={handleSubmit}
-            disabled={content.trim().length === 0 || content.length > maxLength || isSubmitting}
+            disabled={content.trim().length === 0 || calculateEffectiveLength(content.trim()) > maxLength || isSubmitting}
             className="px-6 py-2 rounded-full font-semibold text-white bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isSubmitting ? 'Posting...' : 'Reply'}

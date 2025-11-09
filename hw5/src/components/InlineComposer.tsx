@@ -5,6 +5,8 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import type { Post } from '@/types/post'
 import MediaUploader from './MediaUploader'
+import { calculateEffectiveLength } from '@/lib/content-parser'
+import HighlightedTextarea from './HighlightedTextarea'
 
 const MAX_LENGTH = 280
 
@@ -265,7 +267,8 @@ export default function InlineComposer({ onPostCreated }: InlineComposerProps) {
       setError('內容不可為空')
       return
     }
-    if (trimmed.length > MAX_LENGTH) {
+    const effectiveLength = calculateEffectiveLength(trimmed)
+    if (effectiveLength > MAX_LENGTH) {
       setError(`內容長度不可超過 ${MAX_LENGTH} 字元`)
       return
     }
@@ -301,7 +304,8 @@ export default function InlineComposer({ onPostCreated }: InlineComposerProps) {
     }
   }
 
-  const remaining = MAX_LENGTH - content.length
+  const effectiveLength = calculateEffectiveLength(content)
+  const remaining = MAX_LENGTH - effectiveLength
   const remainingClass =
     remaining < 0 ? 'text-red-500' : remaining <= 20 ? 'text-yellow-500' : 'text-gray-400'
 
@@ -322,7 +326,7 @@ export default function InlineComposer({ onPostCreated }: InlineComposerProps) {
 
         <div className="flex-1">
           <div className="relative">
-            <textarea
+            <HighlightedTextarea
               ref={textareaRef}
               value={content}
               onChange={handleContentChange}
@@ -400,7 +404,7 @@ export default function InlineComposer({ onPostCreated }: InlineComposerProps) {
               disabled={isSubmitting}
             />
             <div className="flex items-center gap-3">
-              <span className={`text-sm ${remainingClass}`}>{content.length}/{MAX_LENGTH}</span>
+              <span className={`text-sm ${remainingClass}`}>{effectiveLength}/{MAX_LENGTH}</span>
               <button
                 type="button"
                 onClick={handleSubmit}
