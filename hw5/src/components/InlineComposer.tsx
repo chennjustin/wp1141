@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import type { Post } from '@/types/post'
 import MediaUploader from './MediaUploader'
+import EmojiPicker from './EmojiPicker'
 import { calculateEffectiveLength } from '@/lib/content-parser'
 import HighlightedTextarea from './HighlightedTextarea'
 
@@ -180,6 +181,26 @@ export default function InlineComposer({ onPostCreated }: InlineComposerProps) {
   const handleMediaUpload = (url: string, type: 'image' | 'video') => {
     setMediaUrl(url || null)
     setMediaType(url ? type : null)
+  }
+
+  const handleEmojiSelect = (emoji: string) => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const newContent = content.slice(0, start) + emoji + content.slice(end)
+    setContent(newContent)
+
+    // Set cursor position after emoji
+    setTimeout(() => {
+      if (textarea) {
+        const newPosition = start + emoji.length
+        textarea.setSelectionRange(newPosition, newPosition)
+        textarea.focus()
+        autoResize(textarea)
+      }
+    }, 0)
   }
 
   const resetComposer = () => {
@@ -397,12 +418,25 @@ export default function InlineComposer({ onPostCreated }: InlineComposerProps) {
           </div>
 
           <div className="mt-4 flex items-center justify-between">
-            <MediaUploader
-              type="post"
-              existingUrl={mediaUrl}
-              onUpload={handleMediaUpload}
-              disabled={isSubmitting}
-            />
+            <div className="flex items-center gap-2">
+              <MediaUploader
+                type="post"
+                existingUrl={mediaUrl}
+                onUpload={handleMediaUpload}
+                disabled={isSubmitting}
+              />
+              <EmojiPicker onEmojiSelect={handleEmojiSelect} />
+              {/* GIF placeholder with tooltip */}
+              <div className="relative group">
+                <div className="p-2 rounded-full text-blue-500 opacity-50 cursor-not-allowed h-[36px] flex items-center justify-center">
+                  <span className="text-sm font-semibold">GIF</span>
+                </div>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                  (來不及設定Giphy API key)
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                </div>
+              </div>
+            </div>
             <div className="flex items-center gap-3">
               <span className={`text-sm ${remainingClass}`}>{effectiveLength}/{MAX_LENGTH}</span>
               <button

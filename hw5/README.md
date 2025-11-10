@@ -33,12 +33,18 @@
 - ✅ **Profile** — 進入個人首頁
 - ✅ **Post** — 發表貼文（明亮底色按鈕）
 - ✅ **Notifications** — 通知頁面（顯示未讀數量紅點）
-- ✅ **使用者資訊** — 顯示頭貼、姓名、UserID，點擊後顯示登出選項
+- ✅ **使用者資訊** — 顯示頭貼、姓名、UserID，點擊三個點（⋯）後顯示登出選項
 - ✅ **Hover 效果** — 滑鼠懸停時按鈕會微亮 highlight
 
 #### 編輯/瀏覽個人首頁
 
+- ✅ **導航欄顯示**
+
+  - 個人資料頁面的導航欄會顯示用戶名稱和貼文數量
+  - 貼文數量只計算真正的貼文（`parentId: null`），不包括留言（`parentId !== null`）
+  - 貼文數量會自動格式化顯示（例如：1,234 posts）
 - ✅ **個人資料編輯**
+
   - 在主選單按下 "Profile" 可編輯個人資料
   - 姓名（從 OAuth 取得）
   - UserID（註冊時設定）
@@ -46,7 +52,9 @@
   - 頭像（Avatar）— 支援 1:1 裁切上傳
   - 封面圖片（Cover Image）— 支援 3:1 裁切上傳
 - ✅ **個人資料顯示**
+
   - 回到 Home 的左箭頭
+  - 導航欄顯示用戶名稱和貼文數量（只計算真正的貼文，不包括留言）
   - 背景圖（Cover Image）
   - 大頭貼（Avatar），中間對齊背景圖底部
   - 姓名
@@ -55,11 +63,13 @@
   - 追蹤者數量（可點擊查看列表）
   - 追蹤中數量（可點擊查看列表）
 - ✅ **標籤頁切換**
+
   - **Posts** — 顯示自己發表的貼文（`parentId: null`）
   - **Replies** — 顯示自己發表的留言（`parentId !== null`）
   - **Reposts** — 顯示自己轉發的貼文或留言
   - **Likes** — 顯示自己按讚的貼文或留言（僅限自己的檔案）
 - ✅ **查看他人檔案**
+
   - 在貼文中點擊 userID 會顯示該使用者的個人資料（唯讀）
   - "Edit Profile" 變成 "Follow"（尚未 follow）或 "Following"（已 follow）
   - Posts 顯示該 user 所有 post/repost 過的文章
@@ -74,8 +84,15 @@
 - ✅ **發文功能**
   - 文字內容（最多 280 字元）
   - 圖片上傳（使用 Cloudinary）
+  - Emoji（點擊 icon 選擇 emoji）
+  - GIF 功能（待開發）
   - 字元計數顯示
   - 即時發布
+- ✅ **發文工具欄設計**
+  - 統一的圖標樣式（線條風格）
+  - 統一的按鈕尺寸和間距
+  - 圖片上傳、Emoji、GIF 三個按鈕並排顯示
+  - 圖片上傳取消後自動恢復按鈕狀態
 - ✅ **@ 提及功能**
   - 輸入 `@` 自動顯示候選使用者列表
   - 優先顯示已追蹤的使用者，按字母順序排序
@@ -102,8 +119,8 @@
 #### 閱讀文章
 
 - ✅ **動態牆（Home Feed）**
-  - 最上面的選項可切換 "All" 和 "Following"
-  - **All**：顯示所有貼文（`parentId: null`）
+  - 最上面的選項可切換 "For " 和 "Following"
+  - **For you**：顯示所有貼文（`parentId: null`）
   - **Following**：顯示所 follow 的人所 post 和 repost 的文章
   - 文章排序：從最新到最舊
   - 使用原始貼文的 `createdAt` 時間排序（repost 不會刷新時間）
@@ -123,6 +140,7 @@
 - ✅ **刪除貼文**
   - 如果是自己的發文，在右上方的 "…" 打開選項
   - 可以有 "Delete" 刪除文章的選項
+  - 在 Home Feed 和 Profile 頁面都可以刪除自己的貼文
   - Note: re-post 的文章不能刪除
 - ✅ **遞迴留言結構**
   - 點擊一篇文章，中間欄會 "route" 到該篇文章
@@ -183,11 +201,16 @@
   - 上傳封面時，使用 `react-easy-crop` 進行 3:1 裁切，可縮放與移動
   - 裁切後轉換為 blob 上傳到 Cloudinary
   - 輸出解析度：1536x512
-- ✅ **裁切介面**
-  - 顯示裁切預覽區塊援縮放與移動
-  - 使用者若重新選圖，先清除上一張
-  - 上傳時顯示 loading 狀態
-  - Save 按鈕在 header，Cancel 按鈕在左側）
+
+#### 其他多媒體支援
+
+- ✅ **Emoji 選擇器**
+  - 使用 `@emoji-mart/react` 套件
+  - 點擊笑臉圖標打開 emoji 選擇器
+  - 選擇 emoji 後自動插入到游標位置
+  - 支援所有標準 emoji
+- ⚠️ **GIF 功能**
+  - 待開發（需要 Giphy API key）
 
 ---
 
@@ -211,6 +234,7 @@
 - **貼文刪除**
 
   - 作者可以透過右上角「...」選單刪除自己的貼文
+  - 在 Home Feed 和 Profile 頁面都可以刪除自己的貼文
   - 轉發的貼文無法刪除（只能取消轉發）
   - 刪除貼文會同時刪除所有相關的留言、按讚、轉發記錄（Cascade Delete）
 
@@ -316,6 +340,8 @@
 - **認證**: NextAuth.js
 - **即時通訊**: Pusher
 - **媒體儲存**: Cloudinary
+- **圖片裁切**: react-easy-crop
+- **Emoji 選擇器**: @emoji-mart/react
 - **部署**: Vercel
 
 ### 專案結構
@@ -339,7 +365,8 @@ hw5/
 │   │   │   ├── notification/ # 通知相關 API
 │   │   │   ├── user/          # 用戶相關 API
 │   │   │   ├── drafts/        # 草稿相關 API
-│   │   │   └── upload/        # 上傳相關 API
+│   │   │   ├── upload/        # 上傳相關 API
+│   │   │   └── gifs/          # GIF 相關 API（待開發）
 │   │   ├── home/              # 首頁
 │   │   ├── login/             # 登入頁
 │   │   ├── register/          # 註冊頁
@@ -360,12 +387,15 @@ hw5/
 │   │   ├── ProfileConnectionsPage.tsx # 追蹤者/追蹤中頁面
 │   │   ├── NotificationsPage.tsx # 通知頁
 │   │   ├── MediaUploader.tsx  # 媒體上傳元件
+│   │   ├── EmojiPicker.tsx    # Emoji 選擇器
+│   │   ├── HighlightedTextarea.tsx # 高亮文字輸入框
 │   │   └── ...
 │   ├── lib/                   # 工具函數庫
 │   │   ├── prisma.ts         # Prisma 客戶端
 │   │   ├── auth.ts           # NextAuth 設定
 │   │   ├── pusher/           # Pusher 設定
 │   │   ├── serializers.ts    # 資料序列化
+│   │   ├── content-parser.tsx # 內容解析（URL、hashtag、mention）
 │   │   └── ...
 │   └── types/                 # TypeScript 類型定義
 │       ├── post.ts
@@ -462,6 +492,7 @@ User (用戶)
 
 /api/upload                      # 上傳媒體到 Cloudinary
 /api/upload/cropped              # 上傳裁切後的圖片到 Cloudinary
+/api/gifs                        # 取得 GIF（Giphy API 代理，待開發）
 ```
 
 ### 資料流程
@@ -592,6 +623,9 @@ User (用戶)
    PUSHER_KEY="..."
    PUSHER_SECRET="..."
    PUSHER_CLUSTER="..."
+
+   # Giphy (Optional, for GIF feature)
+   NEXT_PUBLIC_GIPHY_API_KEY="..."
    ```
 4. **初始化資料庫**
 
