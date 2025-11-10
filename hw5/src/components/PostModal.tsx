@@ -192,11 +192,13 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
     mirror.style.visibility = 'hidden'
     mirror.style.whiteSpace = 'pre-wrap'
     mirror.style.wordWrap = 'break-word'
-    mirror.style.top = '0'
-    mirror.style.left = '0'
     mirror.style.pointerEvents = 'none'
     mirror.style.overflow = 'hidden'
     mirror.style.width = `${textarea.clientWidth}px`
+
+    const textareaRect = textarea.getBoundingClientRect()
+    mirror.style.top = `${textareaRect.top + window.scrollY}px`
+    mirror.style.left = `${textareaRect.left + window.scrollX}px`
 
     const selectionEnd = textarea.selectionStart ?? 0
     const value = textarea.value
@@ -208,11 +210,10 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
     document.body.appendChild(mirror)
 
     const spanRect = span.getBoundingClientRect()
-    const mirrorRect = mirror.getBoundingClientRect()
 
-    const top =
-      spanRect.top - mirrorRect.top + textarea.scrollTop + parseFloat(style.lineHeight || '20')
-    const left = spanRect.left - mirrorRect.left + textarea.scrollLeft
+    // Calculate position relative to viewport for fixed positioning
+    const top = spanRect.top + parseFloat(style.lineHeight || '20')
+    const left = spanRect.left
 
     document.body.removeChild(mirror)
 
@@ -545,10 +546,10 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
 
                 {showSuggestions && (isLoadingSuggestions || suggestions.length > 0) && (
                   <div
-                    className="absolute z-20 bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden"
+                    className="fixed z-[100] bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden"
                     style={{
-                      top: suggestionPosition.top,
-                      left: suggestionPosition.left,
+                      top: `${suggestionPosition.top}px`,
+                      left: `${suggestionPosition.left}px`,
                       minWidth: '240px',
                       maxWidth: '100%',
                     }}
@@ -558,7 +559,7 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
                     ) : suggestions.length === 0 ? (
                       <div className="p-3 text-sm text-gray-500">沒有符合的使用者</div>
                     ) : (
-                      <ul className="max-h-64 overflow-y-auto">
+                      <ul className={suggestions.length > 3 ? 'max-h-[180px] overflow-y-auto' : ''}>
                         {suggestions.map((suggestion) => (
                           <li key={suggestion.id}>
                             <button

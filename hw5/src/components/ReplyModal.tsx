@@ -103,11 +103,13 @@ export default function ReplyModal({ open, onClose, parentPost, onSubmit }: Repl
     mirror.style.visibility = 'hidden'
     mirror.style.whiteSpace = 'pre-wrap'
     mirror.style.wordWrap = 'break-word'
-    mirror.style.top = '0'
-    mirror.style.left = '0'
     mirror.style.pointerEvents = 'none'
     mirror.style.overflow = 'hidden'
     mirror.style.width = `${textarea.clientWidth}px`
+
+    const textareaRect = textarea.getBoundingClientRect()
+    mirror.style.top = `${textareaRect.top + window.scrollY}px`
+    mirror.style.left = `${textareaRect.left + window.scrollX}px`
 
     const selectionEnd = textarea.selectionStart ?? 0
     const value = textarea.value
@@ -119,11 +121,10 @@ export default function ReplyModal({ open, onClose, parentPost, onSubmit }: Repl
     document.body.appendChild(mirror)
 
     const spanRect = span.getBoundingClientRect()
-    const mirrorRect = mirror.getBoundingClientRect()
 
-    const top =
-      spanRect.top - mirrorRect.top + textarea.scrollTop + parseFloat(style.lineHeight || '20')
-    const left = spanRect.left - mirrorRect.left + textarea.scrollLeft
+    // Calculate position relative to viewport for fixed positioning
+    const top = spanRect.top + parseFloat(style.lineHeight || '20')
+    const left = spanRect.left
 
     document.body.removeChild(mirror)
 
@@ -364,10 +365,10 @@ export default function ReplyModal({ open, onClose, parentPost, onSubmit }: Repl
               />
               {showSuggestions && (isLoadingSuggestions || suggestions.length > 0) && (
                 <div
-                  className="absolute bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden z-20"
+                  className="fixed bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden z-[100]"
                   style={{
-                    top: suggestionPosition.top + 4,
-                    left: suggestionPosition.left,
+                    top: `${suggestionPosition.top}px`,
+                    left: `${suggestionPosition.left}px`,
                     minWidth: '220px',
                     maxWidth: '100%',
                   }}
@@ -377,33 +378,36 @@ export default function ReplyModal({ open, onClose, parentPost, onSubmit }: Repl
                   ) : suggestions.length === 0 ? (
                     <div className="p-3 text-sm text-gray-500">沒有符合的使用者</div>
                   ) : (
-                    suggestions.map((suggestion) => (
-                      <button
-                        key={suggestion.id}
-                        type="button"
-                        onMouseDown={(event) => {
-                          event.preventDefault()
-                          handleMentionSelection(suggestion)
-                        }}
-                        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
-                      >
-                        {suggestion.avatarUrl || suggestion.image ? (
-                          <img
-                            src={(suggestion.avatarUrl || suggestion.image) || ''}
-                            alt={suggestion.name || suggestion.userId}
-                            className="w-8 h-8 rounded-full"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-gray-200" />
-                        )}
-                        <div className="flex flex-col">
-                          <span className="text-sm font-semibold text-gray-900">
-                            {suggestion.name || suggestion.userId}
-                          </span>
-                          <span className="text-xs text-gray-500">@{suggestion.userId}</span>
-                        </div>
-                      </button>
-                    ))
+                    <ul className={suggestions.length > 3 ? 'max-h-[180px] overflow-y-auto' : ''}>
+                      {suggestions.map((suggestion) => (
+                        <li key={suggestion.id}>
+                          <button
+                            type="button"
+                            onMouseDown={(event) => {
+                              event.preventDefault()
+                              handleMentionSelection(suggestion)
+                            }}
+                            className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
+                          >
+                            {suggestion.avatarUrl || suggestion.image ? (
+                              <img
+                                src={(suggestion.avatarUrl || suggestion.image) || ''}
+                                alt={suggestion.name || suggestion.userId}
+                                className="w-8 h-8 rounded-full"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-gray-200" />
+                            )}
+                            <div className="flex flex-col">
+                              <span className="text-sm font-semibold text-gray-900">
+                                {suggestion.name || suggestion.userId}
+                              </span>
+                              <span className="text-xs text-gray-500">@{suggestion.userId}</span>
+                            </div>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
                   )}
                 </div>
               )}
