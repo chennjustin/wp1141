@@ -92,8 +92,8 @@ export default function PostCard({ post, onLike, onRepost, onComment, onDelete, 
   }
 
   return (
-    <article className="border-b border-gray-200 p-4 hover:bg-gray-50 transition-colors relative">
-      <div className="flex gap-3">
+    <article className="border-b border-gray-200 p-3 md:p-4 hover:bg-gray-50 transition-colors relative">
+      <div className="flex gap-2 md:gap-3">
         {/* Avatar */}
         <div className="flex-shrink-0">
           {post.author?.profileImage || post.author?.avatarUrl || post.author?.image ? (
@@ -102,10 +102,10 @@ export default function PostCard({ post, onLike, onRepost, onComment, onDelete, 
                 (post.author?.profileImage || post.author?.avatarUrl || post.author?.image) || ''
               }
               alt={post.author?.name || 'User'}
-              className="w-12 h-12 rounded-full"
+              className="w-10 h-10 md:w-12 md:h-12 rounded-full"
             />
           ) : (
-            <div className="w-12 h-12 rounded-full bg-gray-300" />
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gray-300" />
           )}
         </div>
 
@@ -113,20 +113,20 @@ export default function PostCard({ post, onLike, onRepost, onComment, onDelete, 
         <div className="flex-1 min-w-0">
           {/* Header */}
           <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 md:gap-2 min-w-0 flex-1">
             {post.author?.userId ? (
               <Link
                 href={`/profile/${post.author.userId}`}
-                className="flex items-center gap-2 hover:underline"
+                className="flex items-center gap-1 md:gap-2 hover:underline min-w-0"
               >
-                <span className="font-semibold text-gray-900">{post.author?.name || 'Unknown'}</span>
-                <span className="text-gray-500">@{post.author?.userId}</span>
+                <span className="font-semibold text-gray-900 text-sm md:text-base truncate">{post.author?.name || 'Unknown'}</span>
+                <span className="text-gray-500 text-xs md:text-sm truncate">@{post.author?.userId}</span>
               </Link>
             ) : (
-              <span className="font-semibold text-gray-900">{post.author?.name || 'Unknown'}</span>
+              <span className="font-semibold text-gray-900 text-sm md:text-base">{post.author?.name || 'Unknown'}</span>
             )}
-            <span className="text-gray-500">·</span>
-            <span className="text-gray-500">{formatTimeAgo(post.createdAt)}</span>
+            <span className="text-gray-500 hidden md:inline">·</span>
+            <span className="text-gray-500 text-xs md:text-sm whitespace-nowrap">{formatTimeAgo(post.createdAt)}</span>
             </div>
             
             {/* Delete Button (only for author) */}
@@ -339,17 +339,17 @@ export default function PostCard({ post, onLike, onRepost, onComment, onDelete, 
           )}
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-8 text-gray-500">
+          <div className="flex items-center gap-4 md:gap-8 text-gray-500 mt-2">
             {/* Comment */}
             <button
               onClick={(e) => {
                 e.stopPropagation()
                 handleComment()
               }}
-              className="flex items-center gap-2 hover:text-blue-500 transition-colors group"
+              className="flex items-center gap-1 md:gap-2 hover:text-blue-500 transition-colors group"
             >
               <svg
-                className="w-5 h-5 group-hover:bg-blue-100 rounded-full p-1"
+                className="w-4 h-4 md:w-5 md:h-5 group-hover:bg-blue-100 rounded-full p-1"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -363,7 +363,7 @@ export default function PostCard({ post, onLike, onRepost, onComment, onDelete, 
                 />
               </svg>
               <span 
-                className="text-sm hover:underline"
+                className="text-xs md:text-sm hover:underline"
                 onClick={(e) => {
                   e.stopPropagation()
                   router.push(`/post/${post.id}`)
@@ -379,14 +379,14 @@ export default function PostCard({ post, onLike, onRepost, onComment, onDelete, 
                 e.stopPropagation()
                 handleRepost()
               }}
-              className={`flex items-center gap-2 transition-colors group ${
+              className={`flex items-center gap-1 md:gap-2 transition-colors group ${
                 post.reposted
                   ? 'text-green-500'
                   : 'text-gray-500 hover:text-green-500'
               }`}
             >
               <svg
-                className={`w-5 h-5 rounded-full p-1 ${
+                className={`w-4 h-4 md:w-5 md:h-5 rounded-full p-1 ${
                   post.reposted
                     ? 'bg-green-100'
                     : 'group-hover:bg-green-100'
@@ -403,13 +403,13 @@ export default function PostCard({ post, onLike, onRepost, onComment, onDelete, 
                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                 />
               </svg>
-              <span className="text-sm">{post.repostCount}</span>
+              <span className="text-xs md:text-sm">{post.repostCount}</span>
             </button>
 
             {/* Like */}
             <button
               onClick={handleLike}
-              className={`flex items-center gap-2 transition-colors group ${
+              className={`flex items-center gap-1 md:gap-2 transition-colors group ${
                 post.liked
                   ? 'text-red-500'
                   : 'text-gray-500 hover:text-red-500'
@@ -417,7 +417,7 @@ export default function PostCard({ post, onLike, onRepost, onComment, onDelete, 
             >
               {post.liked ? (
                 <svg
-                  className="w-5 h-5 group-hover:bg-red-100 rounded-full p-1"
+                  className="w-4 h-4 md:w-5 md:h-5 group-hover:bg-red-100 rounded-full p-1"
                   fill="currentColor"
                   viewBox="0 0 24 24"
                   xmlns="http://www.w3.org/2000/svg"
@@ -426,7 +426,7 @@ export default function PostCard({ post, onLike, onRepost, onComment, onDelete, 
                 </svg>
               ) : (
                 <svg
-                  className="w-5 h-5 group-hover:bg-red-100 rounded-full p-1"
+                  className="w-4 h-4 md:w-5 md:h-5 group-hover:bg-red-100 rounded-full p-1"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -440,7 +440,7 @@ export default function PostCard({ post, onLike, onRepost, onComment, onDelete, 
                   />
                 </svg>
               )}
-              <span className="text-sm">{post.likeCount}</span>
+              <span className="text-xs md:text-sm">{post.likeCount}</span>
             </button>
           </div>
         </div>

@@ -28,7 +28,7 @@ export default function Navbar({ type, profileName, postCount, onBack, activeTab
   if (type === 'profile') {
     return (
       <nav className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-200">
-        <div className="w-full flex items-center gap-3 px-4 py-3">
+        <div className="w-full flex items-center gap-2 md:gap-3 px-2 md:px-4 py-3">
           <button
             onClick={handleBack}
             className="p-2 rounded-full hover:bg-gray-100 transition-colors flex-shrink-0"
@@ -50,10 +50,10 @@ export default function Navbar({ type, profileName, postCount, onBack, activeTab
             </svg>
           </button>
           {profileName && (
-            <div className="flex flex-col flex-shrink-0">
-              <h2 className="text-xl font-bold text-gray-900">{profileName}</h2>
+            <div className="flex flex-col flex-shrink-0 min-w-0">
+              <h2 className="text-lg md:text-xl font-bold text-gray-900 truncate">{profileName}</h2>
               {postCount !== undefined && (
-                <span className="text-sm text-gray-500">
+                <span className="text-xs md:text-sm text-gray-500">
                   {postCount.toLocaleString()} posts
                 </span>
               )}
@@ -66,7 +66,7 @@ export default function Navbar({ type, profileName, postCount, onBack, activeTab
 
   return (
     <nav className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-200">
-        <div className="max-w-[620px] mx-auto flex border-b border-gray-200">
+        <div className="max-w-full md:max-w-[620px] mx-auto flex border-b border-gray-200">
         <button
           onClick={() => {
             if (onTabChange) {
@@ -75,7 +75,7 @@ export default function Navbar({ type, profileName, postCount, onBack, activeTab
               setInternalActiveTab('foryou')
             }
           }}
-          className={`flex-1 px-4 py-4 text-center font-semibold transition-colors relative ${
+          className={`flex-1 px-2 md:px-4 py-3 md:py-4 text-center text-sm md:text-base font-semibold transition-colors relative ${
             activeTab === 'foryou'
               ? 'text-gray-900'
               : 'text-gray-500 hover:bg-gray-50'
@@ -94,7 +94,7 @@ export default function Navbar({ type, profileName, postCount, onBack, activeTab
               setInternalActiveTab('following')
             }
           }}
-          className={`flex-1 px-4 py-4 text-center font-semibold transition-colors relative ${
+          className={`flex-1 px-2 md:px-4 py-3 md:py-4 text-center text-sm md:text-base font-semibold transition-colors relative ${
             activeTab === 'following'
               ? 'text-gray-900'
               : 'text-gray-500 hover:bg-gray-50'

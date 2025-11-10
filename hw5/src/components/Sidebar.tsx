@@ -38,18 +38,22 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-[20%] border-r border-gray-200 bg-white flex flex-col">
-      {/* Logo/App Name */}
-      <div className="p-4">
+    <aside className="fixed left-0 top-0 h-screen w-[70px] md:w-[20%] border-r border-gray-200 bg-white flex flex-col z-40">
+      {/* Logo/App Name - Hidden on mobile */}
+      <div className="p-4 hidden md:block">
         <h1 className="text-2xl font-bold text-gray-900">my X</h1>
+      </div>
+      {/* Mobile Logo - Just icon */}
+      <div className="p-4 md:hidden flex items-center justify-center">
+        <h1 className="text-xl font-bold text-gray-900">X</h1>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-2">
+      <nav className="flex-1 p-2 md:p-4 space-y-2">
         {/* Home Button */}
         <button
           onClick={() => router.push('/home')}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors text-left"
+          className="w-full flex items-center justify-center md:justify-start gap-3 px-2 md:px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors text-left"
         >
           <svg
             className="w-6 h-6"
@@ -65,13 +69,13 @@ export default function Sidebar() {
               d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
             />
           </svg>
-          <span className="text-lg font-medium">Home</span>
+          <span className="text-lg font-medium hidden md:inline">Home</span>
         </button>
 
         {/* Notifications Button */}
         <button
           onClick={() => router.push('/notifications')}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors text-left relative"
+          className="w-full flex items-center justify-center md:justify-start gap-3 px-2 md:px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors text-left relative"
         >
           <div className="relative">
             <svg
@@ -94,7 +98,7 @@ export default function Sidebar() {
               </span>
             )}
           </div>
-          <span className="text-lg font-medium">Notifications</span>
+          <span className="text-lg font-medium hidden md:inline">Notifications</span>
         </button>
 
         {/* Profile Button */}
@@ -104,7 +108,7 @@ export default function Sidebar() {
               router.push(`/profile/${currentUser.userId}`)
             }
           }}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors text-left"
+          className="w-full flex items-center justify-center md:justify-start gap-3 px-2 md:px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors text-left"
         >
           <svg
             className="w-6 h-6"
@@ -120,13 +124,13 @@ export default function Sidebar() {
               d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
             />
           </svg>
-          <span className="text-lg font-medium">Profile</span>
+          <span className="text-lg font-medium hidden md:inline">Profile</span>
         </button>
 
         {/* Post Button - Highlighted */}
         <button
           onClick={() => openModal()}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors font-semibold"
+          className="w-full flex items-center justify-center gap-2 px-2 md:px-4 py-3 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors font-semibold"
         >
           <svg
             className="w-5 h-5"
@@ -142,17 +146,17 @@ export default function Sidebar() {
               d="M12 4v16m8-8H4"
             />
           </svg>
-          <span>Post</span>
+          <span className="hidden md:inline">Post</span>
         </button>
       </nav>
 
       {/* User Info */}
       {currentUser && (
-        <div className="p-4 border-t border-gray-200 relative" ref={accountSectionRef}>
+        <div className="p-2 md:p-4 border-t border-gray-200 relative" ref={accountSectionRef}>
           <button
             type="button"
             onClick={handleAccountClick}
-            className="w-full flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-gray-100 transition-colors focus:outline-none"
+            className="w-full flex items-center justify-center md:justify-start gap-3 rounded-lg px-2 md:px-3 py-2 hover:bg-gray-100 transition-colors focus:outline-none"
             aria-expanded={isAccountMenuOpen}
             aria-haspopup="true"
           >
@@ -160,12 +164,12 @@ export default function Sidebar() {
               <img
                 src={(currentUser?.avatarUrl || currentUser?.image) || ''}
                 alt={currentUser.name || 'User'}
-                className="w-10 h-10 rounded-full"
+                className="w-10 h-10 rounded-full flex-shrink-0"
               />
             ) : (
-              <div className="w-10 h-10 rounded-full bg-gray-300" />
+              <div className="w-10 h-10 rounded-full bg-gray-300 flex-shrink-0" />
             )}
-            <div className="flex-1 min-w-0 text-left">
+            <div className="flex-1 min-w-0 text-left hidden md:block">
               <p className="text-sm font-semibold text-gray-900 truncate">
                 {currentUser.name || 'Unknown'}
               </p>
@@ -174,7 +178,7 @@ export default function Sidebar() {
               )}
             </div>
             <svg
-              className="w-4 h-4 text-gray-500"
+              className="w-4 h-4 text-gray-500 flex-shrink-0 hidden md:block"
               fill="currentColor"
               viewBox="0 0 24 24"
               xmlns="http://www.w3.org/2000/svg"
@@ -186,7 +190,7 @@ export default function Sidebar() {
           </button>
 
           {isAccountMenuOpen && (
-            <div className="absolute bottom-full left-4 right-4 mb-3 rounded-xl border border-gray-200 bg-white shadow-xl">
+            <div className="absolute bottom-full left-2 md:left-4 right-2 md:right-4 mb-3 rounded-xl border border-gray-200 bg-white shadow-xl">
               <div className="px-4 py-3">
                 <p className="text-sm font-semibold text-gray-900 truncate">
                   {currentUser.name || 'Unknown'}

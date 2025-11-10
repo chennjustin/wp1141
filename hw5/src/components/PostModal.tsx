@@ -468,15 +468,15 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 md:bg-black/50"
       onClick={requestClose}
     >
       <div
-        className="relative bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+        className="relative bg-white rounded-none md:rounded-2xl w-full h-full md:w-full md:max-w-2xl md:max-h-[90vh] md:h-auto overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+        <div className="flex items-center justify-between p-3 md:p-4 border-b border-gray-200">
           <button
             onClick={requestClose}
             className="p-2 rounded-full hover:bg-gray-100 transition-colors"
@@ -494,24 +494,24 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
           </button>
           <button
             onClick={() => setIsDraftsOpen(true)}
-            className="text-sm font-semibold text-blue-500 hover:text-blue-600 transition-colors"
+            className="text-xs md:text-sm font-semibold text-blue-500 hover:text-blue-600 transition-colors"
           >
             Drafts
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="flex gap-4">
+        <div className="flex-1 overflow-y-auto p-3 md:p-4">
+          <div className="flex gap-2 md:gap-4">
             <div className="flex-shrink-0">
               {currentUser?.avatarUrl || currentUser?.image ? (
                 <img
                   src={(currentUser?.avatarUrl || currentUser?.image) || ''}
                   alt={currentUser?.name || 'User'}
-                  className="w-12 h-12 rounded-full"
+                  className="w-10 h-10 md:w-12 md:h-12 rounded-full"
                 />
               ) : (
-                <div className="w-12 h-12 rounded-full bg-gray-300" />
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gray-300" />
               )}
             </div>
 
@@ -532,7 +532,7 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
                     }
                   }}
                   placeholder="What is happening?"
-                  className="w-full min-h-[200px] resize-none border-none outline-none text-lg placeholder-gray-500"
+                  className="w-full min-h-[150px] md:min-h-[200px] resize-none border-none outline-none text-base md:text-lg placeholder-gray-500"
                   maxLength={MAX_LENGTH * 2}
                 />
 
@@ -586,8 +586,8 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
                 )}
               </div>
 
-              <div className="mt-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
+              <div className="mt-3 md:mt-4 flex items-center justify-between">
+                <div className="flex items-center gap-1 md:gap-2">
                   <MediaUploader
                     type="post"
                     existingUrl={mediaUrl}
@@ -597,10 +597,10 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
                   <EmojiPicker onEmojiSelect={handleEmojiSelect} />
                   {/* GIF placeholder with tooltip */}
                   <div className="relative group">
-                    <div className="p-2 rounded-full text-blue-500 opacity-50 cursor-not-allowed h-[36px] flex items-center justify-center">
-                      <span className="text-sm font-semibold">GIF</span>
+                    <div className="p-1.5 md:p-2 rounded-full text-blue-500 opacity-50 cursor-not-allowed h-[32px] md:h-[36px] flex items-center justify-center">
+                      <span className="text-xs md:text-sm font-semibold">GIF</span>
                     </div>
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 md:px-3 py-1 md:py-1.5 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                       (來不及設定Giphy API key)
                       <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
                     </div>
@@ -616,7 +616,7 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
                         ? 'text-yellow-500'
                         : 'text-gray-500'
                   return (
-                    <span className={`text-sm ${remainingClass}`}>
+                    <span className={`text-xs md:text-sm ${remainingClass}`}>
                       {effectiveLength}/{MAX_LENGTH}
                     </span>
                   )
@@ -627,17 +627,17 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-200 flex items-center justify-end gap-3">
+        <div className="p-3 md:p-4 border-t border-gray-200 flex items-center justify-end gap-2 md:gap-3">
           <button
             onClick={handleDiscardButton}
-            className="px-4 py-2 rounded-full font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
+            className="px-3 md:px-4 py-1.5 md:py-2 rounded-full text-sm md:text-base font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
           >
             Discard
           </button>
           <button
             onClick={handlePost}
             disabled={isSubmitting || (!hasUnsavedChanges(content, mediaUrl) && !draftId)}
-            className="px-6 py-2 rounded-full font-semibold text-white bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-[36px] flex items-center justify-center"
+            className="px-4 md:px-6 py-1.5 md:py-2 rounded-full text-sm md:text-base font-semibold text-white bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-[32px] md:h-[36px] flex items-center justify-center"
           >
             {isSubmitting ? 'Posting…' : 'Post'}
           </button>

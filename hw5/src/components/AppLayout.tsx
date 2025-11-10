@@ -16,12 +16,12 @@ export default function AppLayout({ children, onPostCreated }: AppLayoutProps) {
       <Sidebar />
 
       {/* Main Content Area */}
-      <main className="flex-1 ml-[20%] w-[60%] min-h-screen bg-white">
+      <main className="flex-1 ml-[70px] md:ml-[20%] w-full md:w-[60%] min-h-screen bg-white">
         {children}
       </main>
 
-      {/* Right Spacer - Empty for now */}
-      <div className="w-[20%]" />
+      {/* Right Spacer - Empty for now, hidden on mobile */}
+      <div className="hidden md:block w-[20%]" />
 
       {/* Post Modal */}
       <PostModal onPostCreated={onPostCreated} />
