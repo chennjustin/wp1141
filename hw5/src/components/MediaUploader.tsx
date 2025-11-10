@@ -269,108 +269,64 @@ export default function MediaUploader({
     )
   }
 
-  // Post media: X-style - icon in toolbar, preview below textarea
+  // Post media: X-style - icon in toolbar, preview handled by parent component
   return (
-    <div>
-      {uploadedUrl ? (
-        <div className="relative mt-4 rounded-2xl overflow-hidden">
-          {uploadedType === 'video' ? (
-            <video
-              src={uploadedUrl}
-              controls
-              className="w-full max-h-96 object-cover"
-            />
-          ) : (
-            <img
-              src={uploadedUrl}
-              alt="Media preview"
-              className="w-full max-h-96 object-cover"
-            />
-          )}
-          {!disabled && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                handleRemove()
-              }}
-              className="absolute top-2 right-2 p-2 bg-black bg-opacity-50 rounded-full hover:bg-opacity-70 transition-opacity"
-              aria-label="Remove media"
-            >
-              <svg
-                className="w-5 h-5 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          )}
-        </div>
-      ) : (
-        <CldUploadWidget
-          uploadPreset="my_Xclone"
-          onSuccess={handleUploadSuccess}
-          onOpen={() => setIsUploading(true)}
-          onClose={handleUploadClose}
-          options={getUploadOptions()}
+    <CldUploadWidget
+      uploadPreset="my_Xclone"
+      onSuccess={handleUploadSuccess}
+      onOpen={() => setIsUploading(true)}
+      onClose={handleUploadClose}
+      options={getUploadOptions()}
+    >
+      {({ open }) => (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            if (!disabled && !isUploading) open()
+          }}
+          disabled={disabled || isUploading}
+          className="p-2 rounded-full text-blue-500 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed h-[36px] flex items-center justify-center"
+          aria-label="Add media"
         >
-          {({ open }) => (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                if (!disabled && !isUploading) open()
-              }}
-              disabled={disabled || isUploading}
-              className="p-2 rounded-full text-blue-500 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed h-[36px] flex items-center justify-center"
-              aria-label="Add media"
+          {isUploading ? (
+            <svg
+              className="animate-spin h-5 w-5"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
             >
-              {isUploading ? (
-                <svg
-                  className="animate-spin h-5 w-5"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-              ) : (
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                  />
-                </svg>
-              )}
-            </button>
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
+            </svg>
+          ) : (
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
           )}
-        </CldUploadWidget>
+        </button>
       )}
-    </div>
+    </CldUploadWidget>
   )
 }

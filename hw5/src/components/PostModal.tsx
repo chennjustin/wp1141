@@ -93,6 +93,13 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
       setMediaUrl(null)
       setMediaType(null)
     }
+
+    // Focus on textarea when modal opens
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus()
+      }
+    }, 100)
   }, [initialDraft, isOpen])
 
   const resetState = () => {
@@ -606,41 +613,120 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
                     </div>
                   </div>
                 </div>
-                {(() => {
-                  const effectiveLength = calculateEffectiveLength(content)
-                  const remaining = MAX_LENGTH - effectiveLength
-                  const remainingClass =
-                    remaining < 0
-                      ? 'text-red-500'
-                      : remaining <= MAX_LENGTH * 0.1
-                        ? 'text-yellow-500'
-                        : 'text-gray-500'
-                  return (
-                    <span className={`text-xs md:text-sm ${remainingClass}`}>
-                      {effectiveLength}/{MAX_LENGTH}
-                    </span>
-                  )
-                })()}
+                {!mediaUrl && (
+                  <div className="flex items-center gap-2 md:gap-3">
+                    {(() => {
+                      const effectiveLength = calculateEffectiveLength(content)
+                      const remaining = MAX_LENGTH - effectiveLength
+                      const remainingClass =
+                        remaining < 0
+                          ? 'text-red-500'
+                          : remaining <= MAX_LENGTH * 0.1
+                            ? 'text-yellow-500'
+                            : 'text-gray-500'
+                      return (
+                        <span className={`text-xs md:text-sm ${remainingClass}`}>
+                          {effectiveLength}/{MAX_LENGTH}
+                        </span>
+                      )
+                    })()}
+                    <button
+                      onClick={handleDiscardButton}
+                      className="px-3 md:px-4 py-1.5 md:py-2 rounded-full text-sm md:text-base font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
+                      Discard
+                    </button>
+                    <button
+                      onClick={handlePost}
+                      disabled={isSubmitting || (!hasUnsavedChanges(content, mediaUrl) && !draftId)}
+                      className="px-4 md:px-6 py-1.5 md:py-2 rounded-full text-sm md:text-base font-semibold text-white bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-[32px] md:h-[36px] flex items-center justify-center"
+                    >
+                      {isSubmitting ? 'Posting…' : 'Post'}
+                    </button>
+                  </div>
+                )}
               </div>
+
+              {/* Media Preview */}
+              {mediaUrl && (
+                <div className="mt-4 relative rounded-2xl overflow-hidden">
+                  {mediaType === 'video' ? (
+                    <video
+                      src={mediaUrl}
+                      controls
+                      className="w-full max-h-96 object-cover"
+                    />
+                  ) : (
+                    <img
+                      src={mediaUrl}
+                      alt="Media preview"
+                      className="w-full max-h-96 object-cover"
+                    />
+                  )}
+                  {!isSubmitting && (
+                    <button
+                      onClick={() => {
+                        setMediaUrl(null)
+                        setMediaType(null)
+                      }}
+                      className="absolute top-2 right-2 p-2 bg-black bg-opacity-50 rounded-full hover:bg-opacity-70 transition-opacity"
+                      aria-label="Remove media"
+                    >
+                      <svg
+                        className="w-5 h-5 text-white"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Character count and Post button - below image if media exists */}
+              {mediaUrl && (
+                <div className="mt-4 flex items-center justify-between">
+                  {(() => {
+                    const effectiveLength = calculateEffectiveLength(content)
+                    const remaining = MAX_LENGTH - effectiveLength
+                    const remainingClass =
+                      remaining < 0
+                        ? 'text-red-500'
+                        : remaining <= MAX_LENGTH * 0.1
+                          ? 'text-yellow-500'
+                          : 'text-gray-500'
+                    return (
+                      <span className={`text-xs md:text-sm ${remainingClass}`}>
+                        {effectiveLength}/{MAX_LENGTH}
+                      </span>
+                    )
+                  })()}
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <button
+                      onClick={handleDiscardButton}
+                      className="px-3 md:px-4 py-1.5 md:py-2 rounded-full text-sm md:text-base font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
+                      Discard
+                    </button>
+                    <button
+                      onClick={handlePost}
+                      disabled={isSubmitting || (!hasUnsavedChanges(content, mediaUrl) && !draftId)}
+                      className="px-4 md:px-6 py-1.5 md:py-2 rounded-full text-sm md:text-base font-semibold text-white bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-[32px] md:h-[36px] flex items-center justify-center"
+                    >
+                      {isSubmitting ? 'Posting…' : 'Post'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="p-3 md:p-4 border-t border-gray-200 flex items-center justify-end gap-2 md:gap-3">
-          <button
-            onClick={handleDiscardButton}
-            className="px-3 md:px-4 py-1.5 md:py-2 rounded-full text-sm md:text-base font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
-          >
-            Discard
-          </button>
-          <button
-            onClick={handlePost}
-            disabled={isSubmitting || (!hasUnsavedChanges(content, mediaUrl) && !draftId)}
-            className="px-4 md:px-6 py-1.5 md:py-2 rounded-full text-sm md:text-base font-semibold text-white bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors h-[32px] md:h-[36px] flex items-center justify-center"
-          >
-            {isSubmitting ? 'Posting…' : 'Post'}
-          </button>
         </div>
       </div>
 

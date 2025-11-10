@@ -317,6 +317,13 @@ export default function InlineComposer({ onPostCreated }: InlineComposerProps) {
       onPostCreated?.(createdPost)
       resetComposer()
       router.refresh()
+      
+      // Focus on textarea after posting
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus()
+        }
+      }, 0)
     } catch (submitError) {
       console.error('Error creating post:', submitError)
       setError(submitError instanceof Error ? submitError.message : '發佈貼文失敗')
@@ -437,7 +444,67 @@ export default function InlineComposer({ onPostCreated }: InlineComposerProps) {
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2 md:gap-3">
+            {!mediaUrl && (
+              <div className="flex items-center gap-2 md:gap-3">
+                <span className={`text-xs md:text-sm ${remainingClass}`}>{effectiveLength}/{MAX_LENGTH}</span>
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting || content.trim().length === 0}
+                  className="px-3 md:px-5 py-1.5 md:py-2 rounded-full bg-blue-500 text-white text-sm md:text-base font-semibold hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed h-[32px] md:h-[36px] flex items-center justify-center"
+                >
+                  {isSubmitting ? 'Posting…' : 'Post'}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Media Preview */}
+          {mediaUrl && (
+            <div className="mt-4 relative rounded-2xl overflow-hidden">
+              {mediaType === 'video' ? (
+                <video
+                  src={mediaUrl}
+                  controls
+                  className="w-full max-h-96 object-cover"
+                />
+              ) : (
+                <img
+                  src={mediaUrl}
+                  alt="Media preview"
+                  className="w-full max-h-96 object-cover"
+                />
+              )}
+              {!isSubmitting && (
+                <button
+                  onClick={() => {
+                    setMediaUrl(null)
+                    setMediaType(null)
+                  }}
+                  className="absolute top-2 right-2 p-2 bg-black bg-opacity-50 rounded-full hover:bg-opacity-70 transition-opacity"
+                  aria-label="Remove media"
+                >
+                  <svg
+                    className="w-5 h-5 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Character count and Post button - below image if media exists */}
+          {mediaUrl && (
+            <div className="mt-4 flex items-center justify-between">
               <span className={`text-xs md:text-sm ${remainingClass}`}>{effectiveLength}/{MAX_LENGTH}</span>
               <button
                 type="button"
@@ -448,7 +515,7 @@ export default function InlineComposer({ onPostCreated }: InlineComposerProps) {
                 {isSubmitting ? 'Posting…' : 'Post'}
               </button>
             </div>
-          </div>
+          )}
 
           {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
         </div>
