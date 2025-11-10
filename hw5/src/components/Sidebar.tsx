@@ -23,20 +23,26 @@ export default function Sidebar({ isMobileMenuOpen = false, onCloseMobileMenu }:
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        accountSectionRef.current &&
-        event.target instanceof Node &&
-        !accountSectionRef.current.contains(event.target)
-      ) {
+      if (!accountSectionRef.current || !(event.target instanceof Node)) {
+        return
+      }
+
+      // Check if click is outside the account section (including the popup menu)
+      // The popup menu is a child of accountSectionRef, so contains() will return true for clicks inside it
+      if (!accountSectionRef.current.contains(event.target)) {
         setIsAccountMenuOpen(false)
       }
     }
 
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
+    if (isAccountMenuOpen) {
+      // Use click event instead of mousedown to ensure button onClick fires first
+      // stopPropagation on popup and button will prevent this from firing for clicks inside
+      document.addEventListener('click', handleClickOutside)
+      return () => {
+        document.removeEventListener('click', handleClickOutside)
+      }
     }
-  }, [])
+  }, [isAccountMenuOpen])
 
   const handleAccountClick = () => {
     setIsAccountMenuOpen((prev) => !prev)
@@ -56,7 +62,7 @@ export default function Sidebar({ isMobileMenuOpen = false, onCloseMobileMenu }:
     <>
       {/* Mobile Sidebar - Slide in from left */}
       <aside
-        className={`fixed left-0 top-0 h-screen w-[280px] bg-white flex flex-col z-40 overflow-hidden transition-transform duration-300 ease-in-out md:hidden ${
+        className={`fixed left-0 top-0 h-screen w-[280px] bg-white flex flex-col z-50 overflow-hidden transition-transform duration-300 ease-in-out md:hidden ${
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -191,7 +197,7 @@ export default function Sidebar({ isMobileMenuOpen = false, onCloseMobileMenu }:
 
         {/* User Info */}
         {currentUser && (
-          <div className="p-4 border-t border-gray-200 relative flex-shrink-0" ref={accountSectionRef}>
+          <div className="p-4 border-t border-gray-200 relative flex-shrink-0 z-50" ref={accountSectionRef}>
             <button
               type="button"
               onClick={handleAccountClick}
@@ -229,7 +235,11 @@ export default function Sidebar({ isMobileMenuOpen = false, onCloseMobileMenu }:
             </button>
 
             {isAccountMenuOpen && (
-              <div className="absolute bottom-full left-4 right-4 mb-3 rounded-xl border border-gray-200 bg-white shadow-xl">
+              <div 
+                className="absolute bottom-full left-4 right-4 mb-3 rounded-xl border border-gray-200 bg-white shadow-xl z-[60]"
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className="px-4 py-3">
                   <p className="text-sm font-semibold text-gray-900 truncate">
                     {currentUser.name || 'Unknown'}
