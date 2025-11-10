@@ -88,6 +88,36 @@ export async function POST(req: NextRequest) {
       await createNotification(prisma, 'comment', authorId, parentPost.authorId, postId)
     }
 
+    // Send mention notifications
+    const mentionMatches = Array.from(content.trim().matchAll(/(^|\s)@([A-Za-z0-9_]{1,32})/g))
+    const mentionHandles = Array.from(
+      new Set(mentionMatches.map((match) => match[2].toLowerCase()))
+    )
+
+    if (mentionHandles.length > 0) {
+      const mentionedUsers = await prisma.user.findMany({
+        where: {
+          OR: mentionHandles.map((handle) => ({
+            userId: {
+              equals: handle,
+              mode: 'insensitive',
+            },
+          })),
+        },
+        select: {
+          id: true,
+        },
+      })
+
+      await Promise.all(
+        mentionedUsers
+          .filter((mentioned) => mentioned.id !== authorId)
+          .map((mentioned) =>
+            createNotification(prisma, 'mention', authorId, mentioned.id, comment.id)
+          )
+      )
+    }
+
     // Trigger Pusher events
     try {
       const pusher = pusherServer()

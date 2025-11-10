@@ -27,14 +27,27 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
       authors: Array<{ id: string; name: string | null; userId: string | null; avatarUrl: string | null; image: string | null }>
       postId: string | null
     } | null>(null)
+    const [isScrolled, setIsScrolled] = useState(false)
     const { data: session } = useSession()
     const router = useRouter()
     const currentUserId = session?.user?.id
+
+    // Track scroll position
+    useEffect(() => {
+      const handleScroll = () => {
+        setIsScrolled(window.scrollY > 100)
+      }
+      window.addEventListener('scroll', handleScroll)
+      return () => window.removeEventListener('scroll', handleScroll)
+    }, [])
 
     const fetchPosts = async (tab: 'foryou' | 'following' = activeTab) => {
       try {
         setIsLoading(true)
         setError(null)
+        
+        // Clear new post notice when refreshing
+        setNewPostNotice(null)
         
         // 根據 activeTab 選擇 API endpoint
         const apiUrl = tab === 'following' 
@@ -61,6 +74,7 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
         // 切換後滾動到頂部
         if (typeof window !== 'undefined') {
           window.scrollTo({ top: 0, behavior: 'smooth' })
+          setIsScrolled(false)
         }
       } catch (err) {
         console.error('Error fetching posts:', err)
@@ -93,6 +107,7 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
 
     // 當 activeTab 改變時重新載入
     useEffect(() => {
+      setNewPostNotice(null) // Clear notice when switching tabs
       fetchPosts(activeTab)
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeTab])
@@ -179,6 +194,7 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
       'feed',
       PUSHER_EVENTS.POST_REPOSTED,
       useCallback((data: PostRepostedPayload) => {
+        // Update post repost count
         setPosts((currentPosts) => {
           return currentPosts.map((post) =>
             post.id === data.postId
@@ -186,6 +202,47 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
               : post
           )
         })
+
+        // Check if repost is from someone we're following
+        if (data.repostAuthor && followingIdsRef.current.has(data.repostAuthor.id)) {
+          const reposter = {
+            id: data.repostAuthor.id,
+            name: data.repostAuthor.name,
+            userId: data.repostAuthor.userId,
+            avatarUrl: data.repostAuthor.avatarUrl || data.repostAuthor.image,
+            image: data.repostAuthor.image,
+          }
+
+          setNewPostNotice((prev) => {
+            if (!prev) {
+              return {
+                authors: [reposter],
+                postId: data.postId,
+              }
+            }
+
+            // Check if author already exists
+            const existingIndex = prev.authors.findIndex((a) => a.id === reposter.id)
+            if (existingIndex !== -1) {
+              // Move to front
+              const updatedAuthors = [
+                reposter,
+                ...prev.authors.filter((a) => a.id !== reposter.id),
+              ].slice(0, 3)
+              return {
+                authors: updatedAuthors,
+                postId: data.postId,
+              }
+            }
+
+            // Add new author, keep only first 3
+            const updatedAuthors = [reposter, ...prev.authors].slice(0, 3)
+            return {
+              authors: updatedAuthors,
+              postId: data.postId,
+            }
+          })
+        }
       }, [])
     )
 
@@ -403,24 +460,47 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
     }
 
 
+    const handleNewPostNoticeClick = () => {
+      setNewPostNotice(null)
+      // Scroll to top and refresh
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      setIsScrolled(false)
+      setTimeout(() => {
+        fetchPosts()
+      }, 300)
+    }
+
     return (
       <div className="flex flex-col">
-        {/* New Post Notice */}
-        {newPostNotice && newPostNotice.authors.length > 0 && (
-          <div className="px-4 py-3 border-b border-gray-200 bg-blue-50 flex items-center justify-between">
+        {/* New Post Notice - Only show in Following tab and when scrolled */}
+        {activeTab === 'following' && isScrolled && newPostNotice && newPostNotice.authors.length > 0 && (
+          <div className="sticky top-0 z-20 flex justify-center pt-2 pb-1 px-4">
             <button
-              onClick={() => {
-                if (newPostNotice.postId) {
-                  router.push(`/post/${newPostNotice.postId}`)
-                }
-              }}
-              className="flex items-center gap-2 flex-1 hover:bg-blue-100 rounded-lg px-2 py-1 transition-colors"
+              onClick={handleNewPostNoticeClick}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors shadow-lg"
             >
+              {/* Up arrow icon */}
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 15l7-7 7 7"
+                />
+              </svg>
+              
+              {/* Overlapping avatars */}
               <div className="flex -space-x-2">
                 {newPostNotice.authors.slice(0, 3).map((author, index) => (
                   <div
                     key={author.id}
-                    className="w-8 h-8 rounded-full border-2 border-white overflow-hidden bg-gray-200"
+                    className="w-6 h-6 rounded-full border-2 border-white overflow-hidden bg-gray-200"
                     style={{ zIndex: 3 - index }}
                   >
                     {author.avatarUrl || author.image ? (
@@ -435,33 +515,9 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
                   </div>
                 ))}
               </div>
-              <span className="text-sm text-gray-700 font-medium">
-                {newPostNotice.authors.length === 1
-                  ? `${newPostNotice.authors[0].name || 'Someone'} posted`
-                  : newPostNotice.authors.length === 2
-                  ? `${newPostNotice.authors[0].name || 'Someone'} and ${newPostNotice.authors[1].name || 'someone'} posted`
-                  : `${newPostNotice.authors[0].name || 'Someone'} and ${newPostNotice.authors.length - 1} others posted`}
-              </span>
-            </button>
-            <button
-              onClick={() => setNewPostNotice(null)}
-              className="ml-2 p-1 rounded-full hover:bg-blue-200 transition-colors"
-              aria-label="Close"
-            >
-              <svg
-                className="w-4 h-4 text-gray-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
+              
+              {/* "posted" text */}
+              <span className="text-sm font-medium">posted</span>
             </button>
           </div>
         )}

@@ -331,7 +331,7 @@ export default function InlineComposer({ onPostCreated }: InlineComposerProps) {
     remaining < 0 ? 'text-red-500' : remaining <= 20 ? 'text-yellow-500' : 'text-gray-400'
 
   return (
-    <div className="border-b border-gray-200 p-3 md:p-4">
+    <div className="border-b border-gray-200 p-3 md:p-4 overflow-hidden">
       <div className="flex gap-2 md:gap-4">
         <div className="flex-shrink-0">
           {currentUser?.avatarUrl || currentUser?.image ? (

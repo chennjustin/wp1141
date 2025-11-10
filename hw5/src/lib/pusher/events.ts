@@ -38,6 +38,13 @@ export interface PostLikedPayload {
 export interface PostRepostedPayload {
   postId: string
   repostCount: number
+  repostAuthor?: {
+    id: string
+    userId: string | null
+    name: string | null
+    image: string | null
+    avatarUrl: string | null
+  } | null
 }
 
 export interface PostRepliedPayload {

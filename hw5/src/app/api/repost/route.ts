@@ -28,6 +28,11 @@ export async function POST(req: NextRequest) {
     // 檢查貼文是否存在
     const post = await prisma.post.findUnique({
       where: { id: postId },
+      select: {
+        id: true,
+        authorId: true,
+        parentId: true,
+      },
     })
 
     if (!post) {
@@ -101,11 +106,26 @@ export async function POST(req: NextRequest) {
       })
 
       // 建立通知（不通知自己）
+      // 通知原始貼文/留言的作者
       if (post.authorId && post.authorId !== currentUserId) {
         await createNotification(prisma, 'repost', currentUserId, post.authorId, postId)
       }
 
-      // 取得更新後的 repostCount
+      // 如果 repost 的是留言（有 parentId），也要通知原始貼文的作者
+      if (post.parentId) {
+        const parentPost = await prisma.post.findUnique({
+          where: { id: post.parentId },
+          select: {
+            authorId: true,
+          },
+        })
+
+        if (parentPost && parentPost.authorId && parentPost.authorId !== currentUserId && parentPost.authorId !== post.authorId) {
+          await createNotification(prisma, 'repost', currentUserId, parentPost.authorId, postId)
+        }
+      }
+
+      // 取得更新後的 repostCount 和 repost 作者信息
       const updatedPost = await prisma.post.findUnique({
         where: { id: postId },
         include: {
@@ -114,10 +134,26 @@ export async function POST(req: NextRequest) {
               reposts: true,
             },
           },
+          reposts: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  userId: true,
+                  name: true,
+                  image: true,
+                  avatarUrl: true,
+                },
+              },
+            },
+          },
         },
       })
 
       const repostCount = updatedPost?._count.reposts || 0
+      const latestRepost = updatedPost?.reposts?.[0]
 
       // Trigger Pusher events
       try {
@@ -126,10 +162,24 @@ export async function POST(req: NextRequest) {
           pusher.trigger('feed', PUSHER_EVENTS.POST_REPOSTED, {
             postId,
             repostCount,
+            repostAuthor: latestRepost?.user ? {
+              id: latestRepost.user.id,
+              userId: latestRepost.user.userId,
+              name: latestRepost.user.name,
+              image: latestRepost.user.image,
+              avatarUrl: latestRepost.user.avatarUrl,
+            } : null,
           }),
           pusher.trigger(`post-${postId}`, PUSHER_EVENTS.POST_REPOSTED, {
             postId,
             repostCount,
+            repostAuthor: latestRepost?.user ? {
+              id: latestRepost.user.id,
+              userId: latestRepost.user.userId,
+              name: latestRepost.user.name,
+              image: latestRepost.user.image,
+              avatarUrl: latestRepost.user.avatarUrl,
+            } : null,
           }),
         ])
       } catch (pusherError) {

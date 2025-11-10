@@ -92,7 +92,7 @@ export default function PostCard({ post, onLike, onRepost, onComment, onDelete, 
   }
 
   return (
-    <article className="border-b border-gray-200 p-3 md:p-4 hover:bg-gray-50 transition-colors relative">
+    <article className="border-b border-gray-200 p-3 md:p-4 hover:bg-gray-50 transition-colors relative overflow-hidden">
       <div className="flex gap-2 md:gap-3">
         {/* Avatar */}
         <div className="flex-shrink-0">
@@ -311,12 +311,12 @@ export default function PostCard({ post, onLike, onRepost, onComment, onDelete, 
 
               {/* Media */}
               {post.mediaUrl && (
-                <div className="mb-3">
+                <div className="mb-3 overflow-hidden rounded-xl">
                   {post.mediaType === 'video' ? (
                     <video
                       src={post.mediaUrl}
                       controls
-                      className="rounded-xl max-h-80 w-full object-cover cursor-pointer"
+                      className="rounded-xl max-h-80 w-full object-cover"
                       onClick={(e) => {
                         e.stopPropagation()
                         router.push(`/post/${post.id}`)
@@ -326,7 +326,7 @@ export default function PostCard({ post, onLike, onRepost, onComment, onDelete, 
                     <img
                       src={post.mediaUrl}
                       alt="Post media"
-                      className="rounded-xl max-h-80 w-full object-cover cursor-pointer"
+                      className="rounded-xl max-h-80 w-full object-cover"
                       onClick={(e) => {
                         e.stopPropagation()
                         router.push(`/post/${post.id}`)
