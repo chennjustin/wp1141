@@ -551,7 +551,7 @@ export default function PostModal({ onPostCreated }: PostModalProps) {
                     ) : suggestions.length === 0 ? (
                       <div className="p-3 text-sm text-gray-500">沒有符合的使用者</div>
                     ) : (
-                      <ul className="max-h-[180px] overflow-y-auto">
+                      <ul className="max-h-64 overflow-y-auto">
                         {suggestions.map((suggestion) => (
                           <li key={suggestion.id}>
                             <button

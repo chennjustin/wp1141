@@ -104,11 +104,6 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
 
       fetchFollowing()
     }, [currentUserId])
-    
-    // Update ref when followingIds state changes
-    useEffect(() => {
-      followingIdsRef.current = followingIds
-    }, [followingIds])
 
     // 當 activeTab 改變時重新載入
     useEffect(() => {
@@ -128,9 +123,8 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
         }
 
         // Check if the author is someone we're following
-        const isFollowing = followingIdsRef.current.has(data.post.authorId)
-        if (isFollowing) {
-          // Add to new post notice (only if we're in Following tab or will be)
+        if (followingIdsRef.current.has(data.post.authorId)) {
+          // Add to new post notice
           setNewPostNotice((prev) => {
             const author = {
               id: data.post.author.id,
@@ -209,8 +203,8 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
           )
         })
 
-        // Check if repost is from someone we're following (only when reposting, not un-reposting)
-        if (data.repostAuthor && data.repostCount > 0 && followingIdsRef.current.has(data.repostAuthor.id)) {
+        // Check if repost is from someone we're following
+        if (data.repostAuthor && followingIdsRef.current.has(data.repostAuthor.id)) {
           const reposter = {
             id: data.repostAuthor.id,
             name: data.repostAuthor.name,
