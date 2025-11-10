@@ -12,6 +12,7 @@ export default function HomePage() {
   const router = useRouter()
   const refreshFeedRef = useRef<(() => void) | null>(null)
   const [activeTab, setActiveTab] = useState<'foryou' | 'following'>('foryou')
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -38,11 +39,18 @@ export default function HomePage() {
   }
 
   return (
-    <AppLayout onPostCreated={handlePostCreated}>
+    <AppLayout 
+      onPostCreated={handlePostCreated} 
+      isMobileMenuOpen={isMobileMenuOpen} 
+      onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)}
+      onCloseMobileMenu={() => setIsMobileMenuOpen(false)}
+    >
       <Navbar 
         type="home" 
         activeTab={activeTab}
         onTabChange={setActiveTab}
+        isMobileMenuOpen={isMobileMenuOpen}
+        onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)}
       />
       <HomeFeed 
         onRefreshRef={refreshFeedRef}

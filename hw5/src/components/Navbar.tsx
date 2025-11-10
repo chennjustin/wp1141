@@ -10,9 +10,11 @@ interface NavbarProps {
   onBack?: () => void
   activeTab?: 'foryou' | 'following'
   onTabChange?: (tab: 'foryou' | 'following') => void
+  isMobileMenuOpen?: boolean
+  onToggleMobileMenu?: () => void
 }
 
-export default function Navbar({ type, profileName, postCount, onBack, activeTab: externalActiveTab, onTabChange }: NavbarProps) {
+export default function Navbar({ type, profileName, postCount, onBack, activeTab: externalActiveTab, onTabChange, isMobileMenuOpen, onToggleMobileMenu }: NavbarProps) {
   const router = useRouter()
   const [internalActiveTab, setInternalActiveTab] = React.useState<'foryou' | 'following'>('foryou')
   const activeTab = externalActiveTab ?? internalActiveTab
@@ -66,7 +68,39 @@ export default function Navbar({ type, profileName, postCount, onBack, activeTab
 
   return (
     <nav className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-200">
-        <div className="max-w-full md:max-w-[620px] mx-auto flex border-b border-gray-200">
+        <div className="max-w-full md:max-w-[620px] mx-auto flex items-center border-b border-gray-200">
+        {/* Hamburger Menu Button - Mobile Only */}
+        {onToggleMobileMenu && (
+          <button
+            onClick={onToggleMobileMenu}
+            className="md:hidden p-3 flex-shrink-0 hover:bg-gray-50 transition-colors"
+            aria-label="Toggle menu"
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              {isMobileMenuOpen ? (
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              ) : (
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              )}
+            </svg>
+          </button>
+        )}
         <button
           onClick={() => {
             if (onTabChange) {
