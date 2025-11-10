@@ -2,6 +2,8 @@
 
 一個仿 Twitter/X 的社交媒體平台，使用 Next.js 14、Prisma、PostgreSQL、NextAuth 、Pusher 、Cloudinary 打造。
 
+**此專案已支援手機版響應式設計！**
+
 ## Deployed Link
 
 **Deployed Link:** **https://myxclone.vercel.app**
