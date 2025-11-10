@@ -135,9 +135,17 @@ export default async function ProfilePageRoute({ params }: ProfilePageProps) {
     isFollowing = !!follow
   }
 
+  // Count only real posts (not replies/comments)
+  const realPostCount = await prisma.post.count({
+    where: {
+      authorId: user.id,
+      parentId: null, // Only count posts, not replies
+    },
+  })
+
   return (
     <AppLayout>
-      <Navbar type="profile" profileName={user.name || undefined} postCount={user._count.posts} />
+      <Navbar type="profile" profileName={user.name || undefined} postCount={realPostCount} />
       <ProfilePage user={formattedUser} posts={posts} isSelf={isSelf} isFollowing={isFollowing} />
     </AppLayout>
   )
