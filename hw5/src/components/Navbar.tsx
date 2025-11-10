@@ -6,12 +6,13 @@ import { useRouter } from 'next/navigation'
 interface NavbarProps {
   type: 'home' | 'profile'
   profileName?: string
+  postCount?: number
   onBack?: () => void
   activeTab?: 'foryou' | 'following'
   onTabChange?: (tab: 'foryou' | 'following') => void
 }
 
-export default function Navbar({ type, profileName, onBack, activeTab: externalActiveTab, onTabChange }: NavbarProps) {
+export default function Navbar({ type, profileName, postCount, onBack, activeTab: externalActiveTab, onTabChange }: NavbarProps) {
   const router = useRouter()
   const [internalActiveTab, setInternalActiveTab] = React.useState<'foryou' | 'following'>('foryou')
   const activeTab = externalActiveTab ?? internalActiveTab
@@ -49,7 +50,14 @@ export default function Navbar({ type, profileName, onBack, activeTab: externalA
             </svg>
           </button>
           {profileName && (
-            <h2 className="text-xl font-bold text-gray-900 flex-shrink-0">{profileName}</h2>
+            <div className="flex flex-col flex-shrink-0">
+              <h2 className="text-xl font-bold text-gray-900">{profileName}</h2>
+              {postCount !== undefined && (
+                <span className="text-sm text-gray-500">
+                  {postCount.toLocaleString()} posts
+                </span>
+              )}
+            </div>
           )}
         </div>
       </nav>

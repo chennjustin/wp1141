@@ -137,7 +137,7 @@ export default async function ProfilePageRoute({ params }: ProfilePageProps) {
 
   return (
     <AppLayout>
-      <Navbar type="profile" profileName={user.name || undefined} />
+      <Navbar type="profile" profileName={user.name || undefined} postCount={user._count.posts} />
       <ProfilePage user={formattedUser} posts={posts} isSelf={isSelf} isFollowing={isFollowing} />
     </AppLayout>
   )

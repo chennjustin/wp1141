@@ -37,6 +37,10 @@ export default function MediaUploader({
     }
   }
 
+  const handleUploadClose = () => {
+    setIsUploading(false)
+  }
+
   const handleRemove = () => {
     setUploadedUrl(null)
     setUploadedType(null)
@@ -99,6 +103,7 @@ export default function MediaUploader({
           uploadPreset="my_Xclone"
           onSuccess={handleUploadSuccess}
           onOpen={() => setIsUploading(true)}
+          onClose={handleUploadClose}
           options={getUploadOptions()}
         >
           {({ open }) => (
@@ -181,6 +186,7 @@ export default function MediaUploader({
           uploadPreset="my_Xclone"
           onSuccess={handleUploadSuccess}
           onOpen={() => setIsUploading(true)}
+          onClose={handleUploadClose}
           options={getUploadOptions()}
         >
           {({ open }) => (
@@ -311,6 +317,7 @@ export default function MediaUploader({
           uploadPreset="my_Xclone"
           onSuccess={handleUploadSuccess}
           onOpen={() => setIsUploading(true)}
+          onClose={handleUploadClose}
           options={getUploadOptions()}
         >
           {({ open }) => (

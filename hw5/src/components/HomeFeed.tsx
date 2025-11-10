@@ -398,6 +398,10 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
       }
     }
 
+    const handleDelete = (postId: string) => {
+      setPosts((currentPosts) => currentPosts.filter((p) => p.id !== postId))
+    }
+
 
     return (
       <div className="flex flex-col">
@@ -514,6 +518,7 @@ const HomeFeed = forwardRef<{ refresh: () => void }, HomeFeedProps>(
                 onLike={handleLike}
                 onRepost={handleRepost}
                 onComment={handleComment}
+                onDelete={handleDelete}
                 showRepostLabel={true}
               />
             ))
