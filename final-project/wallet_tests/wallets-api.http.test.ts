@@ -13,8 +13,9 @@ const BASE_URL = process.env.TEST_BASE_URL || "http://localhost:3000";
  * Recommended usage:
  * 1. In one terminal, start the dev server:
  *      npm run dev
- * 2. In another terminal, run only this test file:
- *      npm test -- --run tests/wallets-api.http.test.ts
+ * 2. In another terminal, change into the wallet_tests directory and run only this test file:
+ *      cd wallet_tests
+ *      npx vitest --run wallets-api.http.test.ts
  *
  * Note: These tests focus on unauthenticated scenarios, because authenticated
  * flows with next-auth sessions are already covered by handler-level tests.
