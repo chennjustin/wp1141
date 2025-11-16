@@ -286,6 +286,9 @@ model DeviceCarrier {
   // Soft delete flag for device carriers
   isDeleted   Boolean  @default(false)
 
+  verifyCode  String            // 載具驗證碼（16碼）
+  lastSyncedAt DateTime?
+
   createdAt   DateTime @default(now())
 
   user        User   @relation(fields: [userId], references: [id])
