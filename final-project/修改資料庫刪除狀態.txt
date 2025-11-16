@@ -1,0 +1,100 @@
+Prisma schema 中 isDeleted 欄位修改說明
+======================================
+
+這份文件簡單說明在 `schema.prisma` 中，為了支援「軟刪除（用狀態標記取代真正刪除）」所做的修改。
+
+整體原則
+--------
+- 對於會影響歷史紀錄、報表或關聯資料的實體，不直接在資料庫物理刪除，而是用 `isDeleted` 欄位標記。
+- 應用程式邏輯中：
+  - 「刪除」動作改成更新 `isDeleted = true`。
+  - 一般查詢（列表、詳細）都應該加上條件 `isDeleted = false`。
+
+以下是各個 model 的欄位變更與目的說明。
+
+1. User
+-------
+新增欄位：
+- `isDeleted Boolean @default(false)`
+
+目的：
+- 讓使用者帳號可以被「停用」而不是直接刪除。
+- 保留與錢包、交易、標籤、通知等資料的關聯，方便日後稽核或查看歷史。
+
+2. Wallet
+---------
+新增欄位：
+- `isDeleted Boolean @default(false)`
+
+目的：
+- 支援錢包的軟刪除。
+- 當使用者「刪除錢包」時，只需要把 `isDeleted` 設為 `true`，在錢包列表與 UI 查詢時排除該筆記錄。
+- 底下的交易、訂閱等資料仍然存在，避免歷史紀錄消失。
+
+3. WalletUser
+-------------
+新增欄位：
+- `isDeleted Boolean @default(false)`
+
+目的：
+- 讓錢包成員關係可以用軟刪除表示「移除成員」。
+- 保留「誰曾經是錢包成員」的歷史紀錄。
+- 查詢錢包成員時，應只拿 `isDeleted = false` 的記錄。
+
+4. Tag
+------
+新增欄位：
+- `isDeleted Boolean @default(false)`
+
+目的：
+- 標籤不會被物理刪除，避免舊交易的 `tagId` 失去對應。
+- UI 上可以隱藏 `isDeleted = true` 的標籤（例如建立新交易時不再顯示）。
+- 仍然保留舊資料上使用過這個標籤的紀錄。
+
+5. Transaction
+--------------
+新增欄位：
+- `isDeleted Boolean @default(false)`
+
+目的：
+- 使用者在介面按「刪除交易」時，用軟刪除標記取代真正刪除資料。
+- 方便保留完整的記帳歷史與稽核資訊。
+- 一般交易列表、報表計算時，應排除 `isDeleted = true` 的交易（除非是專門查「已刪除」的管理畫面）。
+
+6. Subscription
+---------------
+新增欄位：
+- `isDeleted Boolean @default(false)`
+
+目的：
+- 支援訂閱設定的軟刪除（或視為完全停用）。
+- 不會影響已產生的 `SubscriptionHistory` 紀錄。
+- 查詢「有效訂閱」時，可以搭配 `isDeleted = false` 以及其他狀態欄位使用。
+
+7. Notification
+---------------
+新增欄位：
+- `isDeleted Boolean @default(false)`
+
+目的：
+- 讓通知可以被標記為刪除，而不是直接移除資料列。
+- UI 可以透過 `isDeleted` 控制要顯示哪些通知或做歸檔功能。
+- 方便需要時保留通知歷史。
+
+8. DeviceCarrier
+----------------
+新增欄位：
+- `isDeleted Boolean @default(false)`
+
+目的：
+- 支援載具（例如發票載具碼）被標記為「不再使用」，而不是刪掉紀錄。
+- 保留與外部系統或歷史交易的可能關聯。
+- 查詢有效載具時，應排除 `isDeleted = true` 的紀錄。
+
+實作與查詢注意事項
+--------------------
+- 刪除操作：
+  - 不再呼叫 `delete`，改用 `update` 將 `isDeleted` 設為 `true`。
+- 查詢操作：
+  - 一般列表或詳細資料查詢，需加入 `where: { isDeleted: false }`。
+  - 如果有管理後台需要查看已刪除資料，可以提供額外的查詢，明確指定 `isDeleted: true` 或不加條件。
