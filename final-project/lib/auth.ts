@@ -5,6 +5,14 @@ import { prisma } from "@/lib/prisma";
 import { config } from "@/config/env";
 import type { Adapter } from "next-auth/adapters";
 
+/**
+ * NextAuth configuration
+ * 
+ * Note: This file is a library module, not a route file.
+ * Runtime configuration is set in route files (app/api/auth/[...nextauth]/route.ts).
+ * NextAuth with PrismaAdapter requires Node.js runtime.
+ */
+
 // Custom adapter wrapper to prevent account linking for same email different providers
 // This ensures each provider account creates a separate user, even if email is the same
 function createCustomAdapter(baseAdapter: Adapter): Adapter {
