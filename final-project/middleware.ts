@@ -3,24 +3,60 @@ import { NextResponse } from "next/server";
 
 export default withAuth(
   function middleware(req) {
-    const token = req.nextauth.token;
-    const isAuthPage = req.nextUrl.pathname.startsWith("/signin");
+    const { pathname, search } = req.nextUrl;
+    const isLoginPage = pathname === "/login";
 
-    // 如果已登入且訪問登入頁面，重定向到首頁
-    if (isAuthPage && token) {
+    // Detect database session cookie by environment
+    // Cover both NextAuth v4 (next-auth.*) and Auth.js v5 (authjs.*) cookie names
+    const sessionCookie =
+      req.cookies.get("__Secure-next-auth.session-token")?.value ||
+      req.cookies.get("next-auth.session-token")?.value ||
+      req.cookies.get("__Secure-authjs.session-token")?.value ||
+      req.cookies.get("authjs.session-token")?.value;
+
+    const isLoggedIn = Boolean(sessionCookie);
+
+    if(process.env.NODE_ENV === "development") {
+      console.log("--------------------------------");
+      console.log("Path: ", req.url);
+      console.log("Session Cookie: ", sessionCookie);
+      console.log("Is Logged In: ", isLoggedIn);
+      console.log("Is Login Page: ", isLoginPage);
+      console.log("Pathname: ", pathname);
+      console.log("Search: ", search);
+      console.log("--------------------------------");
+    }
+
+    // If authenticated user (has session cookie) accesses login page, redirect to home
+    if (isLoginPage && isLoggedIn) {
+      // Redirect to home page if user   is already logged in
       return NextResponse.redirect(new URL("/", req.url));
     }
 
-    // 如果未登入且訪問受保護頁面，重定向到登入頁
-    if (!isAuthPage && !token) {
-      return NextResponse.redirect(new URL("/signin", req.url));
+    // Define public paths that do not require authentication
+    const isPublic =
+      pathname === "/" ||
+      pathname.startsWith("/api/auth") ||
+      pathname.startsWith("/_next") ||
+      pathname.startsWith("/public") ||
+      pathname === "/favicon.ico";
+
+    // If route is protected and user is not logged in, redirect to /login with callback
+    if (!isPublic && !isLoggedIn) {
+      const url = req.nextUrl.clone();
+      url.pathname = "/login";
+      url.search = `?callbackUrl=${encodeURIComponent(pathname + search)}`;
+      return NextResponse.redirect(url);
     }
 
     return NextResponse.next();
   },
   {
     pages: {
-      signIn: "/signin",
+      signIn: "/login",
+    },
+    callbacks: {
+      authorized: () => true,
     },
   }
 );
