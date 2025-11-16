@@ -1,11 +1,3 @@
-/**
- * User service
- * 
- * This module contains business logic for User operations.
- * It orchestrates repository calls and implements domain rules
- * such as validation, authorization, and data transformation.
- */
-
 import { userRepository } from "../repositories/user.repository";
 import type {
   UserProfile,

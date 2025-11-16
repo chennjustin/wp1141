@@ -1,10 +1,4 @@
-/**
- * Environment variables configuration with Zod validation
- * 
- * This module provides type-safe access to all environment variables
- * used in the application. All environment variables are validated
- * at application startup using Zod schemas.
- */
+"use server";
 
 import { z } from "zod";
 
