@@ -1,5 +1,5 @@
 {
-  "name": "accounting-system",
+  "name": "coin-undergraduate",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -13,8 +13,7 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts",
-    "check-env": "node scripts/check-env.js"
+    "db:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.7",
