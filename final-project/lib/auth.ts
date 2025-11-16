@@ -83,7 +83,7 @@ export const authOptions: NextAuthOptions = {
         const { getUserIDFromSession } = await import("@/modules/auth/session");
         const userID = await getUserIDFromSession(user.id);
 
-        // Add userID to session for registration check (may be null if not yet registered)
+          // Add userID to session for registration check (may be null if not yet registered)
         session.user.userID = userID;
 
         return session;

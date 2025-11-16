@@ -115,9 +115,9 @@ export async function POST(req: Request) {
 
     const result = await createWalletAction({
       name: name || "",
-      defaultCurrency,
+          defaultCurrency,
       setAsDefault,
-    });
+      });
 
     if (!result.success) {
       const status =
@@ -127,7 +127,7 @@ export async function POST(req: Request) {
           ? 400
           : 500;
       return NextResponse.json({ error: result.error }, { status });
-    }
+      }
 
     return NextResponse.json(result.data, { status: 201 });
   } catch (error) {

@@ -52,6 +52,8 @@ export interface UpdateUserProfileData {
 
 /**
  * User ID validation result
+ * 
+ * @deprecated Use ValidationResult from modules/user/utils/userId instead
  */
 export interface UserIdValidationResult {
   valid: boolean;
