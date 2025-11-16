@@ -4,7 +4,6 @@ import { NextResponse } from "next/server";
 export default withAuth(
   function middleware(req) {
     const { pathname, search } = req.nextUrl;
-    const isLoginPage = pathname === "/login";
 
     // Detect database session cookie by environment
     // Cover both NextAuth v4 (next-auth.*) and Auth.js v5 (authjs.*) cookie names
@@ -21,21 +20,13 @@ export default withAuth(
       console.log("Path: ", req.url);
       console.log("Session Cookie: ", sessionCookie);
       console.log("Is Logged In: ", isLoggedIn);
-      console.log("Is Login Page: ", isLoginPage);
       console.log("Pathname: ", pathname);
       console.log("Search: ", search);
       console.log("--------------------------------");
     }
 
-    // If authenticated user (has session cookie) accesses login page, redirect to home
-    if (isLoginPage && isLoggedIn) {
-      // Redirect to home page if user   is already logged in
-      return NextResponse.redirect(new URL("/", req.url));
-    }
-
     // Define public paths that do not require authentication
     const isPublic =
-      pathname === "/" ||
       pathname.startsWith("/api/auth") ||
       pathname.startsWith("/_next") ||
       pathname.startsWith("/public") ||
