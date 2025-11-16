@@ -279,7 +279,6 @@ model DeviceCarrier {
   id          String   @id @default(cuid())
   userId      String
   carrierCode String
-  carrierType String @default("PHONE_BARCODE")
 
   // Soft delete flag for device carriers
   isDeleted   Boolean  @default(false)
