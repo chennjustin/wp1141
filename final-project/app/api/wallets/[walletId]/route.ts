@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getWalletAction } from "@/modules/wallet/routes/get-wallet";
+import { updateWalletAction } from "@/modules/wallet/routes/update-wallet";
+import { deleteWalletAction } from "@/modules/wallet/routes/delete-wallet";
 
 interface RouteContext {
   params: {
@@ -9,49 +9,65 @@ interface RouteContext {
   };
 }
 
-// GET /api/wallets/:walletId
-// Get detailed information about a single wallet the user has access to.
+/**
+ * @swagger
+ * /api/wallets/{walletId}:
+ *   get:
+ *     summary: Get wallet by ID
+ *     description: Get detailed information about a single wallet the user has access to
+ *     tags:
+ *       - Wallets
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: walletId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Wallet ID
+ *     responses:
+ *       200:
+ *         description: Wallet details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Wallet'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Wallet not found or access denied
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 export async function GET(_req: Request, context: RouteContext) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session || !session.user || !session.user.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userId = session.user.id;
     const { walletId } = context.params;
+    const result = await getWalletAction(walletId);
 
-    // Find wallet where user is an active member and wallet is not soft-deleted.
-    const wallet = await prisma.wallet.findFirst({
-      where: {
-        id: walletId,
-        isDeleted: false,
-        members: {
-          some: {
-            userId,
-            isDeleted: false,
-          },
-        },
-      },
-      include: {
-        members: {
-          where: { isDeleted: false },
-          include: {
-            user: true,
-          },
-        },
-      },
-    });
-
-    if (!wallet) {
-      return NextResponse.json(
-        { error: "Wallet not found or access denied" },
-        { status: 404 }
-      );
+    if (!result.success) {
+      const status =
+        result.error === "Unauthorized"
+          ? 401
+          : result.error === "Wallet not found or access denied"
+          ? 404
+          : 500;
+      return NextResponse.json({ error: result.error }, { status });
     }
 
-    return NextResponse.json(wallet, { status: 200 });
+    return NextResponse.json(result.data, { status: 200 });
   } catch (error) {
     console.error("[GET /api/wallets/:walletId] Unexpected error", error);
     return NextResponse.json(
@@ -61,19 +77,64 @@ export async function GET(_req: Request, context: RouteContext) {
   }
 }
 
-// PATCH /api/wallets/:walletId
-// Update wallet basic information (e.g., name, defaultCurrency).
+/**
+ * @swagger
+ * /api/wallets/{walletId}:
+ *   patch:
+ *     summary: Update wallet
+ *     description: Update wallet basic information (e.g., name, defaultCurrency). Only wallet owner can update.
+ *     tags:
+ *       - Wallets
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: walletId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Wallet ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateWalletRequest'
+ *     responses:
+ *       200:
+ *         description: Wallet updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Wallet'
+ *       400:
+ *         description: Bad request - Invalid input
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Forbidden - Only wallet owner can update
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 export async function PATCH(req: Request, context: RouteContext) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session || !session.user || !session.user.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userId = session.user.id;
     const { walletId } = context.params;
-
     const body = await req.json().catch(() => null);
 
     if (!body || typeof body !== "object") {
@@ -88,56 +149,25 @@ export async function PATCH(req: Request, context: RouteContext) {
       defaultCurrency?: string;
     } = body;
 
-    if (
-      (name === undefined || name === null) &&
-      (defaultCurrency === undefined || defaultCurrency === null)
-    ) {
-      return NextResponse.json(
-        { error: "No fields provided to update" },
-        { status: 400 }
-      );
-    }
-
-    // Check that the current user is an active OWNER of this wallet
-    const membership = await prisma.walletUser.findFirst({
-      where: {
-        walletId,
-        userId,
-        role: "OWNER",
-        isDeleted: false,
-      },
+    const result = await updateWalletAction(walletId, {
+      name,
+      defaultCurrency,
     });
 
-    if (!membership) {
-      return NextResponse.json(
-        { error: "Only wallet owner can update this wallet" },
-        { status: 403 }
-      );
+    if (!result.success) {
+      const status =
+        result.error === "Unauthorized"
+          ? 401
+          : result.error === "Only wallet owner can update this wallet"
+          ? 403
+          : result.error === "No fields provided to update" ||
+            result.error === "No valid fields provided to update"
+          ? 400
+          : 500;
+      return NextResponse.json({ error: result.error }, { status });
     }
 
-    const dataToUpdate: { name?: string; defaultCurrency?: string } = {};
-
-    if (typeof name === "string" && name.trim().length > 0) {
-      dataToUpdate.name = name.trim();
-    }
-
-    if (typeof defaultCurrency === "string" && defaultCurrency.trim().length > 0) {
-      dataToUpdate.defaultCurrency = defaultCurrency.trim();
-    }
-
-    if (Object.keys(dataToUpdate).length === 0) {
-      return NextResponse.json(
-        { error: "No valid fields provided to update" },
-        { status: 400 }
-      );
-    }
-
-    const updatedWallet = await prisma.wallet.update({
-      where: { id: walletId },
-      data: dataToUpdate,
-    });
-
-    return NextResponse.json(updatedWallet, { status: 200 });
+    return NextResponse.json(result.data, { status: 200 });
   } catch (error) {
     console.error("[PATCH /api/wallets/:walletId] Unexpected error", error);
     return NextResponse.json(
@@ -147,98 +177,78 @@ export async function PATCH(req: Request, context: RouteContext) {
   }
 }
 
-// DELETE /api/wallets/:walletId
-// Soft delete a wallet and its membership records.
+/**
+ * @swagger
+ * /api/wallets/{walletId}:
+ *   delete:
+ *     summary: Delete wallet
+ *     description: Soft delete a wallet and its membership records. Only wallet owner can delete. Wallets with active transactions cannot be deleted.
+ *     tags:
+ *       - Wallets
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: walletId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Wallet ID
+ *     responses:
+ *       200:
+ *         description: Wallet deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WalletDeleteResponse'
+ *       400:
+ *         description: Bad request - Cannot delete wallet with existing transactions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Forbidden - Only wallet owner can delete
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Wallet not found or already deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 export async function DELETE(_req: Request, context: RouteContext) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session || !session.user || !session.user.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userId = session.user.id;
     const { walletId } = context.params;
+    const result = await deleteWalletAction(walletId);
 
-    const result = await prisma.$transaction(async (tx) => {
-      // Ensure the user is an active OWNER of this wallet
-      const membership = await tx.walletUser.findFirst({
-        where: {
-          walletId,
-          userId,
-          role: "OWNER",
-          isDeleted: false,
-        },
-      });
-
-      if (!membership) {
-        return {
-          error: "Only wallet owner can delete this wallet",
-          status: 403 as const,
-        };
-      }
-
-      // Check wallet existence and deletion state
-      const wallet = await tx.wallet.findUnique({
-        where: { id: walletId },
-      });
-
-      if (!wallet || wallet.isDeleted) {
-        return {
-          error: "Wallet not found or already deleted",
-          status: 404 as const,
-        };
-      }
-
-      // Optional safety: prevent deletion when there are active transactions.
-      const activeTransactionCount = await tx.transaction.count({
-        where: {
-          walletId,
-          isDeleted: false,
-        },
-      });
-
-      if (activeTransactionCount > 0) {
-        return {
-          error: "Cannot delete wallet with existing transactions",
-          status: 400 as const,
-        };
-      }
-
-      // Soft delete all wallet membership records
-      await tx.walletUser.updateMany({
-        where: {
-          walletId,
-          isDeleted: false,
-        },
-        data: {
-          isDeleted: true,
-        },
-      });
-
-      // Soft delete the wallet itself
-      await tx.wallet.update({
-        where: { id: walletId },
-        data: {
-          isDeleted: true,
-        },
-      });
-
-      // Clear defaultWalletId for any users that reference this wallet
-      await tx.user.updateMany({
-        where: {
-          defaultWalletId: walletId,
-        },
-        data: {
-          defaultWalletId: null,
-        },
-      });
-
-      return { success: true as const, status: 200 as const };
-    });
-
-    if ("error" in result) {
-      return NextResponse.json({ error: result.error }, { status: result.status });
+    if (!result.success) {
+      const status =
+        result.error === "Unauthorized"
+          ? 401
+          : result.error === "Only wallet owner can delete this wallet"
+          ? 403
+          : result.error === "Wallet not found or already deleted"
+          ? 404
+          : result.error === "Cannot delete wallet with existing transactions"
+          ? 400
+          : 500;
+      return NextResponse.json({ error: result.error }, { status });
     }
 
     return NextResponse.json({ success: true }, { status: 200 });

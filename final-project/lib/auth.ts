@@ -2,7 +2,7 @@ import NextAuth, { type NextAuthOptions } from "next-auth";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import Google from "next-auth/providers/google";
 import { prisma } from "@/lib/prisma";
-import { config } from "@/lib/config";
+import { config } from "@/config/env";
 import type { Adapter } from "next-auth/adapters";
 
 // Custom adapter wrapper to prevent account linking for same email different providers
@@ -79,28 +79,20 @@ export const authOptions: NextAuthOptions = {
         // Add user id to session
         session.user.id = user.id;
 
-        // Fetch user with userID from database
-        // Wrap in try-catch to prevent errors from breaking the auth flow
-        try {
-          const dbUser = await prisma.user.findUnique({
-            where: { id: user.id },
-            select: {
-              userID: true,
-            },
-          });
+        // Fetch userID from database using session utility
+        const { getUserIDFromSession } = await import("@/modules/auth/session");
+        const userID = await getUserIDFromSession(user.id);
 
-          // Add userID to session for registration check (may be null if not yet registered)
-          session.user.userID = dbUser?.userID ?? null;
-        } catch (error) {
-          // If database query fails, log error but don't break auth flow
-          // Set userID to null as fallback
-          console.error("Error fetching userID in session callback:", error);
-          session.user.userID = null;
-        }
+        // Add userID to session for registration check (may be null if not yet registered)
+        session.user.userID = userID;
 
         return session;
       } catch (error) {
         console.error("Error in session callback:", error);
+        // Set userID to null as fallback
+        if (session.user) {
+          session.user.userID = null;
+        }
         return session;
       }
     },
