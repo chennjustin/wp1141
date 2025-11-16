@@ -1,26 +1,34 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Roboto_Mono } from "next/font/google";
 import "./globals.css";
-import { Providers } from "./providers";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+});
+
+const robotoMono = Roboto_Mono({
+  variable: "--font-roboto-mono",
+  subsets: ["latin"],
+});
 
 export const metadata: Metadata = {
-  title: "歡迎",
-  description: "Google 登入系統",
+  title: "Social Platform",
+  description: "A modern social media platform built with Next.js",
 };
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
-    <html lang="zh-TW">
-      <body className={inter.className}>
-        <Providers>{children}</Providers>
+    <html lang="en">
+      <body
+        className={`${inter.variable} ${robotoMono.variable} antialiased`}
+      >
+        {children}
       </body>
     </html>
   );
 }
-

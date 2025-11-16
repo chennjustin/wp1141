@@ -12,6 +12,10 @@ const config: Config = {
         background: 'var(--background)',
         foreground: 'var(--foreground)',
       },
+      fontFamily: {
+        sans: ['var(--font-inter)', 'Arial', 'Helvetica', 'sans-serif'],
+        mono: ['var(--font-roboto-mono)', 'monospace'],
+      },
     },
   },
   plugins: [],
