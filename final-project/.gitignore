@@ -42,3 +42,10 @@ next-env.d.ts
 
 # package-lock.json
 package-lock.json
+
+# Ignore test files and E2E configuration for final-project
+tests/
+e2e/
+test-results/
+playwright.config.ts
+vitest.config.ts
