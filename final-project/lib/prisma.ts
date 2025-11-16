@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { config } from "@/config/env";
+import { getConfig } from "@/config/env";
 
 /**
  * Prisma Client instance
@@ -13,11 +13,32 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+// Lazy load config to avoid Edge Runtime / Build issues
+function getPrismaLogLevel(): ("query" | "error" | "warn" | "info")[] {
+  try {
+    const config = getConfig();
+    return config.isDevelopment ? (["query", "error", "warn"] as const) : (["error"] as const);
+  } catch {
+    // Fallback if config not available (shouldn't happen in Node runtime)
+    return ["error"];
+  }
+}
+
+function shouldCachePrisma() {
+  try {
+    const config = getConfig();
+    return !config.isProduction;
+  } catch {
+    // Fallback: cache in non-production
+    return process.env.NODE_ENV !== "production";
+  }
+}
+
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
-    log: config.isDevelopment ? ["query", "error", "warn"] : ["error"],
+    log: getPrismaLogLevel(),
   });
 
-if (!config.isProduction) globalForPrisma.prisma = prisma;
+if (shouldCachePrisma()) globalForPrisma.prisma = prisma;
 

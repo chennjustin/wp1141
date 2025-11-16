@@ -2,7 +2,7 @@ import NextAuth, { type NextAuthOptions } from "next-auth";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import Google from "next-auth/providers/google";
 import { prisma } from "@/lib/prisma";
-import { config } from "@/config/env";
+import { getConfig } from "@/config/env";
 import type { Adapter } from "next-auth/adapters";
 
 /**
@@ -29,6 +29,20 @@ function createCustomAdapter(baseAdapter: Adapter): Adapter {
 const baseAdapter = PrismaAdapter(prisma);
 const customAdapter = createCustomAdapter(baseAdapter);
 
+// Lazy load config to avoid Edge Runtime / Build issues
+// Cache config to avoid multiple calls
+let _authConfig: { googleClientId: string; googleClientSecret: string } | null = null;
+function getAuthConfig() {
+  if (!_authConfig) {
+    const config = getConfig();
+    _authConfig = {
+      googleClientId: config.oauth.google.clientId,
+      googleClientSecret: config.oauth.google.clientSecret,
+    };
+  }
+  return _authConfig;
+}
+
 export const authOptions: NextAuthOptions = {
   adapter: customAdapter,
   session: {
@@ -36,8 +50,12 @@ export const authOptions: NextAuthOptions = {
   },
   providers: [
     Google({
-      clientId: config.oauth.google.clientId,
-      clientSecret: config.oauth.google.clientSecret,
+      get clientId() {
+        return getAuthConfig().googleClientId;
+      },
+      get clientSecret() {
+        return getAuthConfig().googleClientSecret;
+      },
     }),
   ],
   callbacks: {

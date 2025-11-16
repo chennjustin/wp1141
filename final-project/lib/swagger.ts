@@ -5,25 +5,45 @@
  */
 
 import swaggerJsdoc from "swagger-jsdoc";
-import { config } from "@/config/env";
+import { getConfig } from "@/config/env";
 
-const swaggerDefinition = {
-  openapi: "3.0.0",
-  info: {
-    title: "Coin Undergraduate API",
-    version: "1.0.0",
-    description:
-      "API documentation for Coin Undergraduate - A wallet and transaction management system",
-    contact: {
-      name: "API Support",
-    },
-  },
-  servers: [
-    {
+// Lazy load config to avoid Edge Runtime / Build issues
+function getSwaggerConfig() {
+  try {
+    const config = getConfig();
+    return {
       url: config.nextAuthUrl ?? "http://localhost:3000",
       description: config.isProduction ? "Production server" : "Development server",
+    };
+  } catch {
+    // Fallback if config not available
+    return {
+      url: "http://localhost:3000",
+      description: "Development server",
+    };
+  }
+}
+
+function getSwaggerDefinition() {
+  const swaggerConfig = getSwaggerConfig();
+  
+  return {
+    openapi: "3.0.0",
+    info: {
+      title: "Coin Undergraduate API",
+      version: "1.0.0",
+      description:
+        "API documentation for Coin Undergraduate - A wallet and transaction management system",
+      contact: {
+        name: "API Support",
+      },
     },
-  ],
+    servers: [
+      {
+        url: swaggerConfig.url,
+        description: swaggerConfig.description,
+      },
+    ],
   components: {
     securitySchemes: {
       bearerAuth: {
@@ -175,15 +195,24 @@ const swaggerDefinition = {
       cookieAuth: [],
     },
   ],
-};
+  };
+}
 
-const options: swaggerJsdoc.Options = {
-  definition: swaggerDefinition,
-  apis: [
-    "./app/api/**/*.ts",
-    "./app/api/**/*.tsx",
-  ],
-};
+// Lazy load swagger spec to avoid Edge Runtime / Build issues
+let _swaggerSpec: any = null;
 
-export const swaggerSpec = swaggerJsdoc(options);
+export function getSwaggerSpec() {
+  if (!_swaggerSpec) {
+    const swaggerDefinition = getSwaggerDefinition();
+    const options: swaggerJsdoc.Options = {
+      definition: swaggerDefinition,
+      apis: [
+        "./app/api/**/*.ts",
+        "./app/api/**/*.tsx",
+      ],
+    };
+    _swaggerSpec = swaggerJsdoc(options);
+  }
+  return _swaggerSpec;
+}
 
