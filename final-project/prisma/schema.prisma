@@ -25,6 +25,9 @@ model User {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
+  // Soft delete flag for user accounts
+  isDeleted Boolean  @default(false)
+
   // Remember user's last chosen wallet
   defaultWalletId String?
   defaultWallet   Wallet? @relation("DefaultWallet", fields: [defaultWalletId], references: [id])
@@ -88,6 +91,9 @@ model Wallet {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Soft delete flag for wallets
+  isDeleted Boolean  @default(false)
+
   members        WalletUser[]
   transactions   Transaction[]
   subscriptions  Subscription[]
@@ -102,6 +108,9 @@ model WalletUser {
   walletId  String
   userId    String
   role      WalletRole @default(MEMBER)
+
+  // Soft delete flag for wallet membership records
+  isDeleted Boolean    @default(false)
 
   wallet    Wallet     @relation(fields: [walletId], references: [id])
   user      User       @relation(fields: [userId], references: [id])
@@ -128,6 +137,9 @@ model Tag {
   createdBy String
   createdAt DateTime @default(now())
 
+   // Soft delete flag for tags
+  isDeleted Boolean  @default(false)
+
   creator   User @relation("UserCreatedTags", fields: [createdBy], references: [id])
 
   transactions Transaction[]
@@ -149,6 +161,9 @@ model Transaction {
   rateToNTD     Float?
   name          String? @db.Text
   note          String? @db.Text
+
+  // Soft delete flag for transactions
+  isDeleted     Boolean  @default(false)
 
   tagId         String?
   tag           Tag? @relation(fields: [tagId], references: [id])
@@ -200,6 +215,9 @@ model Subscription {
   nextBilling   DateTime
   intervalMonths Int      @default(1)
 
+  // Soft delete flag for subscriptions
+  isDeleted     Boolean   @default(false)
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -240,6 +258,9 @@ model Notification {
   isRead    Boolean @default(false)
   createdAt DateTime @default(now())
 
+  // Soft delete flag for notifications
+  isDeleted Boolean  @default(false)
+
   user      User     @relation(fields: [userId], references: [id])
 }
 
@@ -259,6 +280,9 @@ model DeviceCarrier {
   userId      String
   carrierCode String
   carrierType String @default("PHONE_BARCODE")
+
+  // Soft delete flag for device carriers
+  isDeleted   Boolean  @default(false)
 
   createdAt   DateTime @default(now())
 
