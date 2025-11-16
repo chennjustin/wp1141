@@ -283,9 +283,6 @@ model DeviceCarrier {
   // Soft delete flag for device carriers
   isDeleted   Boolean  @default(false)
 
-  // Soft delete flag for device carriers
-  isDeleted   Boolean  @default(false)
-
   createdAt   DateTime @default(now())
 
   user        User   @relation(fields: [userId], references: [id])
