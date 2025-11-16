@@ -1,6 +1,11 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
+// Explicitly specify Node.js runtime to avoid Edge Runtime limitations
+// Edge Runtime does not support Node.js APIs like __dirname, __filename, fs, etc.
+// This ensures compatibility with next-auth's withAuth middleware
+export const runtime = "nodejs";
+
 export default withAuth(
   function middleware(req) {
     const { pathname, search } = req.nextUrl;
