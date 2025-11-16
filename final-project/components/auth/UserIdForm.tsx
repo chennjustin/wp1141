@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { registerWithUserId } from "@/lib/server/users";
+import { registerWithUserId } from "@/modules/user/routes/register-user";
 
 export function UserIdForm() {
   const router = useRouter();

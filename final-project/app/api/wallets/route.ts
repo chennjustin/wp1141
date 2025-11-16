@@ -1,45 +1,49 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { listWalletsAction } from "@/modules/wallet/routes/list-wallets";
+import { createWalletAction } from "@/modules/wallet/routes/create-wallet";
 
-// GET /api/wallets
-// List all wallets that the current authenticated user can access.
+/**
+ * @swagger
+ * /api/wallets:
+ *   get:
+ *     summary: List all wallets
+ *     description: List all wallets that the current authenticated user can access
+ *     tags:
+ *       - Wallets
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: List of wallets
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Wallet'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
+    const result = await listWalletsAction();
 
-    if (!session || !session.user || !session.user.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!result.success) {
+      const status = result.error === "Unauthorized" ? 401 : 500;
+      return NextResponse.json({ error: result.error }, { status });
     }
 
-    const userId = session.user.id;
-
-    // Fetch wallets where the user is an active member and wallet is not soft-deleted.
-    const wallets = await prisma.wallet.findMany({
-      where: {
-        isDeleted: false,
-        members: {
-          some: {
-            userId,
-            isDeleted: false,
-          },
-        },
-      },
-      include: {
-        members: {
-          where: { isDeleted: false },
-          include: {
-            user: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "asc",
-      },
-    });
-
-    return NextResponse.json(wallets, { status: 200 });
+    return NextResponse.json(result.data, { status: 200 });
   } catch (error) {
     console.error("[GET /api/wallets] Unexpected error", error);
     return NextResponse.json(
@@ -49,18 +53,50 @@ export async function GET() {
   }
 }
 
-// POST /api/wallets
-// Create a new wallet for the current user and attach them as OWNER.
+/**
+ * @swagger
+ * /api/wallets:
+ *   post:
+ *     summary: Create a new wallet
+ *     description: Create a new wallet for the current user and attach them as OWNER
+ *     tags:
+ *       - Wallets
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateWalletRequest'
+ *     responses:
+ *       201:
+ *         description: Wallet created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Wallet'
+ *       400:
+ *         description: Bad request - Invalid input
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session || !session.user || !session.user.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const userId = session.user.id;
-
     const body = await req.json().catch(() => null);
 
     if (!body || typeof body !== "object") {
@@ -69,55 +105,31 @@ export async function POST(req: Request) {
 
     const {
       name,
-      defaultCurrency = "TWD",
-      setAsDefault = false,
+      defaultCurrency,
+      setAsDefault,
     }: {
       name?: string;
       defaultCurrency?: string;
       setAsDefault?: boolean;
     } = body;
 
-    // Basic validation for wallet name.
-    if (!name || typeof name !== "string" || name.trim().length === 0) {
-      return NextResponse.json(
-        { error: "Wallet name is required" },
-        { status: 400 }
-      );
-    }
-
-    const trimmedName = name.trim();
-
-    // Wrap create operations in a transaction to keep data consistent.
-    const wallet = await prisma.$transaction(async (tx) => {
-      // Create the wallet record
-      const createdWallet = await tx.wallet.create({
-        data: {
-          name: trimmedName,
-          defaultCurrency,
-        },
-      });
-
-      // Attach the creator as OWNER in WalletUser
-      await tx.walletUser.create({
-        data: {
-          walletId: createdWallet.id,
-          userId,
-          role: "OWNER",
-        },
-      });
-
-      // Optionally set this wallet as the user's default wallet
-      if (setAsDefault) {
-        await tx.user.update({
-          where: { id: userId },
-          data: { defaultWalletId: createdWallet.id },
-        });
-      }
-
-      return createdWallet;
+    const result = await createWalletAction({
+      name: name || "",
+      defaultCurrency,
+      setAsDefault,
     });
 
-    return NextResponse.json(wallet, { status: 201 });
+    if (!result.success) {
+      const status =
+        result.error === "Unauthorized"
+          ? 401
+          : result.error === "Wallet name is required"
+          ? 400
+          : 500;
+      return NextResponse.json({ error: result.error }, { status });
+    }
+
+    return NextResponse.json(result.data, { status: 201 });
   } catch (error) {
     console.error("[POST /api/wallets] Unexpected error", error);
     return NextResponse.json(
