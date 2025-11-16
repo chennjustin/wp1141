@@ -2,6 +2,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
+// Use Node.js runtime for next-auth session handling
+export const runtime = "nodejs";
+
 interface HomeProps {
   searchParams: { callbackUrl?: string };
 }

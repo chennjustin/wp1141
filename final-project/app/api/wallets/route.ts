@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { listWalletsAction } from "@/modules/wallet/routes/list-wallets";
 import { createWalletAction } from "@/modules/wallet/routes/create-wallet";
 
+// Use Node.js runtime for Prisma database operations
+export const runtime = "nodejs";
+
 /**
  * @swagger
  * /api/wallets:

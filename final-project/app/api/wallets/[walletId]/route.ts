@@ -3,6 +3,9 @@ import { getWalletAction } from "@/modules/wallet/routes/get-wallet";
 import { updateWalletAction } from "@/modules/wallet/routes/update-wallet";
 import { deleteWalletAction } from "@/modules/wallet/routes/delete-wallet";
 
+// Use Node.js runtime for Prisma database operations
+export const runtime = "nodejs";
+
 interface RouteContext {
   params: {
     walletId: string;

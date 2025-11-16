@@ -1,61 +1,56 @@
-import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-// Explicitly specify Node.js runtime to avoid Edge Runtime limitations
-// Edge Runtime does not support Node.js APIs like __dirname, __filename, fs, etc.
-// This ensures compatibility with next-auth's withAuth middleware
-export const runtime = "nodejs";
+/**
+ * Middleware for authentication check
+ * 
+ * Note: This middleware runs in Edge Runtime (required by Next.js).
+ * We use simple cookie checking here instead of next-auth/middleware
+ * because next-auth/middleware requires Node.js runtime.
+ * 
+ * Actual session validation happens in pages/API routes using getServerSession
+ * which runs in Node.js runtime.
+ */
+export function middleware(req: NextRequest) {
+  const { pathname, search } = req.nextUrl;
 
-export default withAuth(
-  function middleware(req) {
-    const { pathname, search } = req.nextUrl;
+  // Detect database session cookie by environment
+  // Cover both NextAuth v4 (next-auth.*) and Auth.js v5 (authjs.*) cookie names
+  const sessionCookie =
+    req.cookies.get("__Secure-next-auth.session-token")?.value ||
+    req.cookies.get("next-auth.session-token")?.value ||
+    req.cookies.get("__Secure-authjs.session-token")?.value ||
+    req.cookies.get("authjs.session-token")?.value;
 
-    // Detect database session cookie by environment
-    // Cover both NextAuth v4 (next-auth.*) and Auth.js v5 (authjs.*) cookie names
-    const sessionCookie =
-      req.cookies.get("__Secure-next-auth.session-token")?.value ||
-      req.cookies.get("next-auth.session-token")?.value ||
-      req.cookies.get("__Secure-authjs.session-token")?.value ||
-      req.cookies.get("authjs.session-token")?.value;
+  const isLoggedIn = Boolean(sessionCookie);
 
-    const isLoggedIn = Boolean(sessionCookie);
-
-    if(process.env.NODE_ENV === "development") {
-      console.log("--------------------------------");
-      console.log("Path: ", req.url);
-      console.log("Session Cookie: ", sessionCookie);
-      console.log("Is Logged In: ", isLoggedIn);
-      console.log("Pathname: ", pathname);
-      console.log("Search: ", search);
-      console.log("--------------------------------");
-    }
-
-    // Define public paths that do not require authentication
-    const isPublic =
-      pathname.startsWith("/api/auth") ||
-      pathname.startsWith("/_next") ||
-      pathname.startsWith("/public") ||
-      pathname === "/favicon.ico";
-
-    // If route is protected and user is not logged in, redirect to /login with callback
-    if (!isPublic && !isLoggedIn) {
-      const url = req.nextUrl.clone();
-      url.pathname = "/login";
-      url.search = `?callbackUrl=${encodeURIComponent(pathname + search)}`;
-      return NextResponse.redirect(url);
-    }
-
-    return NextResponse.next();
-  },
-  {
-    pages: {
-      signIn: "/login",
-    },
-    callbacks: {
-      authorized: () => true,
-    },
+  if(process.env.NODE_ENV === "development") {
+    console.log("--------------------------------");
+    console.log("Path: ", req.url);
+    console.log("Session Cookie: ", sessionCookie);
+    console.log("Is Logged In: ", isLoggedIn);
+    console.log("Pathname: ", pathname);
+    console.log("Search: ", search);
+    console.log("--------------------------------");
   }
-);
+
+  // Define public paths that do not require authentication
+  const isPublic =
+    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/public") ||
+    pathname === "/favicon.ico";
+
+  // If route is protected and user is not logged in, redirect to /login with callback
+  if (!isPublic && !isLoggedIn) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/login";
+    url.search = `?callbackUrl=${encodeURIComponent(pathname + search)}`;
+    return NextResponse.redirect(url);
+  }
+
+  return NextResponse.next();
+}
 
 export const config = {
   matcher: [

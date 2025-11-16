@@ -3,6 +3,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
+// Use Node.js runtime for next-auth session handling
+export const runtime = "nodejs";
+
 export default async function LoginPage() {
   // If already authenticated, redirect away from the login page
   const session = await getServerSession(authOptions);
