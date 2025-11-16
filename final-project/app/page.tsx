@@ -36,8 +36,5 @@ export default async function Home({ searchParams }: HomeProps) {
       </div>
     );
   }
-  
-  // If no session, middleware will redirect to /login
-  // This component won't render for unauthenticated users
   return null;
 }
