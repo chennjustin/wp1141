@@ -25,16 +25,8 @@ export default async function Home({ searchParams }: HomeProps) {
       redirect(callbackUrl);
     }
     
-    // If user has userID, show a simple welcome page
-    // TODO: Replace with actual home/dashboard page when created
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Welcome back!</h1>
-          <p className="mt-2 text-gray-600">You are logged in as {session.user.userID}</p>
-        </div>
-      </div>
-    );
+    // If user has userID and no explicit callbackUrl, redirect to wallets home
+    redirect("/wallets");
   }
   
   // If no session, middleware will redirect to /login
