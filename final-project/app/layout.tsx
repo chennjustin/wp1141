@@ -13,8 +13,8 @@ const robotoMono = Roboto_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Social Platform",
-  description: "A modern social media platform built with Next.js",
+  title: "Coin Undergraduate",
+  description: "A modern coin undergraduate wallet and transaction management system built with Next.js",
 };
 
 export default function RootLayout({
