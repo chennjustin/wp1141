@@ -32,6 +32,17 @@ export async function handleText(context: BotContext) {
       userId
     );
 
+    // 先獲取對話歷史（不包含當前訊息）
+    const history = await conversationService.getConversationHistory(
+      conversation._id.toString()
+    );
+
+    Logger.debug("Conversation history", {
+      conversationId: conversation._id.toString(),
+      historyLength: history.length,
+      lastMessage: history[history.length - 1]?.content?.substring(0, 50),
+    });
+
     // 保存使用者訊息
     await conversationService.saveMessage(
       conversation._id.toString(),
@@ -39,13 +50,20 @@ export async function handleText(context: BotContext) {
       text
     );
 
-    // 獲取對話歷史
-    const history = await conversationService.getConversationHistory(
-      conversation._id.toString()
-    );
-
-    // 生成 AI 回應
+    // 生成 AI 回應（傳入當前訊息和歷史）
+    Logger.info("Calling LLM", {
+      userId,
+      messageLength: text.length,
+      historyLength: history.length,
+    });
+    
     const response = await chatService.generateResponse(text, history);
+    
+    Logger.info("LLM response received", {
+      userId,
+      responseLength: response.length,
+      responsePreview: response.substring(0, 100),
+    });
 
     // 保存 AI 回應
     await conversationService.saveMessage(
