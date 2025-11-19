@@ -51,9 +51,37 @@ export async function GET(request: NextRequest) {
       limit
     );
 
+    // 將 Date 轉換為字符串
+    const formattedResult = {
+      ...result,
+      conversations: result.conversations.map((conv: any) => {
+        const createdAt = conv.createdAt instanceof Date 
+          ? conv.createdAt.toISOString() 
+          : typeof conv.createdAt === 'string' 
+          ? conv.createdAt 
+          : conv.createdAt 
+          ? new Date(conv.createdAt).toISOString()
+          : new Date().toISOString();
+        
+        const updatedAt = conv.updatedAt instanceof Date 
+          ? conv.updatedAt.toISOString() 
+          : typeof conv.updatedAt === 'string' 
+          ? conv.updatedAt 
+          : conv.updatedAt 
+          ? new Date(conv.updatedAt).toISOString()
+          : new Date().toISOString();
+
+        return {
+          ...conv,
+          createdAt,
+          updatedAt,
+        };
+      }),
+    };
+
     return NextResponse.json({
       success: true,
-      data: result,
+      data: formattedResult,
     });
   } catch (error) {
     Logger.error("Get conversations error", { error });

@@ -6,7 +6,7 @@ interface SessionData {
 }
 
 class MongoSessionStore {
-  private collection: mongoose.Collection<SessionData>;
+  private collection!: mongoose.mongo.Collection<SessionData>;
 
   async initialize() {
     await connectDB();
@@ -45,5 +45,6 @@ class MongoSessionStore {
   }
 }
 
-export default new MongoSessionStore();
+const sessionStore = new MongoSessionStore();
+export default sessionStore;
 

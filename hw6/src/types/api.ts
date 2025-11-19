@@ -15,8 +15,8 @@ export interface ConversationListResponse {
   conversations: Array<{
     _id: string;
     lineUserId: string;
-    createdAt: Date;
-    updatedAt: Date;
+    createdAt: string;
+    updatedAt: string;
     lastMessage?: string;
     messageCount: number;
   }>;

@@ -42,6 +42,7 @@ export default function ConversationsPage() {
     fetchConversations();
     const interval = setInterval(fetchConversations, 5000); // 每 5 秒更新一次
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   return (

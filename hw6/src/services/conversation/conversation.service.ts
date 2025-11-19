@@ -123,13 +123,14 @@ export class ConversationService {
     }
 
     if (filters.startDate || filters.endDate) {
-      query.createdAt = {};
+      const dateQuery: Record<string, Date> = {};
       if (filters.startDate) {
-        query.createdAt.$gte = filters.startDate;
+        dateQuery.$gte = filters.startDate;
       }
       if (filters.endDate) {
-        query.createdAt.$lte = filters.endDate;
+        dateQuery.$lte = filters.endDate;
       }
+      query.createdAt = dateQuery;
     }
 
     const conversations = await Conversation.find(query)
@@ -157,7 +158,7 @@ export class ConversationService {
 
         return {
           ...conv,
-          lastMessage: lastMessage?.content,
+          lastMessage: (lastMessage as any)?.content,
           messageCount,
         };
       })
