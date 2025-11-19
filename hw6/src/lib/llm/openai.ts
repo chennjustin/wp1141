@@ -1,7 +1,5 @@
 import OpenAI from "openai";
 import { LLMClient, LLMMessage } from "./client";
-import { DEFAULT_LLM_MODEL } from "@/lib/constants";
-import { handleLLMError } from "./fallback";
 import { Logger } from "@/lib/utils/logger";
 
 export class OpenAIClient implements LLMClient {
@@ -11,13 +9,20 @@ export class OpenAIClient implements LLMClient {
   constructor() {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      throw new Error("OPENAI_API_KEY is not set");
+      throw new Error("OPENAI_API_KEY is not set in environment variables");
+    }
+
+    const model = process.env.OPENAI_MODEL;
+    if (!model) {
+      throw new Error(
+        "OPENAI_MODEL is not set in environment variables. Please add OPENAI_MODEL to your .env file"
+      );
     }
 
     this.client = new OpenAI({
       apiKey,
     });
-    this.model = process.env.OPENAI_MODEL || DEFAULT_LLM_MODEL;
+    this.model = model;
   }
 
   async chat(messages: LLMMessage[]): Promise<string> {

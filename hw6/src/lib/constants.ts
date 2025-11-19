@@ -1,5 +1,7 @@
-export const DEFAULT_LLM_MODEL = "gpt-3.5-turbo";
+// LLM 配置
 export const MAX_CONTEXT_MESSAGES = 10;
+
+// 错误消息
 export const FALLBACK_MESSAGE =
   "抱歉，我目前無法處理您的請求。請稍後再試，或聯繫管理員。";
 
