@@ -32,10 +32,20 @@ function createContext(event: any, replyToken?: string): BotContext {
 }
 
 export async function POST(request: NextRequest) {
+  console.log("=".repeat(50));
+  console.log("📨 [Webhook] 收到 Line Webhook 要求");
+  console.log("=".repeat(50));
+  
   try {
     const body = await request.text();
+    console.log("📦 [Webhook] Body length:", body.length);
+    console.log("📦 [Webhook] Body preview:", body.substring(0, 200));
+    
     const signature = request.headers.get("x-line-signature");
+    console.log("🔐 [Webhook] Signature:", signature ? "存在" : "不存在");
+    
     const channelSecret = process.env.LINE_CHANNEL_SECRET;
+    console.log("🔑 [Webhook] Channel Secret:", channelSecret ? "存在" : "不存在");
 
     if (!signature || !channelSecret) {
       Logger.warn("Missing LINE signature or channel secret");
@@ -55,11 +65,16 @@ export async function POST(request: NextRequest) {
     }
 
     // 解析 webhook 事件
+    console.log("📋 [Webhook] 解析 webhook 資料...");
     const webhookData = JSON.parse(body);
+    console.log("📋 [Webhook] Webhook data:", JSON.stringify(webhookData, null, 2));
+    
     const validatedData = LineWebhookSchema.parse(webhookData);
+    console.log("✅ [Webhook] 驗證通過，事件數量:", validatedData.events.length);
 
     // 處理每個事件
     for (const event of validatedData.events) {
+      console.log("🔄 [Webhook] 處理事件:", event.type);
       const replyToken = (event as any).replyToken;
       const context = createContext(event, replyToken);
 
