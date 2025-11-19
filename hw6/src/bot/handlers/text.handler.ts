@@ -3,8 +3,28 @@ import { ChatService } from "@/services/llm/chat.service";
 import { ConversationService } from "@/services/conversation/conversation.service";
 import { Logger } from "@/lib/utils/logger";
 
-const chatService = new ChatService();
-const conversationService = new ConversationService();
+// 延迟初始化，避免模块加载时环境变量未设置导致失败
+let chatService: ChatService | null = null;
+let conversationService: ConversationService | null = null;
+
+function getChatService(): ChatService {
+  if (!chatService) {
+    try {
+      chatService = new ChatService();
+    } catch (error) {
+      Logger.error("Failed to initialize ChatService", { error });
+      throw error;
+    }
+  }
+  return chatService;
+}
+
+function getConversationService(): ConversationService {
+  if (!conversationService) {
+    conversationService = new ConversationService();
+  }
+  return conversationService;
+}
 
 export async function handleText(context: BotContext) {
   const userId = context.event.source.userId;
@@ -16,6 +36,9 @@ export async function handleText(context: BotContext) {
   }
 
   try {
+    const chatService = getChatService();
+    const conversationService = getConversationService();
+
     // 處理特殊指令
     if (text === "幫助" || text === "help" || text === "說明") {
       const helpMessage = chatService.getHelpMessage();
@@ -75,11 +98,20 @@ export async function handleText(context: BotContext) {
     // 發送回應
     await context.sendText(response);
   } catch (error) {
-    Logger.error("Error handling text message", { error, userId, text });
+    Logger.error("Error handling text message", { 
+      error,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+      userId, 
+      text,
+    });
     
     // 嘗試發送錯誤訊息，如果連發送都失敗則忽略
     try {
-      await context.sendText("抱歉，處理訊息時發生錯誤，請稍後再試。");
+      const errorMsg = error instanceof Error 
+        ? `錯誤：${error.message}` 
+        : "抱歉，處理訊息時發生錯誤，請稍後再試。";
+      await context.sendText(errorMsg);
     } catch (sendError) {
       Logger.error("Failed to send error message", { sendError });
     }

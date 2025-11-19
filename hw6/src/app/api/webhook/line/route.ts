@@ -64,13 +64,30 @@ export async function POST(request: NextRequest) {
       const context = createContext(event, replyToken);
 
       try {
+        Logger.info("Processing webhook event", { 
+          eventType: event.type,
+          messageType: (event as any).message?.type,
+        });
+        
         if (event.type === "message" && event.message?.type === "text") {
+          Logger.info("Routing to handleText");
           await handleText(context);
         } else if (event.type === "follow") {
+          Logger.info("Routing to handleFollow");
           await handleFollow(context);
+        } else {
+          Logger.warn("Unhandled event type", { 
+            eventType: event.type,
+            messageType: (event as any).message?.type,
+          });
         }
       } catch (error) {
-        Logger.error("Error processing event", { error, eventType: event.type });
+        Logger.error("Error processing event", { 
+          error,
+          errorMessage: error instanceof Error ? error.message : String(error),
+          errorStack: error instanceof Error ? error.stack : undefined,
+          eventType: event.type,
+        });
         // 嘗試發送錯誤訊息
         if (replyToken) {
           try {
