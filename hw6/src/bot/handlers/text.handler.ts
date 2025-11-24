@@ -1,10 +1,8 @@
 import { BotContext } from "@/types/bot";
 import { ChatService } from "@/services/llm/chat.service";
-import { ConversationService } from "@/services/conversation/conversation.service";
 import { CheckinService } from "@/services/checkin/checkin.service";
 import { DeadlineService } from "@/services/deadline/deadline.service";
 import { UserStateService } from "@/services/user-state/user-state.service";
-import { BotMessageService } from "@/services/bot-message/bot-message.service";
 import { LLMUtilsService } from "@/services/llm/llm-utils.service";
 import { buildMainMenuFlexMessage, buildDeadlineListFlexMessage, buildDeadlineDetailFlexMessage, buildScheduleViewFlexMessage } from "@/lib/line/flex-messages";
 import { UserTokenService } from "@/services/user/user-token.service";
@@ -19,11 +17,9 @@ import {
 } from "./deadline.handler";
 import { Logger } from "@/lib/utils/logger";
 
-const conversationService = new ConversationService();
 const checkinService = new CheckinService();
 const deadlineService = new DeadlineService();
 const userStateService = new UserStateService();
-const botMessageService = new BotMessageService();
 const llmUtilsService = new LLMUtilsService();
 const userTokenService = new UserTokenService();
 const lineClient = new LineMessagingClient();
@@ -39,8 +35,8 @@ export async function handleText(context: BotContext) {
   }
 
   try {
-    // 記錄所有 incoming 訊息
-    await botMessageService.logMessage(userId, "incoming", text);
+    // 記錄 incoming 訊息（僅記錄到日誌）
+    Logger.info("收到使用者訊息", { userId, text });
 
     // 檢查使用者是否在流程中
     const userState = await userStateService.getState(userId);
@@ -280,7 +276,7 @@ function isChatMessage(text: string): boolean {
 async function sendMainMenu(userId: string, replyToken: string) {
   const menuMessage = buildMainMenuFlexMessage();
   await lineClient.sendFlexMessage(replyToken, menuMessage.altText, menuMessage.contents);
-  await botMessageService.logMessage(userId, "outgoing", "主選單", { type: "main_menu" });
+  Logger.info("發送主選單", { userId });
 }
 
 /**
@@ -293,12 +289,12 @@ async function handleCheckIn(userId: string, replyToken: string) {
     if (result.alreadyChecked) {
       const message = `你今天已經簽到過囉，連續簽到 ${result.consecutiveDays} 天`;
       await lineClient.sendTextMessage(replyToken, message);
-      await botMessageService.logMessage(userId, "outgoing", message, { type: "checkin", alreadyChecked: true });
+      Logger.info("簽到回應（已簽到）", { userId, consecutiveDays: result.consecutiveDays });
     } else {
       const quote = await llmUtilsService.generateMotivationQuote();
       const message = `✔ 今天已成功簽到！你已連續簽到 ${result.consecutiveDays} 天\n\n💬 今日金句：${quote}`;
       await lineClient.sendTextMessage(replyToken, message);
-      await botMessageService.logMessage(userId, "outgoing", message, { type: "checkin", consecutiveDays: result.consecutiveDays });
+      Logger.info("簽到回應（成功）", { userId, consecutiveDays: result.consecutiveDays });
     }
 
     // 提供快速回覆
@@ -323,7 +319,7 @@ async function handleFortune(userId: string, replyToken: string) {
   try {
     const fortune = await llmUtilsService.generateFortune();
     await lineClient.sendTextMessage(replyToken, fortune);
-    await botMessageService.logMessage(userId, "outgoing", fortune, { type: "fortune" });
+    Logger.info("發送占卜結果", { userId });
 
     // 提供快速回覆
     await lineClient.sendQuickReply(
@@ -374,10 +370,7 @@ async function handleViewSchedule(userId: string, replyToken: string) {
     const flexMessage = buildScheduleViewFlexMessage(viewToken, appUrl, deadlines.length);
     
     await lineClient.sendFlexMessage(replyToken, flexMessage.altText, flexMessage.contents);
-    await botMessageService.logMessage(userId, "outgoing", `查看時程（${deadlines.length} 個待辦）`, { 
-      type: "schedule_list", 
-      count: deadlines.length,
-    });
+    Logger.info("發送時程表", { userId, deadlineCount: deadlines.length });
 
     // 提供快速回覆
     await lineClient.sendQuickReply(
@@ -407,7 +400,7 @@ async function handleViewDeadlineDetail(userId: string, deadlineId: string, repl
 
     const flexMessage = buildDeadlineDetailFlexMessage(deadline);
     await lineClient.sendFlexMessage(replyToken, flexMessage.altText, flexMessage.contents);
-    await botMessageService.logMessage(userId, "outgoing", `查看 Deadline 詳情：${deadline.title}`, { type: "deadline_detail", deadlineId });
+    Logger.info("發送 Deadline 詳情", { userId, deadlineId, title: deadline.title });
   } catch (error) {
     Logger.error("處理查看 Deadline 詳情失敗", { error, deadlineId });
     await lineClient.sendTextMessage(replyToken, "查看詳情時發生錯誤，請稍後再試。");
@@ -426,11 +419,11 @@ async function handleAddDeadlinePrompt(userId: string, replyToken: string) {
       { label: "一句話輸入", text: "一句話輸入" },
     ]
   );
-  await botMessageService.logMessage(userId, "outgoing", "輸入 Deadline 提示", { type: "add_deadline_prompt" });
+  Logger.info("發送輸入 Deadline 提示", { userId });
 }
 
 /**
- * 處理預設聊天（原有的 LLM 功能）
+ * 處理預設聊天（LLM 功能，不保存對話歷史）
  */
 async function handleDefaultChat(context: BotContext, userId: string, text: string, replyToken: string) {
   try {
@@ -445,39 +438,11 @@ async function handleDefaultChat(context: BotContext, userId: string, text: stri
       return;
     }
 
-    // 獲取或創建使用者
-    const user = await conversationService.getOrCreateUser(userId);
+    // 生成 AI 回應（不保存對話歷史）
+    const response = await chatService.generateResponse(text, []);
 
-    // 獲取或創建對話
-    const conversation = await conversationService.getOrCreateConversation(
-      user._id.toString(),
-      userId
-    );
-
-    // 獲取對話歷史（不包含當前訊息）
-    const history = await conversationService.getConversationHistory(
-      conversation._id.toString()
-    );
-
-    // 保存使用者訊息
-    await conversationService.saveMessage(
-      conversation._id.toString(),
-      "user",
-      text
-    );
-
-    // 生成 AI 回應
-    const response = await chatService.generateResponse(text, history);
-
-    // 保存 AI 回應
-    await conversationService.saveMessage(
-      conversation._id.toString(),
-      "assistant",
-      response
-    );
-
-    // 記錄 outgoing 訊息
-    await botMessageService.logMessage(userId, "outgoing", response, { type: "chat" });
+    // 記錄回應
+    Logger.info("發送 LLM 回應", { userId, textLength: text.length });
 
     // 發送回應
     await lineClient.sendTextMessage(replyToken, response);

@@ -47,16 +47,18 @@ export async function GET(request: NextRequest) {
       const diffTime = due.getTime() - today.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
+      const typeMap: Record<string, string> = {
+        exam: "考試",
+        assignment: "作業",
+        project: "專題",
+        other: "其他",
+      };
+      
       return {
         id: deadline._id.toString(),
         title: deadline.title,
         type: deadline.type,
-        typeName: {
-          exam: "考試",
-          assignment: "作業",
-          project: "專題",
-          other: "其他",
-        }[deadline.type] || "其他",
+        typeName: typeMap[deadline.type] || "其他",
         dueDate: dueDate.toISOString(),
         dueDateFormatted: dueDate.toLocaleDateString("zh-TW", {
           year: "numeric",

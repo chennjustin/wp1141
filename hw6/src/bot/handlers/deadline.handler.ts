@@ -2,7 +2,6 @@ import { BotContext } from "@/types/bot";
 import { DeadlineService } from "@/services/deadline/deadline.service";
 import { UserStateService } from "@/services/user-state/user-state.service";
 import { LLMUtilsService } from "@/services/llm/llm-utils.service";
-import { BotMessageService } from "@/services/bot-message/bot-message.service";
 import { buildDeadlineDetailFlexMessage } from "@/lib/line/flex-messages";
 import { LineMessagingClient } from "@/lib/line/client";
 import { Logger } from "@/lib/utils/logger";
@@ -12,7 +11,6 @@ import connectDB from "@/lib/db/mongoose";
 const deadlineService = new DeadlineService();
 const userStateService = new UserStateService();
 const llmUtilsService = new LLMUtilsService();
-const botMessageService = new BotMessageService();
 const lineClient = new LineMessagingClient();
 
 /**

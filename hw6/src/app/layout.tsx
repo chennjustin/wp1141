@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Header from "@/components/layout/Header";
 
 export const metadata: Metadata = {
-  title: "Line Bot 管理後台",
-  description: "Line Bot 智慧聊天機器人管理系統",
+  title: "拯救期末大作戰",
+  description: "LINE Bot 時程管理系統",
 };
 
 export default function RootLayout({
@@ -15,7 +14,6 @@ export default function RootLayout({
   return (
     <html lang="zh-TW">
       <body>
-        <Header />
         {children}
       </body>
     </html>
