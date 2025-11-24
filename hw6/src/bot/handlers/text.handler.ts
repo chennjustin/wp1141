@@ -378,13 +378,20 @@ async function handleCheckIn(userId: string, replyToken: string) {
     // 取得或創建 viewToken
     const viewToken = await userTokenService.getOrCreateViewToken(userId);
     
-    // 取得應用程式 URL
+    // 取得應用程式 URL（改進邏輯，優先使用 VERCEL_URL）
     let appUrl = process.env.NEXT_PUBLIC_APP_URL;
-    if (!appUrl && process.env.VERCEL_URL) {
-      appUrl = `https://${process.env.VERCEL_URL}`;
-    }
     if (!appUrl) {
-      appUrl = "http://localhost:3000";
+      // 在 Vercel 上，優先使用 VERCEL_URL
+      if (process.env.VERCEL_URL) {
+        appUrl = `https://${process.env.VERCEL_URL}`;
+      } else if (process.env.VERCEL) {
+        // 如果是在 Vercel 環境但沒有 VERCEL_URL，嘗試使用 VERCEL 環境變數
+        appUrl = `https://${process.env.VERCEL}`;
+      } else {
+        // 本地開發環境
+        appUrl = "http://localhost:3000";
+        Logger.warn("使用預設 localhost URL，請確認環境變數設定", { userId });
+      }
     }
 
     if (result.alreadyChecked) {
@@ -399,7 +406,7 @@ async function handleCheckIn(userId: string, replyToken: string) {
       }
       
       await lineClient.sendTextMessage(replyToken, message);
-      Logger.info("簽到回應（已簽到）", { userId, consecutiveDays: result.consecutiveDays, todayDeadlinesCount: todayDeadlines.length });
+      Logger.info("簽到回應（已簽到）", { userId, consecutiveDays: result.consecutiveDays, todayDeadlinesCount: todayDeadlines.length, appUrl });
     } else {
       const quote = await llmUtilsService.generateMotivationQuote();
       let message = `✔ 今天已成功簽到！你已連續簽到 ${result.consecutiveDays} 天\n\n💬 今日金句：${quote}`;
@@ -415,7 +422,7 @@ async function handleCheckIn(userId: string, replyToken: string) {
       }
       
       await lineClient.sendTextMessage(replyToken, message);
-      Logger.info("簽到回應（成功）", { userId, consecutiveDays: result.consecutiveDays, todayDeadlinesCount: todayDeadlines.length });
+      Logger.info("簽到回應（成功）", { userId, consecutiveDays: result.consecutiveDays, todayDeadlinesCount: todayDeadlines.length, appUrl });
     }
 
     // 發送時程表連結按鈕
@@ -432,8 +439,21 @@ async function handleCheckIn(userId: string, replyToken: string) {
       ]
     );
   } catch (error) {
-    Logger.error("處理簽到失敗", { error, userId });
-    await lineClient.sendTextMessage(replyToken, "簽到時發生錯誤，請稍後再試。");
+    // 記錄詳細錯誤資訊以便除錯
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    Logger.error("處理簽到失敗", { 
+      error, 
+      errorMessage, 
+      errorStack,
+      userId,
+      env: {
+        hasMongoDB: !!process.env.MONGODB_URI,
+        hasAppUrl: !!process.env.NEXT_PUBLIC_APP_URL,
+        vercelUrl: process.env.VERCEL_URL,
+      }
+    });
+    await lineClient.sendTextMessage(replyToken, `簽到時發生錯誤：${errorMessage}\n\n請稍後再試或聯繫管理員。`);
   }
 }
 
@@ -498,21 +518,27 @@ async function handleViewSchedule(userId: string, replyToken: string, text?: str
     // 獲取或創建用戶的 viewToken
     const viewToken = await userTokenService.getOrCreateViewToken(userId);
     
-    // 取得應用程式 URL
+    // 取得應用程式 URL（改進邏輯，優先使用 VERCEL_URL）
     let appUrl = process.env.NEXT_PUBLIC_APP_URL;
-    if (!appUrl && process.env.VERCEL_URL) {
-      appUrl = `https://${process.env.VERCEL_URL}`;
-    }
     if (!appUrl) {
-      Logger.error("NEXT_PUBLIC_APP_URL 未設定！本地開發時請在 .env.local 中設定 NEXT_PUBLIC_APP_URL=https://your-ngrok-url.ngrok-free.app", { userId });
-      appUrl = "http://localhost:3000";
+      // 在 Vercel 上，優先使用 VERCEL_URL
+      if (process.env.VERCEL_URL) {
+        appUrl = `https://${process.env.VERCEL_URL}`;
+      } else if (process.env.VERCEL) {
+        // 如果是在 Vercel 環境但沒有 VERCEL_URL，嘗試使用 VERCEL 環境變數
+        appUrl = `https://${process.env.VERCEL}`;
+      } else {
+        // 本地開發環境
+        appUrl = "http://localhost:3000";
+        Logger.warn("使用預設 localhost URL，請確認環境變數設定", { userId });
+      }
     }
     
     // 確保 URL 沒有尾隨斜線
     appUrl = appUrl.replace(/\/$/, "");
     const scheduleUrl = `${appUrl}/schedule?token=${viewToken}`;
     
-    Logger.info("使用應用程式 URL", { appUrl, userId, actionType });
+    Logger.info("使用應用程式 URL", { appUrl, scheduleUrl, userId, actionType, env: { NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL, VERCEL_URL: process.env.VERCEL_URL } });
     
     // 如果要求直接打開 WebView
     if (actionType === "direct_open") {

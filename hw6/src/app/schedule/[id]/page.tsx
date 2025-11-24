@@ -43,7 +43,17 @@ function DeadlineDetailContent() {
       }
 
       try {
-        const response = await fetch(`/api/schedule/${deadlineId}?token=${token}`);
+        // 使用絕對 URL 以避免在 LINE WebView 中的相對路徑問題
+        const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+        const apiUrl = `${baseUrl}/api/schedule/${deadlineId}?token=${encodeURIComponent(token || '')}`;
+        
+        const response = await fetch(apiUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'same-origin',
+        });
         const data = await response.json();
 
         if (!data.success) {
