@@ -75,8 +75,13 @@ export class LLMUtilsService {
 
   /**
    * 從自然語言解析 Deadline 資訊
+   * @param text 用戶輸入的文字
+   * @param conversationHistory 可選的對話歷史記錄（最多保留最近 10 條）
    */
-  async parseDeadlineFromText(text: string): Promise<{
+  async parseDeadlineFromText(
+    text: string,
+    conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>
+  ): Promise<{
     title: string;
     type: "exam" | "assignment" | "project" | "other";
     dueDate: string | null; // YYYY-MM-DD
@@ -105,16 +110,32 @@ export class LLMUtilsService {
 
 使用者輸入：${text}`;
 
-      const response = await this.llmClient.chat([
+      // 構建 messages，包含歷史記錄（如果有的話）
+      const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
         {
           role: "system",
           content: "你是一個 JSON 解析器，只輸出有效的 JSON 格式。",
         },
-        {
-          role: "user",
-          content: prompt,
-        },
-      ]);
+      ];
+
+      // 加入歷史記錄（最多保留最近 10 條）
+      if (conversationHistory && conversationHistory.length > 0) {
+        const recentHistory = conversationHistory.slice(-10);
+        for (const msg of recentHistory) {
+          messages.push({
+            role: msg.role,
+            content: msg.content,
+          });
+        }
+      }
+
+      // 加入當前用戶輸入
+      messages.push({
+        role: "user",
+        content: prompt,
+      });
+
+      const response = await this.llmClient.chat(messages);
 
       // 嘗試解析 JSON
       const cleaned = response.trim().replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
@@ -187,6 +208,104 @@ export class LLMUtilsService {
     } catch (error) {
       Logger.error("解析日期失敗", { error, text });
       return null;
+    }
+  }
+
+  /**
+   * 在流程中理解用戶輸入並更新 Deadline 資料
+   * 用於在新增 Deadline 流程中，當用戶輸入不符合當前步驟時，使用 LLM 理解並更新資料
+   * @param text 用戶輸入的文字
+   * @param currentStep 當前步驟（type/title/dueDate/estimatedHours）
+   * @param existingData 已收集的資料
+   * @param conversationHistory 對話歷史記錄
+   */
+  async understandAndUpdateDeadlineInFlow(
+    text: string,
+    currentStep: string,
+    existingData: Record<string, any>,
+    conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>
+  ): Promise<{
+    updated: boolean;
+    data?: Record<string, any>;
+    message?: string;
+  }> {
+    try {
+      const prompt = `你是一個 deadline 資料更新助手，正在幫助用戶新增一個 Deadline。
+
+當前步驟：${currentStep}
+已收集的資料：${JSON.stringify(existingData, null, 2)}
+
+用戶剛剛說：「${text}」
+
+請分析用戶的輸入，判斷：
+1. 用戶是否在修正已收集的資料（例如：更正日期、修改標題等）？
+2. 用戶是否在提供或更新某個欄位的資訊？
+3. 用戶是否在詢問問題或聊天？
+
+特別注意：
+- 如果用戶提到「今天」「明天」「後天」等相對日期，請根據當前日期計算（今天是 ${new Date().toLocaleDateString("zh-TW", { year: "numeric", month: "long", day: "numeric", timeZone: "Asia/Taipei" })}）
+- 如果用戶在修正之前的資訊（例如：「不對，應該是...」「更正一下...」），請更新對應的欄位
+- 如果用戶只提到日期相關資訊，請只更新 dueDate
+- 如果用戶只提到標題相關資訊，請只更新 title
+
+如果用戶在提供或修正資訊，請以 JSON 格式輸出更新的資料：
+{
+  "updated": true,
+  "data": {
+    "step": "下一步驟（如果資料完整則為 confirm，否則保持當前步驟）",
+    "title": "標題（如果有提到或需要保留）",
+    "type": "exam|assignment|project|other（如果有提到或需要保留）",
+    "dueDate": "YYYY-MM-DD（如果有提到或需要保留）",
+    "estimatedHours": 數字（如果有提到或需要保留）
+  }
+}
+
+如果用戶在詢問或聊天，請輸出：
+{
+  "updated": false,
+  "message": "提醒用戶當前需要填寫的資訊"
+}
+
+只輸出 JSON，不要其他文字。`;
+
+      // 構建 messages，包含歷史記錄
+      const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+        {
+          role: "system",
+          content: "你是一個 JSON 解析器，只輸出有效的 JSON 格式。",
+        },
+      ];
+
+      // 加入歷史記錄（最多保留最近 10 條）
+      if (conversationHistory && conversationHistory.length > 0) {
+        const recentHistory = conversationHistory.slice(-10);
+        for (const msg of recentHistory) {
+          messages.push({
+            role: msg.role,
+            content: msg.content,
+          });
+        }
+      }
+
+      // 加入當前提示
+      messages.push({
+        role: "user",
+        content: prompt,
+      });
+
+      const response = await this.llmClient.chat(messages);
+
+      // 嘗試解析 JSON
+      const cleaned = response.trim().replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+
+      return parsed;
+    } catch (error) {
+      Logger.error("理解流程中輸入失敗", { error, text, currentStep });
+      return {
+        updated: false,
+        message: "我無法理解你的輸入，請按照提示填寫資訊。",
+      };
     }
   }
 }

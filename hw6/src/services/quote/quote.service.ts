@@ -3,8 +3,7 @@ import { Logger } from "@/lib/utils/logger";
 
 export class QuoteService {
   /**
-   * 取得每日金句（根據用戶 ID 和日期）
-   * 確保同一天同一用戶看到相同金句
+   * 取得每日金句（每次隨機抽卡，允許重複）
    */
   getDailyQuote(userId: string, date: Date = new Date()): string {
     try {

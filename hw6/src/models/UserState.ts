@@ -2,10 +2,17 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export type FlowType = "add_deadline_step" | "add_deadline_nlp" | "edit_deadline" | null;
 
+export interface ConversationHistoryItem {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
+}
+
 export interface IUserState extends Document {
   userId: string; // LINE userId
   currentFlow: FlowType;
   flowData?: Record<string, unknown>;
+  conversationHistory?: ConversationHistoryItem[];
   updatedAt: Date;
 }
 
@@ -24,6 +31,26 @@ const UserStateSchema: Schema = new Schema(
     },
     flowData: {
       type: Schema.Types.Mixed,
+    },
+    conversationHistory: {
+      type: [
+        {
+          role: {
+            type: String,
+            enum: ["user", "assistant"],
+            required: true,
+          },
+          content: {
+            type: String,
+            required: true,
+          },
+          timestamp: {
+            type: Date,
+            default: Date.now,
+          },
+        },
+      ],
+      default: [],
     },
   },
   {

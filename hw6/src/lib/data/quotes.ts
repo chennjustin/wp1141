@@ -37,25 +37,11 @@ export const QUOTES = [
 ];
 
 /**
- * 根據用戶 ID 和日期選擇金句
- * 確保同一天同一用戶看到相同金句
+ * 隨機選擇金句（每次調用都可能不同，允許重複）
  */
 export function getQuoteForUser(userId: string, date: Date = new Date()): string {
-  // 將日期轉換為 YYYY-MM-DD 格式
-  const dateStr = date.toISOString().split("T")[0];
-  
-  // 使用用戶 ID 和日期的組合來生成一個穩定的索引
-  // 簡單的 hash 函數
-  let hash = 0;
-  const combined = `${userId}-${dateStr}`;
-  for (let i = 0; i < combined.length; i++) {
-    const char = combined.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  
-  // 確保索引為正數並在範圍內
-  const index = Math.abs(hash) % QUOTES.length;
+  // 使用 Math.random() 隨機選擇，允許重複
+  const index = Math.floor(Math.random() * QUOTES.length);
   return QUOTES[index];
 }
 

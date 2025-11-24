@@ -4,7 +4,7 @@ import { CheckinService } from "@/services/checkin/checkin.service";
 import { DeadlineService } from "@/services/deadline/deadline.service";
 import { UserStateService } from "@/services/user-state/user-state.service";
 import { LLMUtilsService } from "@/services/llm/llm-utils.service";
-import { buildMainMenuFlexMessage, buildDeadlineListFlexMessage, buildDeadlineDetailFlexMessage, buildScheduleViewFlexMessage } from "@/lib/line/flex-messages";
+import { buildMainMenuFlexMessage, buildDeadlineDetailFlexMessage, buildScheduleViewFlexMessage } from "@/lib/line/flex-messages";
 import { UserTokenService } from "@/services/user/user-token.service";
 import { LineMessagingClient } from "@/lib/line/client";
 import { QuoteService } from "@/services/quote/quote.service";
@@ -52,7 +52,7 @@ export async function handleText(context: BotContext) {
     // 處理取消或返回主選單（優先級最高）
     // 支援更寬鬆的匹配：包含「選單」、「menu」、「主選單」、「help」等關鍵字
     const normalizedText = text.toLowerCase().trim();
-    const menuKeywords = ["選單", "menu", "主選單", "help", "幫助", "功能", "有什麼功能"];
+    const menuKeywords = ["選單", "menu", "主選單", "help", "幫助", "功能", "有什麼功能", "回到主選單", "返回主選單"];
     if (
       text === "取消" || 
       text === "主選單" || 
@@ -80,32 +80,30 @@ export async function handleText(context: BotContext) {
       return;
     }
 
+    // 處理確認建立 NLP Deadline（優先於流程處理）
+    const confirmNLPMatch = text.match(/^確認建立 NLP (.+)$/);
+    if (confirmNLPMatch) {
+      await handleConfirmNLPDeadline(context, confirmNLPMatch[1]);
+      return;
+    }
+
     // 處理流程中的輸入（優先於意圖識別）
     if (userState && userState.currentFlow) {
-      // 檢查是否為明顯的聊天內容（非流程相關）
-      const isChatContent = isChatMessage(text);
-      
-      if (isChatContent) {
-        // 如果是聊天內容，清除流程狀態並使用 LLM
+      // 在流程中，必須繼續流程處理，不能跳出
+      if (userState.currentFlow === "add_deadline_step") {
+        await handleAddDeadlineStepByStep(context, "", text);
+        return;
+      } else if (userState.currentFlow === "add_deadline_nlp") {
+        await handleAddDeadlineNLP(context, text);
+        return;
+      } else if (userState.currentFlow === "edit_deadline") {
+        const flowData = userState.flowData as Record<string, any>;
+        const deadlineId = flowData.deadlineId;
+        const field = flowData.field;
+        await handleEditDeadline(context, deadlineId, field, text);
+        // 清除狀態
         await userStateService.clearState(userId);
-        // 繼續到意圖識別
-      } else {
-        // 繼續流程處理
-        if (userState.currentFlow === "add_deadline_step") {
-          await handleAddDeadlineStepByStep(context, "", text);
-          return;
-        } else if (userState.currentFlow === "add_deadline_nlp") {
-          await handleAddDeadlineNLP(context, text);
-          return;
-        } else if (userState.currentFlow === "edit_deadline") {
-          const flowData = userState.flowData as Record<string, any>;
-          const deadlineId = flowData.deadlineId;
-          const field = flowData.field;
-          await handleEditDeadline(context, deadlineId, field, text);
-          // 清除狀態
-          await userStateService.clearState(userId);
-          return;
-        }
+        return;
       }
     }
 
@@ -120,17 +118,6 @@ export async function handleText(context: BotContext) {
       return;
     }
 
-    // 處理今日占卜（支援更寬鬆的匹配）
-    if (
-      text === "今日占卜" || 
-      text === "占卜" || 
-      text === "運勢" ||
-      text.includes("占卜") ||
-      text.includes("運勢")
-    ) {
-      await handleFortune(userId, replyToken);
-      return;
-    }
 
     // 處理每日金句（支援更寬鬆的匹配）
     if (
@@ -180,10 +167,13 @@ export async function handleText(context: BotContext) {
 
     // 處理逐步填入
     if (text === "逐步填入") {
+      // 清除之前的歷史記錄，開始新的流程
+      await userStateService.clearConversationHistory(userId);
       await userStateService.setState(userId, "add_deadline_step", { step: "type" });
+      const promptText = "請選擇 Deadline 類型：";
       await lineClient.sendQuickReply(
         replyToken,
-        "請選擇 Deadline 類型：",
+        promptText,
         [
           { label: "考試", text: "考試" },
           { label: "作業", text: "作業" },
@@ -191,22 +181,23 @@ export async function handleText(context: BotContext) {
           { label: "其他", text: "其他" },
         ]
       );
+      // 記錄 Bot 回應到歷史
+      await userStateService.addToConversationHistory(userId, "assistant", promptText);
       return;
     }
 
     // 處理一句話輸入
     if (text === "一句話輸入") {
+      // 清除之前的歷史記錄，開始新的流程
+      await userStateService.clearConversationHistory(userId);
       await userStateService.setState(userId, "add_deadline_nlp", {});
-      await lineClient.sendTextMessage(replyToken, "請直接輸入你的 Deadline 資訊，例如：\n「我下週四有 OS HW4，要交 pdf，大概要三小時」");
+      const promptText = "請直接輸入你的 Deadline 資訊，例如：\n「我下週四有 OS HW4，要交 pdf，大概要三小時」";
+      await lineClient.sendTextMessage(replyToken, promptText);
+      // 記錄 Bot 回應到歷史
+      await userStateService.addToConversationHistory(userId, "assistant", promptText);
       return;
     }
 
-    // 處理確認建立 NLP Deadline
-    const confirmNLPMatch = text.match(/^確認建立 NLP (.+)$/);
-    if (confirmNLPMatch) {
-      await handleConfirmNLPDeadline(context, confirmNLPMatch[1]);
-      return;
-    }
 
     // 處理修改 Deadline
     const editDeadlineMatch = text.match(/^修改 Deadline (.+)$/);
@@ -381,17 +372,27 @@ async function handleCheckIn(userId: string, replyToken: string) {
     // 取得應用程式 URL（改進邏輯，優先使用 VERCEL_URL）
     let appUrl = process.env.NEXT_PUBLIC_APP_URL;
     if (!appUrl) {
-      // 在 Vercel 上，優先使用 VERCEL_URL
+      // 在 Vercel 上，優先使用 VERCEL_URL（Vercel 自動提供的環境變數）
       if (process.env.VERCEL_URL) {
-        appUrl = `https://${process.env.VERCEL_URL}`;
-      } else if (process.env.VERCEL) {
-        // 如果是在 Vercel 環境但沒有 VERCEL_URL，嘗試使用 VERCEL 環境變數
-        appUrl = `https://${process.env.VERCEL}`;
+        // VERCEL_URL 可能已經包含 https://，也可能沒有，需要檢查
+        const vercelUrl = process.env.VERCEL_URL;
+        if (vercelUrl.startsWith("http://") || vercelUrl.startsWith("https://")) {
+          appUrl = vercelUrl;
+        } else {
+          appUrl = `https://${vercelUrl}`;
+        }
       } else {
         // 本地開發環境
         appUrl = "http://localhost:3000";
         Logger.warn("使用預設 localhost URL，請確認環境變數設定", { userId });
       }
+    }
+    
+    // 確保 URL 沒有尾隨斜線，並且格式正確
+    appUrl = appUrl.replace(/\/$/, "");
+    // 確保 URL 是完整的（包含協議）
+    if (!appUrl.startsWith("http://") && !appUrl.startsWith("https://")) {
+      appUrl = `https://${appUrl}`;
     }
 
     if (result.alreadyChecked) {
@@ -457,29 +458,6 @@ async function handleCheckIn(userId: string, replyToken: string) {
   }
 }
 
-/**
- * 處理今日占卜（保留舊功能）
- */
-async function handleFortune(userId: string, replyToken: string) {
-  try {
-    const fortune = await llmUtilsService.generateFortune();
-    await lineClient.sendTextMessage(replyToken, fortune);
-    Logger.info("發送占卜結果", { userId });
-
-    // 提供快速回覆
-    await lineClient.sendQuickReply(
-      replyToken,
-      "",
-      [
-        { label: "主選單", text: "主選單" },
-        { label: "查看時程", text: "查看時程" },
-      ]
-    );
-  } catch (error) {
-    Logger.error("處理占卜失敗", { error, userId });
-    await lineClient.sendTextMessage(replyToken, "占卜時發生錯誤，請稍後再試。");
-  }
-}
 
 /**
  * 處理每日金句（從列表選擇）
@@ -521,12 +499,15 @@ async function handleViewSchedule(userId: string, replyToken: string, text?: str
     // 取得應用程式 URL（改進邏輯，優先使用 VERCEL_URL）
     let appUrl = process.env.NEXT_PUBLIC_APP_URL;
     if (!appUrl) {
-      // 在 Vercel 上，優先使用 VERCEL_URL
+      // 在 Vercel 上，優先使用 VERCEL_URL（Vercel 自動提供的環境變數）
       if (process.env.VERCEL_URL) {
-        appUrl = `https://${process.env.VERCEL_URL}`;
-      } else if (process.env.VERCEL) {
-        // 如果是在 Vercel 環境但沒有 VERCEL_URL，嘗試使用 VERCEL 環境變數
-        appUrl = `https://${process.env.VERCEL}`;
+        // VERCEL_URL 可能已經包含 https://，也可能沒有，需要檢查
+        const vercelUrl = process.env.VERCEL_URL;
+        if (vercelUrl.startsWith("http://") || vercelUrl.startsWith("https://")) {
+          appUrl = vercelUrl;
+        } else {
+          appUrl = `https://${vercelUrl}`;
+        }
       } else {
         // 本地開發環境
         appUrl = "http://localhost:3000";
@@ -534,11 +515,26 @@ async function handleViewSchedule(userId: string, replyToken: string, text?: str
       }
     }
     
-    // 確保 URL 沒有尾隨斜線
+    // 確保 URL 沒有尾隨斜線，並且格式正確
     appUrl = appUrl.replace(/\/$/, "");
+    // 確保 URL 是完整的（包含協議）
+    if (!appUrl.startsWith("http://") && !appUrl.startsWith("https://")) {
+      appUrl = `https://${appUrl}`;
+    }
+    
     const scheduleUrl = `${appUrl}/schedule?token=${viewToken}`;
     
-    Logger.info("使用應用程式 URL", { appUrl, scheduleUrl, userId, actionType, env: { NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL, VERCEL_URL: process.env.VERCEL_URL } });
+    Logger.info("使用應用程式 URL", { 
+      appUrl, 
+      scheduleUrl, 
+      userId, 
+      actionType, 
+      env: { 
+        NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL, 
+        VERCEL_URL: process.env.VERCEL_URL,
+        NODE_ENV: process.env.NODE_ENV,
+      } 
+    });
     
     // 如果要求直接打開 WebView
     if (actionType === "direct_open") {
@@ -687,14 +683,19 @@ async function handleViewDeadlineDetail(userId: string, deadlineId: string, repl
  * 處理輸入 Deadline 提示
  */
 async function handleAddDeadlinePrompt(userId: string, replyToken: string) {
+  // 清除之前的歷史記錄，開始新的流程
+  await userStateService.clearConversationHistory(userId);
+  const promptText = "你想怎麼輸入？";
   await lineClient.sendQuickReply(
     replyToken,
-    "你想怎麼輸入？",
+    promptText,
     [
       { label: "逐步填入", text: "逐步填入" },
       { label: "一句話輸入", text: "一句話輸入" },
     ]
   );
+  // 記錄 Bot 回應到歷史
+  await userStateService.addToConversationHistory(userId, "assistant", promptText);
   Logger.info("發送輸入 Deadline 提示", { userId });
 }
 
@@ -754,6 +755,11 @@ async function handleAddDeadlineFromIntent(
   originalText: string
 ) {
   try {
+    // 清除之前的歷史記錄，開始新的流程
+    await userStateService.clearConversationHistory(userId);
+    // 記錄用戶輸入到歷史
+    await userStateService.addToConversationHistory(userId, "user", originalText);
+
     // 如果缺少必要資訊，使用 NLP 模式
     if (!entities.title) {
       await handleAddDeadlineNLP({ event: { source: { userId }, replyToken } } as BotContext, originalText);
@@ -768,10 +774,10 @@ async function handleAddDeadlineFromIntent(
         type: entities.type || "other",
         estimatedHours: entities.estimatedHours || 2,
       });
-      await lineClient.sendTextMessage(
-        replyToken,
-        `已解析到標題：${entities.title}\n\n請輸入截止日期（格式：YYYY/MM/DD 或 12/20）：`
-      );
+      const promptText = `已解析到標題：${entities.title}\n\n請輸入截止日期（格式：YYYY/MM/DD 或 12/20）：`;
+      await lineClient.sendTextMessage(replyToken, promptText);
+      // 記錄 Bot 回應到歷史
+      await userStateService.addToConversationHistory(userId, "assistant", promptText);
       return;
     }
 
@@ -788,6 +794,8 @@ async function handleAddDeadlineFromIntent(
         { label: "重填", text: "輸入 Deadline" },
       ]
     );
+    // 記錄 Bot 回應到歷史
+    await userStateService.addToConversationHistory(userId, "assistant", summary);
   } catch (error) {
     Logger.error("從意圖建立 Deadline 失敗", { error, userId, entities });
     await lineClient.sendTextMessage(replyToken, "處理時發生錯誤，請稍後再試。");

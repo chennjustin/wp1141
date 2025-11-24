@@ -127,8 +127,8 @@ export function buildMainMenuFlexMessage() {
                     type: "button",
                     action: {
                       type: "message",
-                      label: "🔮 今日占卜",
-                      text: "今日占卜",
+                      label: "🔮 抽！！",
+                      text: "每日金句",
                     },
                     style: "primary",
                     color: "#FF6B6B",
@@ -156,7 +156,7 @@ export function buildMainMenuFlexMessage() {
                     type: "button",
                     action: {
                       type: "message",
-                      label: "📝 輸入 Deadline",
+                      label: "📝 新增死線",
                       text: "輸入 Deadline",
                     },
                     style: "primary",
@@ -169,176 +169,6 @@ export function buildMainMenuFlexMessage() {
           },
         ],
       },
-    },
-  };
-}
-
-/**
- * 建構 Deadline 列表 Flex Message
- */
-export function buildDeadlineListFlexMessage(deadlines: IDeadline[]): {
-  type: string;
-  altText: string;
-  contents: any;
-} {
-  const deadlineService = new DeadlineService();
-
-  if (deadlines.length === 0) {
-    return {
-      type: "text",
-      altText: "目前沒有任何 deadline",
-      text: "目前看起來你的人生一片光明 🌈，沒有任何 deadline。",
-    } as any;
-  }
-
-  const bubbles = deadlines.map((deadline) => {
-    const daysLeft = deadlineService.calculateDaysLeft(deadline.dueDate);
-    const daysText =
-      daysLeft < 0
-        ? `已過期 ${Math.abs(daysLeft)} 天`
-        : daysLeft === 0
-        ? "今天截止"
-        : `剩餘 ${daysLeft} 天`;
-
-    const typeEmoji = {
-      exam: "📝",
-      assignment: "📄",
-      project: "📦",
-      other: "📌",
-    }[deadline.type];
-
-    const dateStr = deadline.dueDate.toLocaleDateString("zh-TW", {
-      month: "short",
-      day: "numeric",
-    });
-
-    return {
-      type: "bubble",
-      body: {
-        type: "box",
-        layout: "vertical",
-        contents: [
-          {
-            type: "box",
-            layout: "horizontal",
-            contents: [
-              {
-                type: "text",
-                text: typeEmoji,
-                size: "xl",
-                flex: 0,
-              },
-              {
-                type: "text",
-                text: deadline.title,
-                weight: "bold",
-                size: "lg",
-                flex: 1,
-                wrap: true,
-              },
-            ],
-          },
-          {
-            type: "separator",
-            margin: "md",
-          },
-          {
-            type: "box",
-            layout: "vertical",
-            spacing: "sm",
-            margin: "md",
-            contents: [
-              {
-                type: "box",
-                layout: "horizontal",
-                contents: [
-                  {
-                    type: "text",
-                    text: "📅 截止日期：",
-                    size: "sm",
-                    color: "#666666",
-                    flex: 0,
-                  },
-                  {
-                    type: "text",
-                    text: dateStr,
-                    size: "sm",
-                    color: "#666666",
-                    flex: 1,
-                  },
-                ],
-              },
-              {
-                type: "box",
-                layout: "horizontal",
-                contents: [
-                  {
-                    type: "text",
-                    text: "⏰ 預估時間：",
-                    size: "sm",
-                    color: "#666666",
-                    flex: 0,
-                  },
-                  {
-                    type: "text",
-                    text: `${deadline.estimatedHours} 小時`,
-                    size: "sm",
-                    color: "#666666",
-                    flex: 1,
-                  },
-                ],
-              },
-              {
-                type: "box",
-                layout: "horizontal",
-                contents: [
-                  {
-                    type: "text",
-                    text: "⏳ 狀態：",
-                    size: "sm",
-                    color: daysLeft < 0 ? "#FF0000" : "#666666",
-                    flex: 0,
-                  },
-                  {
-                    type: "text",
-                    text: daysText,
-                    size: "sm",
-                    color: daysLeft < 0 ? "#FF0000" : "#666666",
-                    weight: daysLeft < 0 ? "bold" : "regular",
-                    flex: 1,
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-      footer: {
-        type: "box",
-        layout: "vertical",
-        spacing: "sm",
-        contents: [
-          {
-            type: "button",
-            action: {
-              type: "message",
-              label: "查看詳情",
-              text: `查看 Deadline ${deadline._id}`,
-            },
-            style: "primary",
-            color: "#1DB446",
-          },
-        ],
-      },
-    };
-  });
-
-  return {
-    type: "flex",
-    altText: `你有 ${deadlines.length} 個待辦事項`,
-    contents: {
-      type: "carousel",
-      contents: bubbles,
     },
   };
 }

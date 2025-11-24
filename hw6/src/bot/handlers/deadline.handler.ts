@@ -31,6 +31,9 @@ export async function handleAddDeadlineStepByStep(
       return;
     }
 
+    // 記錄用戶輸入到歷史
+    await userStateService.addToConversationHistory(userId, "user", userInput);
+
     const flowData = (state.flowData || {}) as Record<string, any>;
     const currentStep = flowData.step || "type";
 
@@ -40,25 +43,77 @@ export async function handleAddDeadlineStepByStep(
       await userStateService.clearState(userId);
       const replyToken = context.event.replyToken;
       if (replyToken) {
-        await lineClient.sendTextMessage(replyToken, "已取消輸入。");
+        const cancelMessage = "已取消輸入。";
+        await lineClient.sendTextMessage(replyToken, cancelMessage);
+        // 記錄 Bot 回應到歷史
+        await userStateService.addToConversationHistory(userId, "assistant", cancelMessage);
       }
       return;
     }
 
-    // 檢查是否為明顯的聊天內容（非流程相關）
-    const normalizedInput = userInput.toLowerCase().trim();
-    const chatIndicators = ["嗨", "你好", "哈囉", "hello", "hi", "串", "llm", "gpt", "？", "?"];
-    const isChatContent = chatIndicators.some(indicator => normalizedInput.includes(indicator)) ||
-                          (userInput.length <= 3 && !["考試", "作業", "專題", "其他", "1", "2", "3", "4", "8"].includes(userInput));
-    
-    if (isChatContent) {
-      // 如果是聊天內容，清除狀態
-      // 注意：這裡只清除狀態，不處理訊息，讓 text.handler 繼續處理
-      await userStateService.clearState(userId);
-      // 返回 false 表示不是流程處理，讓上層繼續處理
-      return;
+    // 獲取對話歷史，用於 LLM 理解用戶輸入
+    const conversationHistory = await userStateService.getConversationHistory(userId);
+
+    // 先嘗試使用 LLM 理解用戶輸入並更新資料（如果輸入不符合當前步驟）
+    let shouldUseLLM = false;
+
+    // 檢查輸入是否符合當前步驟的預期格式
+    if (currentStep === "type" && !["考試", "作業", "專題", "其他"].includes(userInput)) {
+      shouldUseLLM = true;
+    } else if (currentStep === "title" && userInput.length < 2) {
+      shouldUseLLM = true;
+    } else if (currentStep === "dueDate" && !/(\d{1,2}\/\d{1,2}|\d{4}\/\d{1,2}\/\d{1,2})/.test(userInput)) {
+      shouldUseLLM = true;
+    } else if (currentStep === "estimatedHours" && !["1", "2", "3", "4", "8"].includes(userInput)) {
+      shouldUseLLM = true;
     }
 
+    // 如果輸入不符合預期，使用 LLM 理解
+    if (shouldUseLLM) {
+      const llmResult = await llmUtilsService.understandAndUpdateDeadlineInFlow(
+        userInput,
+        currentStep,
+        flowData,
+        conversationHistory
+      );
+
+      // 如果 LLM 成功更新了資料
+      if (llmResult.updated && llmResult.data) {
+        const updatedData = { ...flowData, ...llmResult.data };
+        await userStateService.updateFlowData(userId, updatedData);
+        
+        // 根據更新後的步驟繼續處理
+        const newStep = updatedData.step || currentStep;
+        if (newStep !== currentStep) {
+          // 步驟已更新，重新獲取狀態並繼續處理下一步
+          const updatedState = await userStateService.getState(userId);
+          if (updatedState) {
+            const updatedFlowData = (updatedState.flowData || {}) as Record<string, any>;
+            const nextStep = updatedFlowData.step || newStep;
+            
+            // 根據新步驟發送對應的提示
+            await sendStepPrompt(userId, replyToken, nextStep, updatedFlowData);
+            return;
+          }
+        } else {
+          // 步驟沒變，但資料已更新，繼續當前步驟
+          const updatedState = await userStateService.getState(userId);
+          if (updatedState) {
+            const updatedFlowData = (updatedState.flowData || {}) as Record<string, any>;
+            await sendStepPrompt(userId, replyToken, currentStep, updatedFlowData);
+            return;
+          }
+        }
+      } else if (llmResult.message) {
+        // LLM 認為用戶在詢問或聊天，提醒用戶當前需要填寫的資訊
+        const reminderMessage = `${llmResult.message}\n\n目前需要填寫：${getStepPrompt(currentStep)}`;
+        await context.sendText(reminderMessage);
+        await userStateService.addToConversationHistory(userId, "assistant", reminderMessage);
+        return;
+      }
+    }
+
+    // 如果 LLM 沒有更新資料或輸入符合預期，繼續原有的流程處理
     switch (currentStep) {
       case "type": {
         // 選擇類型
@@ -75,7 +130,10 @@ export async function handleAddDeadlineStepByStep(
           type,
         });
 
-        await context.sendText("請輸入 Deadline 的名稱：");
+        const responseText = "請輸入 Deadline 的名稱：";
+        await context.sendText(responseText);
+        // 記錄 Bot 回應到歷史
+        await userStateService.addToConversationHistory(userId, "assistant", responseText);
         break;
       }
 
@@ -86,7 +144,10 @@ export async function handleAddDeadlineStepByStep(
           title: userInput,
         });
 
-        await context.sendText("請輸入截止日期（格式：YYYY/MM/DD 或 12/20）：");
+        const responseText = "請輸入截止日期（格式：YYYY/MM/DD 或 12/20）：";
+        await context.sendText(responseText);
+        // 記錄 Bot 回應到歷史
+        await userStateService.addToConversationHistory(userId, "assistant", responseText);
         break;
       }
 
@@ -110,7 +171,10 @@ export async function handleAddDeadlineStepByStep(
         }
 
         if (!dueDate || isNaN(dueDate.getTime())) {
-          await context.sendText("無法解析日期，請重新輸入（格式：YYYY/MM/DD 或 12/20）：");
+          const errorText = "無法解析日期，請重新輸入（格式：YYYY/MM/DD 或 12/20）：";
+          await context.sendText(errorText);
+          // 記錄 Bot 回應到歷史
+          await userStateService.addToConversationHistory(userId, "assistant", errorText);
           return;
         }
 
@@ -119,9 +183,10 @@ export async function handleAddDeadlineStepByStep(
           dueDate: dueDate.toISOString(),
         });
 
+        const responseText = "請選擇預估時間（小時）：";
         await lineClient.sendQuickReply(
           replyToken,
-          "請選擇預估時間（小時）：",
+          responseText,
           [
             { label: "1 小時", text: "1" },
             { label: "2 小時", text: "2" },
@@ -130,6 +195,8 @@ export async function handleAddDeadlineStepByStep(
             { label: "8 小時", text: "8" },
           ]
         );
+        // 記錄 Bot 回應到歷史
+        await userStateService.addToConversationHistory(userId, "assistant", responseText);
         break;
       }
 
@@ -153,6 +220,8 @@ export async function handleAddDeadlineStepByStep(
             { label: "取消", text: "取消" },
           ]
         );
+        // 記錄 Bot 回應到歷史
+        await userStateService.addToConversationHistory(userId, "assistant", summary);
         break;
       }
 
@@ -175,11 +244,13 @@ export async function handleAddDeadlineStepByStep(
             estimatedHours: flowData.estimatedHours || 2,
           });
 
-          await userStateService.clearState(userId);
-          await context.sendText(`✅ 已成功建立 Deadline：${deadline.title}`);
+          const successMessage = `✅ 已成功建立 Deadline：${deadline.title}`;
+          await userStateService.clearState(userId); // clearState 會清除歷史記錄
+          await context.sendText(successMessage);
         } else {
-          await userStateService.clearState(userId);
-          await context.sendText("已取消建立。");
+          const cancelMessage = "已取消建立。";
+          await userStateService.clearState(userId); // clearState 會清除歷史記錄
+          await context.sendText(cancelMessage);
         }
         break;
       }
@@ -192,6 +263,85 @@ export async function handleAddDeadlineStepByStep(
 }
 
 /**
+ * 獲取當前步驟的提示訊息
+ */
+function getStepPrompt(step: string): string {
+  const stepPrompts: Record<string, string> = {
+    type: "請選擇類型（考試/作業/專題/其他）",
+    title: "請輸入 Deadline 的名稱",
+    dueDate: "請輸入截止日期（格式：YYYY/MM/DD 或 12/20）",
+    estimatedHours: "請選擇預估時間（1/2/3/4/8 小時）",
+    confirm: "請確認資訊（確認建立/取消）",
+  };
+  return stepPrompts[step] || "請按照提示填寫資訊";
+}
+
+/**
+ * 發送步驟提示訊息
+ */
+async function sendStepPrompt(
+  userId: string,
+  replyToken: string,
+  step: string,
+  flowData: Record<string, any>
+): Promise<void> {
+  switch (step) {
+    case "type": {
+      await lineClient.sendQuickReply(
+        replyToken,
+        "請選擇 Deadline 類型：",
+        [
+          { label: "考試", text: "考試" },
+          { label: "作業", text: "作業" },
+          { label: "專題", text: "專題" },
+          { label: "其他", text: "其他" },
+        ]
+      );
+      await userStateService.addToConversationHistory(userId, "assistant", "請選擇 Deadline 類型：");
+      break;
+    }
+    case "title": {
+      await lineClient.sendTextMessage(replyToken, "請輸入 Deadline 的名稱：");
+      await userStateService.addToConversationHistory(userId, "assistant", "請輸入 Deadline 的名稱：");
+      break;
+    }
+    case "dueDate": {
+      await lineClient.sendTextMessage(replyToken, "請輸入截止日期（格式：YYYY/MM/DD 或 12/20）：");
+      await userStateService.addToConversationHistory(userId, "assistant", "請輸入截止日期（格式：YYYY/MM/DD 或 12/20）：");
+      break;
+    }
+    case "estimatedHours": {
+      await lineClient.sendQuickReply(
+        replyToken,
+        "請選擇預估時間（小時）：",
+        [
+          { label: "1 小時", text: "1" },
+          { label: "2 小時", text: "2" },
+          { label: "3 小時", text: "3" },
+          { label: "4 小時", text: "4" },
+          { label: "8 小時", text: "8" },
+        ]
+      );
+      await userStateService.addToConversationHistory(userId, "assistant", "請選擇預估時間（小時）：");
+      break;
+    }
+    case "confirm": {
+      const summary = `請確認以下資訊：\n\n名稱：${flowData.title}\n類型：${flowData.type}\n截止日期：${new Date(flowData.dueDate).toLocaleDateString("zh-TW")}\n預估時間：${flowData.estimatedHours || 2} 小時`;
+      await lineClient.sendQuickReply(
+        replyToken,
+        summary,
+        [
+          { label: "確認", text: "確認建立" },
+          { label: "取消", text: "取消" },
+        ]
+      );
+      await userStateService.addToConversationHistory(userId, "assistant", summary);
+      break;
+    }
+  }
+}
+
+/**
  * 處理一句話輸入 Deadline（NLP 解析）
  */
 export async function handleAddDeadlineNLP(
@@ -199,37 +349,136 @@ export async function handleAddDeadlineNLP(
   userInput: string
 ): Promise<void> {
   const userId = context.event.source.userId;
+  const replyToken = context.event.replyToken;
   if (!userId) return;
 
   try {
-    // 使用 LLM 解析
-    const parsed = await llmUtilsService.parseDeadlineFromText(userInput);
+    // 處理確認建立（優先處理）
+    const confirmNLPMatch = userInput.match(/^確認建立 NLP (.+)$/);
+    if (confirmNLPMatch) {
+      await handleConfirmNLPDeadline(context, confirmNLPMatch[1]);
+      return;
+    }
+
+    // 處理切換到逐步填入模式
+    if (userInput === "逐步填入" || userInput.includes("逐步填入")) {
+      await userStateService.setState(userId, "add_deadline_step", { step: "type" });
+      const promptText = "請選擇 Deadline 類型：";
+      await lineClient.sendQuickReply(
+        replyToken!,
+        promptText,
+        [
+          { label: "考試", text: "考試" },
+          { label: "作業", text: "作業" },
+          { label: "專題", text: "專題" },
+          { label: "其他", text: "其他" },
+        ]
+      );
+      await userStateService.addToConversationHistory(userId, "assistant", promptText);
+      return;
+    }
+
+    // 處理取消或返回主選單
+    const cancelKeywords = ["取消", "主選單", "menu", "help", "幫助"];
+    if (cancelKeywords.some(keyword => userInput.includes(keyword))) {
+      await userStateService.clearState(userId);
+      if (replyToken) {
+        const cancelMessage = "已取消輸入。";
+        await lineClient.sendTextMessage(replyToken, cancelMessage);
+        await userStateService.addToConversationHistory(userId, "assistant", cancelMessage);
+      }
+      return;
+    }
+
+    // 記錄用戶輸入到歷史
+    await userStateService.addToConversationHistory(userId, "user", userInput);
+
+    // 獲取對話歷史和當前狀態
+    const conversationHistory = await userStateService.getConversationHistory(userId);
+    const state = await userStateService.getState(userId);
+    const flowData = (state?.flowData || {}) as Record<string, any>;
+    
+    // 如果已經有部分解析的資料，使用 LLM 來更新資料（理解用戶的修正）
+    if (flowData.title || flowData.type || flowData.dueDate) {
+      // 使用 LLM 理解用戶的修正或補充
+      const llmResult = await llmUtilsService.understandAndUpdateDeadlineInFlow(
+        userInput,
+        "confirm", // 當前處於確認階段
+        flowData,
+        conversationHistory
+      );
+
+      if (llmResult.updated && llmResult.data) {
+        // 更新資料
+        const updatedData = { ...flowData, ...llmResult.data };
+        await userStateService.updateFlowData(userId, updatedData);
+        
+        // 如果更新了日期，重新顯示確認資訊
+        if (updatedData.dueDate) {
+          const dateStr = new Date(updatedData.dueDate).toLocaleDateString("zh-TW");
+          const summary = `已更新！以下是修正後的資訊：\n\n名稱：${updatedData.title || flowData.title}\n類型：${updatedData.type || flowData.type}\n截止日期：${dateStr}\n預估時間：${updatedData.estimatedHours || flowData.estimatedHours || 2} 小時`;
+          
+          if (replyToken) {
+            await lineClient.sendQuickReply(
+              replyToken,
+              summary,
+              [
+                { label: "確認", text: `確認建立 NLP ${updatedData.title || flowData.title}|${updatedData.type || flowData.type}|${updatedData.dueDate}|${updatedData.estimatedHours || flowData.estimatedHours || 2}` },
+                { label: "重填", text: "輸入 Deadline" },
+              ]
+            );
+            await userStateService.addToConversationHistory(userId, "assistant", summary);
+          }
+          return;
+        }
+      } else if (llmResult.message) {
+        // LLM 無法理解，提示用戶
+        const reminderMessage = `${llmResult.message}\n\n請告訴我正確的資訊，或點擊「逐步填入」改用逐步模式。`;
+        if (replyToken) {
+          await lineClient.sendQuickReply(
+            replyToken,
+            reminderMessage,
+            [
+              { label: "逐步填入", text: "逐步填入" },
+              { label: "主選單", text: "主選單" },
+            ]
+          );
+          await userStateService.addToConversationHistory(userId, "assistant", reminderMessage);
+        }
+        return;
+      }
+    }
+    
+    // 如果沒有部分資料，使用 LLM 解析完整輸入
+    const parsed = await llmUtilsService.parseDeadlineFromText(userInput, conversationHistory);
 
     if (!parsed || !parsed.title) {
-      const replyToken = context.event.replyToken;
       if (replyToken) {
+        const errorMessage = "無法解析你的輸入，請改用逐步填入模式，或重新輸入更清楚的描述。";
         await lineClient.sendQuickReply(
           replyToken,
-          "無法解析你的輸入，請改用逐步填入模式，或重新輸入更清楚的描述。",
+          errorMessage,
           [
             { label: "逐步填入", text: "逐步填入" },
             { label: "主選單", text: "主選單" },
           ]
         );
+        // 記錄 Bot 回應到歷史
+        await userStateService.addToConversationHistory(userId, "assistant", errorMessage);
       }
       return;
     }
 
-    // 如果日期無法解析，提示使用者
+    // 如果日期無法解析，提示使用者（保持 NLP 流程狀態）
     if (!parsed.dueDate) {
       const replyToken = context.event.replyToken;
       if (replyToken) {
-        await lineClient.sendTextMessage(
-          replyToken,
-          "無法從你的描述中確定日期，請輸入日期（格式：YYYY/MM/DD 或 12/20）："
-        );
+        const datePromptMessage = "無法從你的描述中確定日期，請輸入日期（格式：YYYY/MM/DD 或 12/20）：";
+        await lineClient.sendTextMessage(replyToken, datePromptMessage);
+        // 記錄 Bot 回應到歷史
+        await userStateService.addToConversationHistory(userId, "assistant", datePromptMessage);
       }
-      // 儲存已解析的資料，等待日期輸入
+      // 儲存已解析的資料，切換到逐步輸入模式等待日期輸入
       await userStateService.setState(userId, "add_deadline_step", {
         step: "dueDate",
         title: parsed.title,
@@ -239,11 +488,18 @@ export async function handleAddDeadlineNLP(
       return;
     }
 
+    // 儲存解析的資料到 flowData，以便後續修正
+    await userStateService.updateFlowData(userId, {
+      title: parsed.title,
+      type: parsed.type,
+      dueDate: parsed.dueDate,
+      estimatedHours: parsed.estimatedHours,
+    });
+
     // 顯示確認資訊
     const dateStr = new Date(parsed.dueDate).toLocaleDateString("zh-TW");
     const summary = `我解析到以下資訊：\n\n名稱：${parsed.title}\n類型：${parsed.type}\n截止日期：${dateStr}\n預估時間：${parsed.estimatedHours} 小時`;
 
-    const replyToken = context.event.replyToken;
     if (replyToken) {
       await lineClient.sendQuickReply(
         replyToken,
@@ -253,6 +509,8 @@ export async function handleAddDeadlineNLP(
           { label: "重填", text: "輸入 Deadline" },
         ]
       );
+      // 記錄 Bot 回應到歷史
+      await userStateService.addToConversationHistory(userId, "assistant", summary);
     }
   } catch (error) {
     Logger.error("處理 NLP 輸入 Deadline 失敗", { error, userId });
@@ -295,7 +553,9 @@ export async function handleConfirmNLPDeadline(
       estimatedHours,
     });
 
-    await context.sendText(`✅ 已成功建立 Deadline：${deadline.title}`);
+    const successMessage = `✅ 已成功建立 Deadline：${deadline.title}`;
+    await userStateService.clearState(userId); // clearState 會清除歷史記錄
+    await context.sendText(successMessage);
   } catch (error) {
     Logger.error("確認建立 NLP Deadline 失敗", { error, userId });
     await context.sendText("建立時發生錯誤，請稍後再試。");
