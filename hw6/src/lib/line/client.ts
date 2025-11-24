@@ -222,6 +222,13 @@ export class LineMessagingClient {
    */
   async uploadRichMenuImage(richMenuId: string, imageBuffer: Buffer): Promise<void> {
     try {
+      // 將 Buffer 轉換為 Uint8Array，然後轉為 ArrayBuffer 以符合 fetch API 的要求
+      const uint8Array = new Uint8Array(imageBuffer);
+      const arrayBuffer = uint8Array.buffer.slice(
+        uint8Array.byteOffset,
+        uint8Array.byteOffset + uint8Array.byteLength
+      ) as ArrayBuffer;
+      
       const response = await fetch(
         `https://api-data.line.me/v2/bot/richmenu/${richMenuId}/content`,
         {
@@ -230,7 +237,7 @@ export class LineMessagingClient {
             "Content-Type": "image/png",
             Authorization: `Bearer ${this.accessToken}`,
           },
-          body: imageBuffer,
+          body: arrayBuffer,
         }
       );
 
