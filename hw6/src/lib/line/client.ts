@@ -183,5 +183,162 @@ export class LineMessagingClient {
       throw error;
     }
   }
+
+  /**
+   * 建立 Rich Menu
+   */
+  async createRichMenu(richMenuConfig: any): Promise<string> {
+    try {
+      const response = await fetch("https://api.line.me/v2/bot/richmenu", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.accessToken}`,
+        },
+        body: JSON.stringify(richMenuConfig),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        Logger.error("Line API error (Create Rich Menu)", {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText,
+        });
+        throw new Error(`Line API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      Logger.info("Rich Menu created", { richMenuId: data.richMenuId });
+      return data.richMenuId;
+    } catch (error) {
+      Logger.error("Failed to create Rich Menu", { error });
+      throw error;
+    }
+  }
+
+  /**
+   * 上傳 Rich Menu 圖片
+   */
+  async uploadRichMenuImage(richMenuId: string, imageBuffer: Buffer): Promise<void> {
+    try {
+      const response = await fetch(
+        `https://api-data.line.me/v2/bot/richmenu/${richMenuId}/content`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "image/png",
+            Authorization: `Bearer ${this.accessToken}`,
+          },
+          body: imageBuffer,
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        Logger.error("Line API error (Upload Rich Menu Image)", {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText,
+        });
+        throw new Error(`Line API error: ${response.status} ${response.statusText}`);
+      }
+
+      Logger.info("Rich Menu image uploaded", { richMenuId });
+    } catch (error) {
+      Logger.error("Failed to upload Rich Menu image", { error, richMenuId });
+      throw error;
+    }
+  }
+
+  /**
+   * 設定預設 Rich Menu
+   */
+  async setDefaultRichMenu(richMenuId: string): Promise<void> {
+    try {
+      const response = await fetch("https://api.line.me/v2/bot/user/all/richmenu", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.accessToken}`,
+        },
+        body: JSON.stringify({ richMenuId }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        Logger.error("Line API error (Set Default Rich Menu)", {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText,
+        });
+        throw new Error(`Line API error: ${response.status} ${response.statusText}`);
+      }
+
+      Logger.info("Default Rich Menu set", { richMenuId });
+    } catch (error) {
+      Logger.error("Failed to set default Rich Menu", { error, richMenuId });
+      throw error;
+    }
+  }
+
+  /**
+   * 刪除 Rich Menu
+   */
+  async deleteRichMenu(richMenuId: string): Promise<void> {
+    try {
+      const response = await fetch(`https://api.line.me/v2/bot/richmenu/${richMenuId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        Logger.error("Line API error (Delete Rich Menu)", {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText,
+        });
+        throw new Error(`Line API error: ${response.status} ${response.statusText}`);
+      }
+
+      Logger.info("Rich Menu deleted", { richMenuId });
+    } catch (error) {
+      Logger.error("Failed to delete Rich Menu", { error, richMenuId });
+      throw error;
+    }
+  }
+
+  /**
+   * 取得所有 Rich Menu
+   */
+  async getRichMenuList(): Promise<any[]> {
+    try {
+      const response = await fetch("https://api.line.me/v2/bot/richmenu/list", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        Logger.error("Line API error (Get Rich Menu List)", {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText,
+        });
+        throw new Error(`Line API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.richmenus || [];
+    } catch (error) {
+      Logger.error("Failed to get Rich Menu list", { error });
+      throw error;
+    }
+  }
 }
 

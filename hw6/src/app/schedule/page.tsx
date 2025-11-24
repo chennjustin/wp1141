@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 interface Deadline {
   id: string;
@@ -133,14 +134,15 @@ function ScheduleContent() {
                 {deadlines
                   .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
                   .map((deadline) => (
-                    <div
+                    <Link
                       key={deadline.id}
-                      className={`p-4 rounded-lg border ${
+                      href={`/schedule/${deadline.id}?token=${token}`}
+                      className={`block p-4 rounded-lg border transition-all hover:shadow-md ${
                         deadline.isOverdue
-                          ? "bg-red-50 border-red-200"
+                          ? "bg-red-50 border-red-200 hover:bg-red-100"
                           : deadline.isToday
-                          ? "bg-orange-50 border-orange-200"
-                          : "bg-gray-50 border-gray-200"
+                          ? "bg-orange-50 border-orange-200 hover:bg-orange-100"
+                          : "bg-gray-50 border-gray-200 hover:bg-gray-100"
                       }`}
                     >
                       <div className="flex items-start justify-between">
@@ -185,8 +187,23 @@ function ScheduleContent() {
                             )}
                           </div>
                         </div>
+                        <div className="ml-4 text-gray-400">
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 5l7 7-7 7"
+                            />
+                          </svg>
+                        </div>
                       </div>
-                    </div>
+                    </Link>
                   ))}
               </div>
             </>

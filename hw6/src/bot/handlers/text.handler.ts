@@ -7,6 +7,12 @@ import { LLMUtilsService } from "@/services/llm/llm-utils.service";
 import { buildMainMenuFlexMessage, buildDeadlineListFlexMessage, buildDeadlineDetailFlexMessage, buildScheduleViewFlexMessage } from "@/lib/line/flex-messages";
 import { UserTokenService } from "@/services/user/user-token.service";
 import { LineMessagingClient } from "@/lib/line/client";
+import { QuoteService } from "@/services/quote/quote.service";
+import { IntentService } from "@/services/llm/intent.service";
+import connectDB from "@/lib/db/mongoose";
+import User from "@/models/User";
+import Deadline from "@/models/Deadline";
+import Checkin from "@/models/Checkin";
 import {
   handleAddDeadlineStepByStep,
   handleAddDeadlineNLP,
@@ -23,6 +29,8 @@ const userStateService = new UserStateService();
 const llmUtilsService = new LLMUtilsService();
 const userTokenService = new UserTokenService();
 const lineClient = new LineMessagingClient();
+const quoteService = new QuoteService();
+const intentService = new IntentService();
 
 export async function handleText(context: BotContext) {
   const userId = context.event.source.userId;
@@ -59,6 +67,49 @@ export async function handleText(context: BotContext) {
       return;
     }
 
+    // 處理清除資料（測試功能，優先級最高）
+    if (
+      text === "清除資料" ||
+      text === "清除所有" ||
+      text === "reset" ||
+      text === "重置" ||
+      text.toLowerCase().includes("清除") ||
+      text.toLowerCase() === "reset"
+    ) {
+      await handleResetData(userId, replyToken);
+      return;
+    }
+
+    // 處理流程中的輸入（優先於意圖識別）
+    if (userState && userState.currentFlow) {
+      // 檢查是否為明顯的聊天內容（非流程相關）
+      const isChatContent = isChatMessage(text);
+      
+      if (isChatContent) {
+        // 如果是聊天內容，清除流程狀態並使用 LLM
+        await userStateService.clearState(userId);
+        // 繼續到意圖識別
+      } else {
+        // 繼續流程處理
+        if (userState.currentFlow === "add_deadline_step") {
+          await handleAddDeadlineStepByStep(context, "", text);
+          return;
+        } else if (userState.currentFlow === "add_deadline_nlp") {
+          await handleAddDeadlineNLP(context, text);
+          return;
+        } else if (userState.currentFlow === "edit_deadline") {
+          const flowData = userState.flowData as Record<string, any>;
+          const deadlineId = flowData.deadlineId;
+          const field = flowData.field;
+          await handleEditDeadline(context, deadlineId, field, text);
+          // 清除狀態
+          await userStateService.clearState(userId);
+          return;
+        }
+      }
+    }
+
+    // 處理明確的關鍵字匹配（保留以確保向後兼容）
     // 處理每日簽到（支援更寬鬆的匹配）
     if (
       text === "每日簽到" || 
@@ -81,15 +132,36 @@ export async function handleText(context: BotContext) {
       return;
     }
 
-    // 處理查看時程（支援更寬鬆的匹配）
+    // 處理每日金句（支援更寬鬆的匹配）
     if (
-      text === "查看時程" ||
-      text.includes("時程") ||
-      text.includes("deadline") ||
-      text.includes("待辦")
+      text === "每日金句" ||
+      text === "金句" ||
+      text.includes("金句") ||
+      text.includes("來一句") ||
+      text.includes("我要金句")
     ) {
-      await handleViewSchedule(userId, replyToken);
+      await handleDailyQuote(userId, replyToken);
       return;
+    }
+
+    // 處理查看時程（支援更寬鬆的匹配）
+    // 如果是從 Rich Menu 點擊「查看時程」，直接打開 WebView
+    if (text === "查看時程") {
+      await handleViewSchedule(userId, replyToken, text, "direct_open");
+      return;
+    }
+    
+    // 檢查是否包含時程相關關鍵字，交給 LLM 意圖識別處理
+    const scheduleKeywords = [
+      "時程", "行事曆", "deadline", "待辦", "行程", "schedule", "calendar",
+      "有什麼事", "要做什麼", "要幹嘛", "有什麼作業", "有什麼考試",
+      "要讀哪些", "要讀什麼", "打開行事曆", "開啟行事曆", "顯示行事曆",
+      "我想看", "我要看", "給我看"
+    ];
+    
+    if (scheduleKeywords.some(keyword => text.includes(keyword))) {
+      // 交給 LLM 意圖識別處理，會自動判斷是 direct_open 還是 inquiry
+      // 這裡先不處理，讓它繼續到意圖識別階段
     }
 
     // 處理查看 Deadline 詳情
@@ -169,34 +241,48 @@ export async function handleText(context: BotContext) {
       return;
     }
 
-    // 處理流程中的輸入
-    if (userState && userState.currentFlow) {
-      // 檢查是否為明顯的聊天內容（非流程相關）
-      const isChatContent = isChatMessage(text);
+    // LLM 意圖識別和路由（如果沒有匹配到明確關鍵字）
+    try {
+      const intentResult = await intentService.detectIntentAndExtract(text);
       
-      if (isChatContent) {
-        // 如果是聊天內容，清除流程狀態並使用 LLM
-        await userStateService.clearState(userId);
-        await handleDefaultChat(context, userId, text, replyToken);
-        return;
+      // 根據意圖路由到對應處理器
+      if (intentResult.confidence > 0.5) {
+        switch (intentResult.intent) {
+          case "check_in":
+            await handleCheckIn(userId, replyToken);
+            return;
+          
+          case "daily_quote":
+            await handleDailyQuote(userId, replyToken);
+            return;
+          
+          case "view_schedule":
+            // 根據 actionType 決定處理方式
+            const actionType = intentResult.actionType || "inquiry";
+            await handleViewSchedule(userId, replyToken, text, actionType);
+            return;
+          
+          case "add_deadline":
+            // 如果有提取到實體，使用 NLP 模式
+            if (intentResult.entities.title) {
+              // 使用提取的實體建立 deadline
+              await handleAddDeadlineFromIntent(userId, replyToken, intentResult.entities, text);
+              return;
+            } else {
+              // 如果沒有提取到完整資訊，提示用戶使用逐步輸入
+              await handleAddDeadlinePrompt(userId, replyToken);
+              return;
+            }
+          
+          case "other":
+          default:
+            // 繼續到預設 LLM 聊天
+            break;
+        }
       }
-
-      // 繼續流程處理
-      if (userState.currentFlow === "add_deadline_step") {
-        await handleAddDeadlineStepByStep(context, "", text);
-        return;
-      } else if (userState.currentFlow === "add_deadline_nlp") {
-        await handleAddDeadlineNLP(context, text);
-        return;
-      } else if (userState.currentFlow === "edit_deadline") {
-        const flowData = userState.flowData as Record<string, any>;
-        const deadlineId = flowData.deadlineId;
-        const field = flowData.field;
-        await handleEditDeadline(context, deadlineId, field, text);
-        // 清除狀態
-        await userStateService.clearState(userId);
-        return;
-      }
+    } catch (error) {
+      Logger.error("意圖識別失敗", { error, text });
+      // 如果意圖識別失敗，繼續到預設 LLM 聊天
     }
 
     // 預設：使用原有的 LLM 聊天功能
@@ -286,16 +372,55 @@ async function handleCheckIn(userId: string, replyToken: string) {
   try {
     const result = await checkinService.checkIn(userId);
     
+    // 取得今天的待辦事項
+    const todayDeadlines = await deadlineService.getTodayDeadlines(userId);
+    
+    // 取得或創建 viewToken
+    const viewToken = await userTokenService.getOrCreateViewToken(userId);
+    
+    // 取得應用程式 URL
+    let appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    if (!appUrl && process.env.VERCEL_URL) {
+      appUrl = `https://${process.env.VERCEL_URL}`;
+    }
+    if (!appUrl) {
+      appUrl = "http://localhost:3000";
+    }
+
     if (result.alreadyChecked) {
-      const message = `你今天已經簽到過囉，連續簽到 ${result.consecutiveDays} 天`;
+      let message = `你今天已經簽到過囉，連續簽到 ${result.consecutiveDays} 天`;
+      
+      if (todayDeadlines.length > 0) {
+        message += `\n\n📅 今天的待辦事項：\n`;
+        todayDeadlines.forEach((deadline, index) => {
+          const typeEmoji = deadline.type === "exam" ? "📝" : deadline.type === "assignment" ? "📄" : deadline.type === "project" ? "📦" : "📌";
+          message += `${index + 1}. ${typeEmoji} ${deadline.title}\n`;
+        });
+      }
+      
       await lineClient.sendTextMessage(replyToken, message);
-      Logger.info("簽到回應（已簽到）", { userId, consecutiveDays: result.consecutiveDays });
+      Logger.info("簽到回應（已簽到）", { userId, consecutiveDays: result.consecutiveDays, todayDeadlinesCount: todayDeadlines.length });
     } else {
       const quote = await llmUtilsService.generateMotivationQuote();
-      const message = `✔ 今天已成功簽到！你已連續簽到 ${result.consecutiveDays} 天\n\n💬 今日金句：${quote}`;
+      let message = `✔ 今天已成功簽到！你已連續簽到 ${result.consecutiveDays} 天\n\n💬 今日金句：${quote}`;
+      
+      if (todayDeadlines.length > 0) {
+        message += `\n\n📅 今天的待辦事項：\n`;
+        todayDeadlines.forEach((deadline, index) => {
+          const typeEmoji = deadline.type === "exam" ? "📝" : deadline.type === "assignment" ? "📄" : deadline.type === "project" ? "📦" : "📌";
+          message += `${index + 1}. ${typeEmoji} ${deadline.title}\n`;
+        });
+      } else {
+        message += `\n\n📅 今天沒有任何待辦事項，可以好好休息！`;
+      }
+      
       await lineClient.sendTextMessage(replyToken, message);
-      Logger.info("簽到回應（成功）", { userId, consecutiveDays: result.consecutiveDays });
+      Logger.info("簽到回應（成功）", { userId, consecutiveDays: result.consecutiveDays, todayDeadlinesCount: todayDeadlines.length });
     }
+
+    // 發送時程表連結按鈕
+    const scheduleMessage = buildScheduleViewFlexMessage(viewToken, appUrl, todayDeadlines.length);
+    await lineClient.sendFlexMessage(replyToken, scheduleMessage.altText, scheduleMessage.contents);
 
     // 提供快速回覆
     await lineClient.sendQuickReply(
@@ -313,7 +438,7 @@ async function handleCheckIn(userId: string, replyToken: string) {
 }
 
 /**
- * 處理今日占卜
+ * 處理今日占卜（保留舊功能）
  */
 async function handleFortune(userId: string, replyToken: string) {
   try {
@@ -337,40 +462,165 @@ async function handleFortune(userId: string, replyToken: string) {
 }
 
 /**
- * 處理查看時程
+ * 處理每日金句（從列表選擇）
  */
-async function handleViewSchedule(userId: string, replyToken: string) {
+async function handleDailyQuote(userId: string, replyToken: string) {
+  try {
+    const quote = quoteService.getDailyQuote(userId);
+    const message = `💬 今日金句：\n\n${quote}`;
+    await lineClient.sendTextMessage(replyToken, message);
+    Logger.info("發送每日金句", { userId });
+
+    // 提供快速回覆
+    await lineClient.sendQuickReply(
+      replyToken,
+      "",
+      [
+        { label: "主選單", text: "主選單" },
+        { label: "查看時程", text: "查看時程" },
+      ]
+    );
+  } catch (error) {
+    Logger.error("處理每日金句失敗", { error, userId });
+    await lineClient.sendTextMessage(replyToken, "取得金句時發生錯誤，請稍後再試。");
+  }
+}
+
+/**
+ * 處理查看時程
+ * @param userId 用戶 ID
+ * @param replyToken 回覆 Token
+ * @param text 用戶輸入的文字（用於提取日期）
+ * @param actionType 動作類型："direct_open" 直接打開頁面，"inquiry" 先回答再給按鈕
+ */
+async function handleViewSchedule(userId: string, replyToken: string, text?: string, actionType: "direct_open" | "inquiry" = "inquiry") {
   try {
     // 獲取或創建用戶的 viewToken
     const viewToken = await userTokenService.getOrCreateViewToken(userId);
     
-    // 獲取用戶的 deadlines 數量
-    const deadlines = await deadlineService.getDeadlinesByUser(userId, "pending");
-    
     // 取得應用程式 URL
-    // 優先使用 NEXT_PUBLIC_APP_URL（本地開發時應設定為 ngrok URL）
-    // 如果沒有則嘗試 VERCEL_URL（Vercel 部署時自動設定）
-    // 注意：本地開發時必須在 .env.local 中設定 NEXT_PUBLIC_APP_URL=https://your-ngrok-url.ngrok-free.app
     let appUrl = process.env.NEXT_PUBLIC_APP_URL;
     if (!appUrl && process.env.VERCEL_URL) {
       appUrl = `https://${process.env.VERCEL_URL}`;
     }
     if (!appUrl) {
-      // 如果都沒有設定，記錄錯誤並使用 localhost（但這在 LINE 中無法訪問）
       Logger.error("NEXT_PUBLIC_APP_URL 未設定！本地開發時請在 .env.local 中設定 NEXT_PUBLIC_APP_URL=https://your-ngrok-url.ngrok-free.app", { userId });
       appUrl = "http://localhost:3000";
     }
     
     // 確保 URL 沒有尾隨斜線
     appUrl = appUrl.replace(/\/$/, "");
+    const scheduleUrl = `${appUrl}/schedule?token=${viewToken}`;
     
-    Logger.info("使用應用程式 URL", { appUrl, userId });
+    Logger.info("使用應用程式 URL", { appUrl, userId, actionType });
     
-    // 構建包含 token URL 的 Flex Message
-    const flexMessage = buildScheduleViewFlexMessage(viewToken, appUrl, deadlines.length);
+    // 如果要求直接打開 WebView
+    if (actionType === "direct_open") {
+      // 發送一個包含 URI action 的訊息來打開 WebView
+      await lineClient.sendMessages(replyToken, [
+        {
+          type: "template",
+          altText: "打開時程表",
+          template: {
+            type: "buttons",
+            text: "📅 正在打開你的時程表...",
+            actions: [
+              {
+                type: "uri",
+                label: "打開時程表",
+                uri: scheduleUrl,
+              },
+            ],
+          },
+        },
+      ]);
+      Logger.info("發送打開 WebView 訊息", { userId, scheduleUrl });
+      return;
+    }
     
-    await lineClient.sendFlexMessage(replyToken, flexMessage.altText, flexMessage.contents);
-    Logger.info("發送時程表", { userId, deadlineCount: deadlines.length });
+    // 如果是詢問式，先回答問題，再給按鈕
+    
+    // 如果提供了文字，嘗試提取日期
+    let targetDate: string | null = null;
+    if (text) {
+      targetDate = await intentService.extractDateFromText(text);
+    }
+    
+    // 獲取用戶的 deadlines
+    let deadlines = await deadlineService.getDeadlinesByUser(userId, "pending");
+    
+    // 如果有指定日期，過濾該日期的 deadlines
+    if (targetDate) {
+      const targetDateObj = new Date(targetDate);
+      targetDateObj.setHours(0, 0, 0, 0);
+      const nextDay = new Date(targetDateObj);
+      nextDay.setDate(nextDay.getDate() + 1);
+      
+      deadlines = deadlines.filter((deadline) => {
+        const dueDate = deadline.dueDate instanceof Date 
+          ? deadline.dueDate 
+          : new Date(deadline.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
+        return dueDate >= targetDateObj && dueDate < nextDay;
+      });
+      
+      Logger.info("過濾日期 deadlines", { userId, targetDate, filteredCount: deadlines.length });
+    }
+    
+    // 構建回應訊息
+    let message = "";
+    if (targetDate) {
+      const dateFormatted = new Date(targetDate).toLocaleDateString("zh-TW", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+      message = `📅 ${dateFormatted} 的待辦事項：\n\n`;
+    } else {
+      message = `📅 你的待辦事項：\n\n`;
+    }
+    
+    if (deadlines.length === 0) {
+      message += "目前沒有任何待辦事項 🌈";
+    } else {
+      deadlines.forEach((deadline, index) => {
+        const typeEmoji = deadline.type === "exam" ? "📝" : deadline.type === "assignment" ? "📄" : deadline.type === "project" ? "📦" : "📌";
+        const dueDate = deadline.dueDate instanceof Date 
+          ? deadline.dueDate 
+          : new Date(deadline.dueDate);
+        const daysLeft = deadlineService.calculateDaysLeft(dueDate);
+        const daysLeftText = daysLeft < 0 
+          ? `已過期 ${Math.abs(daysLeft)} 天` 
+          : daysLeft === 0 
+          ? "今天截止" 
+          : `剩餘 ${daysLeft} 天`;
+        
+        message += `${index + 1}. ${typeEmoji} ${deadline.title}\n   ${daysLeftText}\n`;
+      });
+    }
+    
+    await lineClient.sendTextMessage(replyToken, message);
+    
+    // 發送打開時程表的按鈕，並提示「詳細的行程在這邊」
+    await lineClient.sendMessages(replyToken, [
+      {
+        type: "template",
+        altText: "打開時程表",
+        template: {
+          type: "buttons",
+          text: "📅 詳細的行程在這邊，點擊下方按鈕開啟時程表頁面查看完整資訊",
+          actions: [
+            {
+              type: "uri",
+              label: "📅 打開時程表",
+              uri: scheduleUrl,
+            },
+          ],
+        },
+      },
+    ]);
+    
+    Logger.info("發送時程表", { userId, deadlineCount: deadlines.length, targetDate, actionType });
 
     // 提供快速回覆
     await lineClient.sendQuickReply(
@@ -420,6 +670,102 @@ async function handleAddDeadlinePrompt(userId: string, replyToken: string) {
     ]
   );
   Logger.info("發送輸入 Deadline 提示", { userId });
+}
+
+/**
+ * 處理清除資料（測試功能）
+ */
+async function handleResetData(userId: string, replyToken: string) {
+  try {
+    await connectDB();
+    const user = await User.findOne({ lineUserId: userId });
+    if (!user) {
+      await lineClient.sendTextMessage(replyToken, "找不到使用者資訊。");
+      return;
+    }
+
+    // 刪除所有 deadlines
+    const deadlineResult = await Deadline.deleteMany({ userId: user._id });
+    
+    // 刪除所有 checkins
+    const checkinResult = await Checkin.deleteMany({ userId: user._id });
+    
+    // 清除用戶狀態
+    await userStateService.clearState(userId);
+    
+    // 重置 viewToken
+    const { generateViewToken } = await import("@/lib/utils/token");
+    user.viewToken = generateViewToken();
+    await user.save();
+
+    const message = `✅ 資料已清除完成！\n\n` +
+      `📝 待辦事項：刪除 ${deadlineResult.deletedCount || 0} 筆\n` +
+      `🍀 簽到記錄：刪除 ${checkinResult.deletedCount || 0} 筆\n` +
+      `🔄 用戶狀態：已清除\n` +
+      `🔑 Token：已重置\n\n` +
+      `你的帳號已恢復到初始狀態。`;
+    
+    await lineClient.sendTextMessage(replyToken, message);
+    Logger.info("清除用戶資料成功", { userId });
+  } catch (error) {
+    Logger.error("清除資料失敗", { error, userId });
+    await lineClient.sendTextMessage(replyToken, "清除資料時發生錯誤，請稍後再試。");
+  }
+}
+
+/**
+ * 從意圖提取的實體建立 Deadline
+ */
+async function handleAddDeadlineFromIntent(
+  userId: string,
+  replyToken: string,
+  entities: {
+    date?: string | null;
+    title?: string | null;
+    estimatedHours?: number | null;
+    type?: "exam" | "assignment" | "project" | "other" | null;
+  },
+  originalText: string
+) {
+  try {
+    // 如果缺少必要資訊，使用 NLP 模式
+    if (!entities.title) {
+      await handleAddDeadlineNLP({ event: { source: { userId }, replyToken } } as BotContext, originalText);
+      return;
+    }
+
+    // 如果缺少日期，提示用戶輸入
+    if (!entities.date) {
+      await userStateService.setState(userId, "add_deadline_step", {
+        step: "dueDate",
+        title: entities.title,
+        type: entities.type || "other",
+        estimatedHours: entities.estimatedHours || 2,
+      });
+      await lineClient.sendTextMessage(
+        replyToken,
+        `已解析到標題：${entities.title}\n\n請輸入截止日期（格式：YYYY/MM/DD 或 12/20）：`
+      );
+      return;
+    }
+
+    // 顯示確認資訊
+    const dateStr = new Date(entities.date).toLocaleDateString("zh-TW");
+    const typeName = entities.type === "exam" ? "考試" : entities.type === "assignment" ? "作業" : entities.type === "project" ? "專題" : "其他";
+    const summary = `我解析到以下資訊：\n\n名稱：${entities.title}\n類型：${typeName}\n截止日期：${dateStr}\n預估時間：${entities.estimatedHours || 2} 小時`;
+
+    await lineClient.sendQuickReply(
+      replyToken,
+      summary,
+      [
+        { label: "確認", text: `確認建立 NLP ${entities.title}|${entities.type || "other"}|${entities.date}|${entities.estimatedHours || 2}` },
+        { label: "重填", text: "輸入 Deadline" },
+      ]
+    );
+  } catch (error) {
+    Logger.error("從意圖建立 Deadline 失敗", { error, userId, entities });
+    await lineClient.sendTextMessage(replyToken, "處理時發生錯誤，請稍後再試。");
+  }
 }
 
 /**

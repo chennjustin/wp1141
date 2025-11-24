@@ -75,6 +75,42 @@ export class DeadlineService {
   }
 
   /**
+   * 取得今天的 Deadline（台灣時區）
+   */
+  async getTodayDeadlines(userId: string): Promise<IDeadline[]> {
+    try {
+      await connectDB();
+      const user = await User.findOne({ lineUserId: userId });
+      if (!user) {
+        return [];
+      }
+
+      // 取得台灣時區的今天日期
+      const now = new Date();
+      const taiwanTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Taipei" }));
+      taiwanTime.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(taiwanTime);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const deadlines = await Deadline.find({
+        userId: user._id,
+        status: "pending",
+        dueDate: {
+          $gte: taiwanTime,
+          $lt: tomorrow,
+        },
+      })
+        .sort({ dueDate: 1 })
+        .exec();
+
+      return deadlines;
+    } catch (error) {
+      Logger.error("取得今天 Deadline 列表失敗", { error, userId });
+      return [];
+    }
+  }
+
+  /**
    * 根據 ID 取得 Deadline
    */
   async getDeadlineById(id: string): Promise<IDeadline | null> {

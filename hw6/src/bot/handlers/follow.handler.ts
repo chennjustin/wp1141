@@ -15,6 +15,26 @@ export async function handleFollow(context: BotContext) {
       return;
     }
 
+    // 發送歡迎訊息
+    const welcomeMessage = `🎉 歡迎使用「拯救期末大作戰」！
+
+我是你的期末救星，專門幫助大學生管理 deadlines 和度過期末地獄 😊
+
+📌 主要功能：
+🍀 簽到 - 每日簽到，查看今天待辦事項
+💬 每日金句 - 獲得一句鼓勵或毒雞湯
+📅 查看時程 - 查看所有待辦事項
+📝 新增 Deadline - 快速新增作業或考試
+
+你可以：
+• 使用底部的 Rich Menu 快速操作
+• 用自然語言跟我對話，我會自動理解你的意圖
+• 例如：「我要簽到」、「今天要幹嘛」、「我有一個作業下週三交」
+
+準備好開始拯救你的期末了嗎？💪`;
+
+    await lineClient.sendTextMessage(replyToken, welcomeMessage);
+
     // 發送主選單
     const menuMessage = buildMainMenuFlexMessage();
     await lineClient.sendFlexMessage(replyToken, menuMessage.altText, menuMessage.contents);
