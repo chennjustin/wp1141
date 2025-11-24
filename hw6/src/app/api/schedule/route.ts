@@ -3,6 +3,8 @@ import { UserTokenService } from "@/services/user/user-token.service";
 import { DeadlineService } from "@/services/deadline/deadline.service";
 import { Logger } from "@/lib/utils/logger";
 
+export const dynamic = 'force-dynamic';
+
 const userTokenService = new UserTokenService();
 const deadlineService = new DeadlineService();
 

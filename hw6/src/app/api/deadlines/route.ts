@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { DeadlineService } from "@/services/deadline/deadline.service";
 import { Logger } from "@/lib/utils/logger";
 
+export const dynamic = 'force-dynamic';
+
 const deadlineService = new DeadlineService();
 
 export async function GET(request: NextRequest) {

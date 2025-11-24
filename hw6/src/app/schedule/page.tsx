@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 interface Deadline {
@@ -16,7 +16,7 @@ interface Deadline {
   isToday: boolean;
 }
 
-export default function SchedulePage() {
+function ScheduleContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
@@ -24,37 +24,36 @@ export default function SchedulePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (token) {
-      fetchSchedule();
-    } else {
-      setError("缺少 token 參數");
-      setLoading(false);
-    }
-  }, [token]);
-
-  const fetchSchedule = async () => {
-    if (!token) return;
-
-    try {
-      const response = await fetch(`/api/schedule?token=${token}`);
-      const data = await response.json();
-
-      if (!data.success) {
-        if (response.status === 401) {
-          setError("無效的 token，請重新從 LINE Bot 開啟時程表");
-        } else {
-          setError(data.error || "載入時程表失敗");
-        }
-      } else {
-        setDeadlines(data.data);
+    const fetchSchedule = async () => {
+      if (!token) {
+        setError("缺少 token 參數");
+        setLoading(false);
+        return;
       }
-    } catch (error) {
-      console.error("Failed to fetch schedule", error);
-      setError("載入時程表時發生錯誤");
-    } finally {
-      setLoading(false);
-    }
-  };
+
+      try {
+        const response = await fetch(`/api/schedule?token=${token}`);
+        const data = await response.json();
+
+        if (!data.success) {
+          if (response.status === 401) {
+            setError("無效的 token，請重新從 LINE Bot 開啟時程表");
+          } else {
+            setError(data.error || "載入時程表失敗");
+          }
+        } else {
+          setDeadlines(data.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch schedule", error);
+        setError("載入時程表時發生錯誤");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSchedule();
+  }, [token]);
 
   const getTypeEmoji = (type: string) => {
     const emojiMap: Record<string, string> = {
@@ -200,6 +199,23 @@ export default function SchedulePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SchedulePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-xl font-semibold text-gray-700 mb-2">載入中...</div>
+            <div className="text-sm text-gray-500">正在載入你的時程表</div>
+          </div>
+        </div>
+      }
+    >
+      <ScheduleContent />
+    </Suspense>
   );
 }
 
