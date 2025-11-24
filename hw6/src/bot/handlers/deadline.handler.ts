@@ -37,9 +37,27 @@ export async function handleAddDeadlineStepByStep(
     const currentStep = flowData.step || "type";
 
     // 處理取消或返回主選單
-    if (userInput === "取消" || userInput === "主選單" || userInput === "menu") {
+    const cancelKeywords = ["取消", "主選單", "menu", "help", "幫助"];
+    if (cancelKeywords.some(keyword => userInput.includes(keyword))) {
       await userStateService.clearState(userId);
-      await context.sendText("已取消輸入。");
+      const replyToken = context.event.replyToken;
+      if (replyToken) {
+        await lineClient.sendTextMessage(replyToken, "已取消輸入。");
+      }
+      return;
+    }
+
+    // 檢查是否為明顯的聊天內容（非流程相關）
+    const normalizedInput = userInput.toLowerCase().trim();
+    const chatIndicators = ["嗨", "你好", "哈囉", "hello", "hi", "串", "llm", "gpt", "？", "?"];
+    const isChatContent = chatIndicators.some(indicator => normalizedInput.includes(indicator)) ||
+                          (userInput.length <= 3 && !["考試", "作業", "專題", "其他", "1", "2", "3", "4", "8"].includes(userInput));
+    
+    if (isChatContent) {
+      // 如果是聊天內容，清除狀態
+      // 注意：這裡只清除狀態，不處理訊息，讓 text.handler 繼續處理
+      await userStateService.clearState(userId);
+      // 返回 false 表示不是流程處理，讓上層繼續處理
       return;
     }
 

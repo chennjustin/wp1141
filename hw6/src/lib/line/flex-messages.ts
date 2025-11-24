@@ -2,6 +2,81 @@ import { IDeadline } from "@/models/Deadline";
 import { DeadlineService } from "@/services/deadline/deadline.service";
 
 /**
+ * 建構「查看時程」Flex Message（包含 token URL 按鈕）
+ */
+export function buildScheduleViewFlexMessage(token: string, domain: string, deadlineCount: number = 0) {
+  const scheduleUrl = `${domain}/schedule?token=${token}`;
+  
+  return {
+    type: "flex",
+    altText: "查看時程表",
+    contents: {
+      type: "bubble",
+      body: {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "text",
+            text: "📅 我的時程表",
+            weight: "bold",
+            size: "xl",
+            color: "#1DB446",
+            align: "center",
+          },
+          {
+            type: "separator",
+            margin: "md",
+          },
+          {
+            type: "box",
+            layout: "vertical",
+            spacing: "sm",
+            margin: "lg",
+            contents: [
+              {
+                type: "text",
+                text: deadlineCount === 0 
+                  ? "目前沒有任何待辦事項 🌈" 
+                  : `你有 ${deadlineCount} 個待辦事項`,
+                size: "md",
+                color: "#666666",
+                wrap: true,
+              },
+              {
+                type: "text",
+                text: "點擊下方按鈕開啟時程表頁面查看詳細資訊",
+                size: "sm",
+                color: "#999999",
+                wrap: true,
+                margin: "md",
+              },
+            ],
+          },
+        ],
+      },
+      footer: {
+        type: "box",
+        layout: "vertical",
+        spacing: "sm",
+        contents: [
+          {
+            type: "button",
+            action: {
+              type: "uri",
+              label: "📅 打開時程表",
+              uri: scheduleUrl,
+            },
+            style: "primary",
+            color: "#4ECDC4",
+          },
+        ],
+      },
+    },
+  };
+}
+
+/**
  * 建構主選單 Flex Message（2x2 按鈕佈局）
  */
 export function buildMainMenuFlexMessage() {

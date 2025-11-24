@@ -4,6 +4,7 @@ export interface IUser extends Document {
   lineUserId: string;
   displayName?: string;
   pictureUrl?: string;
+  viewToken?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -21,6 +22,11 @@ const UserSchema: Schema = new Schema(
     },
     pictureUrl: {
       type: String,
+    },
+    viewToken: {
+      type: String,
+      index: true,
+      sparse: true, // 允許 null，但建立索引
     },
   },
   {

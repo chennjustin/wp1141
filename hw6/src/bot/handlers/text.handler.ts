@@ -6,7 +6,8 @@ import { DeadlineService } from "@/services/deadline/deadline.service";
 import { UserStateService } from "@/services/user-state/user-state.service";
 import { BotMessageService } from "@/services/bot-message/bot-message.service";
 import { LLMUtilsService } from "@/services/llm/llm-utils.service";
-import { buildMainMenuFlexMessage, buildDeadlineListFlexMessage, buildDeadlineDetailFlexMessage } from "@/lib/line/flex-messages";
+import { buildMainMenuFlexMessage, buildDeadlineListFlexMessage, buildDeadlineDetailFlexMessage, buildScheduleViewFlexMessage } from "@/lib/line/flex-messages";
+import { UserTokenService } from "@/services/user/user-token.service";
 import { LineMessagingClient } from "@/lib/line/client";
 import {
   handleAddDeadlineStepByStep,
@@ -24,6 +25,7 @@ const deadlineService = new DeadlineService();
 const userStateService = new UserStateService();
 const botMessageService = new BotMessageService();
 const llmUtilsService = new LLMUtilsService();
+const userTokenService = new UserTokenService();
 const lineClient = new LineMessagingClient();
 
 export async function handleText(context: BotContext) {
@@ -173,6 +175,17 @@ export async function handleText(context: BotContext) {
 
     // 處理流程中的輸入
     if (userState && userState.currentFlow) {
+      // 檢查是否為明顯的聊天內容（非流程相關）
+      const isChatContent = isChatMessage(text);
+      
+      if (isChatContent) {
+        // 如果是聊天內容，清除流程狀態並使用 LLM
+        await userStateService.clearState(userId);
+        await handleDefaultChat(context, userId, text, replyToken);
+        return;
+      }
+
+      // 繼續流程處理
       if (userState.currentFlow === "add_deadline_step") {
         await handleAddDeadlineStepByStep(context, "", text);
         return;
@@ -212,6 +225,53 @@ export async function handleText(context: BotContext) {
       Logger.error("無法發送錯誤訊息", { error: sendError });
     }
   }
+}
+
+/**
+ * 判斷是否為聊天內容（非流程相關的輸入）
+ */
+function isChatMessage(text: string): boolean {
+  const normalizedText = text.toLowerCase().trim();
+  
+  // 流程相關的關鍵字（這些應該繼續流程）
+  const flowKeywords = [
+    "考試", "作業", "專題", "其他",
+    "1", "2", "3", "4", "8", // 預估時間選項
+    "確認", "確認建立", "重填",
+    "名稱", "日期", "時間", "類別",
+  ];
+  
+  // 如果包含流程關鍵字，不是聊天內容
+  if (flowKeywords.some(keyword => text.includes(keyword))) {
+    return false;
+  }
+  
+  // 如果是日期格式（YYYY/MM/DD 或 MM/DD），不是聊天內容
+  if (/^\d{1,4}[\/\-]\d{1,2}[\/\-]?\d{0,4}$/.test(text)) {
+    return false;
+  }
+  
+  // 聊天內容的指標
+  const chatIndicators = [
+    "嗨", "你好", "哈囉", "hello", "hi",
+    "謝謝", "感謝", "thank",
+    "什麼", "怎麼", "為什麼", "如何",
+    "串", "llm", "gpt", "ai",
+    "？", "?", "！", "!",
+  ];
+  
+  // 如果包含聊天指標，是聊天內容
+  if (chatIndicators.some(indicator => normalizedText.includes(indicator))) {
+    return true;
+  }
+  
+  // 如果文字長度很短（1-3個字）且不是流程關鍵字，可能是聊天
+  if (text.length <= 3 && !flowKeywords.some(keyword => text === keyword)) {
+    return true;
+  }
+  
+  // 預設：如果不在流程關鍵字中，視為聊天內容
+  return true;
 }
 
 /**
@@ -285,94 +345,38 @@ async function handleFortune(userId: string, replyToken: string) {
  */
 async function handleViewSchedule(userId: string, replyToken: string) {
   try {
+    // 獲取或創建用戶的 viewToken
+    const viewToken = await userTokenService.getOrCreateViewToken(userId);
+    
+    // 獲取用戶的 deadlines 數量
     const deadlines = await deadlineService.getDeadlinesByUser(userId, "pending");
     
     // 取得應用程式 URL
-    // 優先使用 NEXT_PUBLIC_APP_URL，如果沒有則嘗試 VERCEL_URL，最後使用 localhost
+    // 優先使用 NEXT_PUBLIC_APP_URL（本地開發時應設定為 ngrok URL）
+    // 如果沒有則嘗試 VERCEL_URL（Vercel 部署時自動設定）
+    // 注意：本地開發時必須在 .env.local 中設定 NEXT_PUBLIC_APP_URL=https://your-ngrok-url.ngrok-free.app
     let appUrl = process.env.NEXT_PUBLIC_APP_URL;
     if (!appUrl && process.env.VERCEL_URL) {
       appUrl = `https://${process.env.VERCEL_URL}`;
     }
     if (!appUrl) {
-      // 開發環境：如果使用 ngrok，應該在環境變數中設定 NEXT_PUBLIC_APP_URL
+      // 如果都沒有設定，記錄錯誤並使用 localhost（但這在 LINE 中無法訪問）
+      Logger.error("NEXT_PUBLIC_APP_URL 未設定！本地開發時請在 .env.local 中設定 NEXT_PUBLIC_APP_URL=https://your-ngrok-url.ngrok-free.app", { userId });
       appUrl = "http://localhost:3000";
     }
-    const calendarUrl = `${appUrl}/calendar/${userId}`;
     
-    // 建立包含 WebView 按鈕的 Flex Message
-    const flexMessage = {
-      type: "flex",
-      altText: "查看時程表",
-      contents: {
-        type: "bubble",
-        body: {
-          type: "box",
-          layout: "vertical",
-          contents: [
-            {
-              type: "text",
-              text: "📅 我的時程表",
-              weight: "bold",
-              size: "xl",
-              color: "#1DB446",
-              align: "center",
-            },
-            {
-              type: "separator",
-              margin: "md",
-            },
-            {
-              type: "box",
-              layout: "vertical",
-              spacing: "sm",
-              margin: "lg",
-              contents: [
-                {
-                  type: "text",
-                  text: deadlines.length === 0 
-                    ? "目前沒有任何待辦事項 🌈" 
-                    : `你有 ${deadlines.length} 個待辦事項`,
-                  size: "md",
-                  color: "#666666",
-                  wrap: true,
-                },
-                {
-                  type: "text",
-                  text: "點擊下方按鈕開啟行事曆頁面查看詳細時程",
-                  size: "sm",
-                  color: "#999999",
-                  wrap: true,
-                  margin: "md",
-                },
-              ],
-            },
-          ],
-        },
-        footer: {
-          type: "box",
-          layout: "vertical",
-          spacing: "sm",
-          contents: [
-            {
-              type: "button",
-              action: {
-                type: "uri",
-                label: "📅 開啟行事曆",
-                uri: calendarUrl,
-              },
-              style: "primary",
-              color: "#4ECDC4",
-            },
-          ],
-        },
-      },
-    };
-
+    // 確保 URL 沒有尾隨斜線
+    appUrl = appUrl.replace(/\/$/, "");
+    
+    Logger.info("使用應用程式 URL", { appUrl, userId });
+    
+    // 構建包含 token URL 的 Flex Message
+    const flexMessage = buildScheduleViewFlexMessage(viewToken, appUrl, deadlines.length);
+    
     await lineClient.sendFlexMessage(replyToken, flexMessage.altText, flexMessage.contents);
     await botMessageService.logMessage(userId, "outgoing", `查看時程（${deadlines.length} 個待辦）`, { 
       type: "schedule_list", 
       count: deadlines.length,
-      calendarUrl 
     });
 
     // 提供快速回覆
