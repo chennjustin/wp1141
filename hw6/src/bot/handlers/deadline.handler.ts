@@ -18,6 +18,21 @@ const lineClient = new LineMessagingClient();
 const userTokenService = new UserTokenService();
 const studyBlockService = new StudyBlockService();
 
+// Quick Reply 按鈕配置
+const QUICK_REPLY_ITEMS = [
+  { label: "🍀 每日簽到", text: "簽到" },
+  { label: "🔮 抽!!!", text: "每日金句" },
+  { label: "📅 查看時程", text: "查看時程" },
+  { label: "📝 新增死線", text: "新增 Deadline" },
+];
+
+/**
+ * 發送帶有 Quick Reply 的文字訊息
+ */
+async function sendTextMessageWithQuickReply(replyToken: string, text: string) {
+  await lineClient.sendQuickReply(replyToken, text, QUICK_REPLY_ITEMS);
+}
+
 /**
  * 發送排程成功訊息
  */
@@ -63,7 +78,7 @@ async function sendScheduleSuccessMessage(
       message += `✅ 已成功建立 Deadline！`;
     }
 
-    await lineClient.sendTextMessage(replyToken, message);
+    await sendTextMessageWithQuickReply(replyToken, message);
 
     // 如果有排程，發送時程表連結按鈕
     if (blocks.length > 0) {
@@ -88,7 +103,7 @@ async function sendScheduleSuccessMessage(
   } catch (error) {
     Logger.error("發送排程成功訊息失敗", { error, userId, deadlineId: deadline._id });
     // 如果發送失敗，至少發送基本成功訊息
-    await lineClient.sendTextMessage(
+    await sendTextMessageWithQuickReply(
       replyToken,
       `✅ 已成功建立 Deadline：${deadline.title}`
     );
@@ -119,14 +134,14 @@ export async function handleAddDeadlineStepByStep(
     const flowData = (state.flowData || {}) as Record<string, any>;
     const currentStep = flowData.step || "type";
 
-    // 處理取消或返回主選單
-    const cancelKeywords = ["取消", "主選單", "menu", "help", "幫助"];
+    // 處理取消或返回主選單（包括「離開」）
+    const cancelKeywords = ["取消", "主選單", "menu", "help", "幫助", "離開"];
     if (cancelKeywords.some(keyword => userInput.includes(keyword))) {
       await userStateService.clearState(userId);
       const replyToken = context.event.replyToken;
       if (replyToken) {
         const cancelMessage = "已取消輸入。";
-        await lineClient.sendTextMessage(replyToken, cancelMessage);
+        await sendTextMessageWithQuickReply(replyToken, cancelMessage);
         // 記錄 Bot 回應到歷史
         await userStateService.addToConversationHistory(userId, "assistant", cancelMessage);
       }
@@ -277,6 +292,7 @@ export async function handleAddDeadlineStepByStep(
             { label: "3 小時", text: "3" },
             { label: "4 小時", text: "4" },
             { label: "8 小時", text: "8" },
+            { label: "離開", text: "離開" },
           ]
         );
         // 記錄 Bot 回應到歷史
@@ -302,6 +318,7 @@ export async function handleAddDeadlineStepByStep(
           [
             { label: "確認", text: "確認建立" },
             { label: "取消", text: "取消" },
+            { label: "離開", text: "離開" },
           ]
         );
         // 記錄 Bot 回應到歷史
@@ -380,18 +397,31 @@ async function sendStepPrompt(
           { label: "作業", text: "作業" },
           { label: "專題", text: "專題" },
           { label: "其他", text: "其他" },
+          { label: "離開", text: "離開" },
         ]
       );
       await userStateService.addToConversationHistory(userId, "assistant", "請選擇 Deadline 類型：");
       break;
     }
     case "title": {
-      await lineClient.sendTextMessage(replyToken, "請輸入 Deadline 的名稱：");
+      await lineClient.sendQuickReply(
+        replyToken,
+        "請輸入 Deadline 的名稱：",
+        [
+          { label: "離開", text: "離開" },
+        ]
+      );
       await userStateService.addToConversationHistory(userId, "assistant", "請輸入 Deadline 的名稱：");
       break;
     }
     case "dueDate": {
-      await lineClient.sendTextMessage(replyToken, "請輸入截止日期（格式：YYYY/MM/DD 或 12/20）：");
+      await lineClient.sendQuickReply(
+        replyToken,
+        "請輸入截止日期（格式：YYYY/MM/DD 或 12/20）：",
+        [
+          { label: "離開", text: "離開" },
+        ]
+      );
       await userStateService.addToConversationHistory(userId, "assistant", "請輸入截止日期（格式：YYYY/MM/DD 或 12/20）：");
       break;
     }
@@ -457,19 +487,20 @@ export async function handleAddDeadlineNLP(
           { label: "作業", text: "作業" },
           { label: "專題", text: "專題" },
           { label: "其他", text: "其他" },
+          { label: "離開", text: "離開" },
         ]
       );
       await userStateService.addToConversationHistory(userId, "assistant", promptText);
       return;
     }
 
-    // 處理取消或返回主選單
-    const cancelKeywords = ["取消", "主選單", "menu", "help", "幫助"];
+    // 處理取消或返回主選單（包括「離開」）
+    const cancelKeywords = ["取消", "主選單", "menu", "help", "幫助", "離開"];
     if (cancelKeywords.some(keyword => userInput.includes(keyword))) {
       await userStateService.clearState(userId);
       if (replyToken) {
         const cancelMessage = "已取消輸入。";
-        await lineClient.sendTextMessage(replyToken, cancelMessage);
+        await sendTextMessageWithQuickReply(replyToken, cancelMessage);
         await userStateService.addToConversationHistory(userId, "assistant", cancelMessage);
       }
       return;
@@ -510,6 +541,7 @@ export async function handleAddDeadlineNLP(
               [
                 { label: "確認", text: `確認建立 NLP ${updatedData.title || flowData.title}|${updatedData.type || flowData.type}|${updatedData.dueDate}|${updatedData.estimatedHours || flowData.estimatedHours || 2}` },
                 { label: "重填", text: "輸入 Deadline" },
+                { label: "離開", text: "離開" },
               ]
             );
             await userStateService.addToConversationHistory(userId, "assistant", summary);
@@ -525,7 +557,7 @@ export async function handleAddDeadlineNLP(
             reminderMessage,
             [
               { label: "逐步填入", text: "逐步填入" },
-              { label: "主選單", text: "主選單" },
+              { label: "離開", text: "離開" },
             ]
           );
           await userStateService.addToConversationHistory(userId, "assistant", reminderMessage);
@@ -545,7 +577,7 @@ export async function handleAddDeadlineNLP(
           errorMessage,
           [
             { label: "逐步填入", text: "逐步填入" },
-            { label: "主選單", text: "主選單" },
+            { label: "離開", text: "離開" },
           ]
         );
         // 記錄 Bot 回應到歷史
@@ -559,7 +591,13 @@ export async function handleAddDeadlineNLP(
       const replyToken = context.event.replyToken;
       if (replyToken) {
         const datePromptMessage = "無法從你的描述中確定日期，請輸入日期（格式：YYYY/MM/DD 或 12/20）：";
-        await lineClient.sendTextMessage(replyToken, datePromptMessage);
+        await lineClient.sendQuickReply(
+          replyToken,
+          datePromptMessage,
+          [
+            { label: "離開", text: "離開" },
+          ]
+        );
         // 記錄 Bot 回應到歷史
         await userStateService.addToConversationHistory(userId, "assistant", datePromptMessage);
       }
@@ -592,6 +630,7 @@ export async function handleAddDeadlineNLP(
         [
           { label: "確認", text: `確認建立 NLP ${parsed.title}|${parsed.type}|${parsed.dueDate}|${parsed.estimatedHours}` },
           { label: "重填", text: "輸入 Deadline" },
+          { label: "離開", text: "離開" },
         ]
       );
       // 記錄 Bot 回應到歷史
@@ -732,7 +771,7 @@ export async function handleEditDeadline(
       });
       const replyToken = context.event.replyToken;
       if (replyToken) {
-        await lineClient.sendTextMessage(replyToken, `請輸入新的${field}：`);
+        await sendTextMessageWithQuickReply(replyToken, `請輸入新的${field}：`);
       }
     }
   } catch (error) {

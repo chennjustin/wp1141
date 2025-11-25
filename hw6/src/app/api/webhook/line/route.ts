@@ -91,13 +91,21 @@ export async function POST(request: NextRequest) {
           errorMessage: error instanceof Error ? error.message : String(error),
           errorStack: error instanceof Error ? error.stack : undefined,
           eventType: event.type,
+          userId: (event as any).source?.userId,
+          replyToken: replyToken ? "exists" : "missing",
         });
-        // 嘗試發送錯誤訊息
-        if (replyToken) {
+        // 嘗試發送錯誤訊息（只有在有 replyToken 且不是 follow 事件時）
+        if (replyToken && event.type !== "follow") {
           try {
-            await lineClient.sendTextMessage(
+            await lineClient.sendQuickReply(
               replyToken,
-              "抱歉，處理您的訊息時發生錯誤，請稍後再試。"
+              "抱歉，處理您的訊息時發生錯誤，請稍後再試。",
+              [
+                { label: "🍀 每日簽到", text: "簽到" },
+                { label: "🔮 抽!!!", text: "每日金句" },
+                { label: "📅 查看時程", text: "查看時程" },
+                { label: "📝 新增死線", text: "新增 Deadline" },
+              ]
             );
           } catch (sendError) {
             Logger.error("Failed to send error message", { sendError });

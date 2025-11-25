@@ -4,7 +4,7 @@ import { CheckinService } from "@/services/checkin/checkin.service";
 import { DeadlineService } from "@/services/deadline/deadline.service";
 import { UserStateService } from "@/services/user-state/user-state.service";
 import { LLMUtilsService } from "@/services/llm/llm-utils.service";
-import { buildMainMenuFlexMessage, buildDeadlineDetailFlexMessage, buildScheduleViewFlexMessage } from "@/lib/line/flex-messages";
+import { buildDeadlineDetailFlexMessage, buildScheduleViewFlexMessage } from "@/lib/line/flex-messages";
 import { UserTokenService } from "@/services/user/user-token.service";
 import { LineMessagingClient } from "@/lib/line/client";
 import { QuoteService } from "@/services/quote/quote.service";
@@ -32,10 +32,27 @@ const lineClient = new LineMessagingClient();
 const quoteService = new QuoteService();
 const intentService = new IntentService();
 
+// Quick Reply 按鈕配置
+const QUICK_REPLY_ITEMS = [
+  { label: "🍀 每日簽到", text: "簽到" },
+  { label: "🔮 抽!!!", text: "每日金句" },
+  { label: "📅 查看時程", text: "查看時程" },
+  { label: "📝 新增死線", text: "新增 Deadline" },
+];
+
+/**
+ * 發送帶有 Quick Reply 的文字訊息
+ */
+async function sendTextMessageWithQuickReply(replyToken: string, text: string) {
+  await lineClient.sendQuickReply(replyToken, text, QUICK_REPLY_ITEMS);
+}
+
 export async function handleText(context: BotContext) {
   const userId = context.event.source.userId;
   const text = context.event.message?.text;
   const replyToken = context.event.replyToken;
+
+  Logger.info("handleText 被調用", { userId, text, hasReplyToken: !!replyToken });
 
   if (!userId || !text || !replyToken) {
     Logger.warn("Missing userId, text, or replyToken in event", { userId, text, replyToken });
@@ -50,12 +67,13 @@ export async function handleText(context: BotContext) {
     const userState = await userStateService.getState(userId);
 
     // 處理取消或返回主選單（優先級最高）
-    // 支援更寬鬆的匹配：包含「選單」、「menu」、「主選單」、「help」等關鍵字
+    // 支援更寬鬆的匹配：包含「選單」、「menu」、「主選單」、「help」、「離開」等關鍵字
     const normalizedText = text.toLowerCase().trim();
-    const menuKeywords = ["選單", "menu", "主選單", "help", "幫助", "功能", "有什麼功能", "回到主選單", "返回主選單"];
+    const menuKeywords = ["選單", "menu", "主選單", "help", "幫助", "功能", "有什麼功能", "回到主選單", "返回主選單", "離開"];
     if (
       text === "取消" || 
-      text === "主選單" || 
+      text === "主選單" ||
+      text === "離開" ||
       normalizedText === "menu" || 
       normalizedText === "help" ||
       menuKeywords.some(keyword => text.includes(keyword))
@@ -179,6 +197,7 @@ export async function handleText(context: BotContext) {
           { label: "作業", text: "作業" },
           { label: "專題", text: "專題" },
           { label: "其他", text: "其他" },
+          { label: "離開", text: "離開" },
         ]
       );
       // 記錄 Bot 回應到歷史
@@ -191,8 +210,15 @@ export async function handleText(context: BotContext) {
       // 清除之前的歷史記錄，開始新的流程
       await userStateService.clearConversationHistory(userId);
       await userStateService.setState(userId, "add_deadline_nlp", {});
-      const promptText = "請直接輸入你的 Deadline 資訊，例如：\n「我下週四有 OS HW4，要交 pdf，大概要三小時」";
-      await lineClient.sendTextMessage(replyToken, promptText);
+      const promptText = "請直接輸入你的 Deadline 資訊，例如：\n「我下週一有網服作業要交，大概要 80 小時」";
+      // 一句話輸入時不顯示 Quick Reply，但加上離開選項
+      await lineClient.sendQuickReply(
+        replyToken,
+        promptText,
+        [
+          { label: "離開", text: "離開" },
+        ]
+      );
       // 記錄 Bot 回應到歷史
       await userStateService.addToConversationHistory(userId, "assistant", promptText);
       return;
@@ -293,7 +319,7 @@ export async function handleText(context: BotContext) {
 
     // 發送錯誤訊息
     try {
-      await lineClient.sendTextMessage(replyToken, `處理訊息時發生錯誤：${errorMsg}\n\n請稍後再試或聯繫管理員。`);
+      await sendTextMessageWithQuickReply(replyToken, `處理訊息時發生錯誤：${errorMsg}\n\n請稍後再試或聯繫管理員。`);
     } catch (sendError) {
       Logger.error("無法發送錯誤訊息", { error: sendError });
     }
@@ -348,12 +374,16 @@ function isChatMessage(text: string): boolean {
 }
 
 /**
- * 發送主選單
+ * 發送主選單（使用 Quick Reply）
  */
 async function sendMainMenu(userId: string, replyToken: string) {
-  const menuMessage = buildMainMenuFlexMessage();
-  await lineClient.sendFlexMessage(replyToken, menuMessage.altText, menuMessage.contents);
-  Logger.info("發送主選單", { userId });
+  await lineClient.sendQuickReply(replyToken, "請選擇功能：", [
+    { label: "🍀 每日簽到", text: "簽到" },
+    { label: "🔮 抽!!!", text: "每日金句" },
+    { label: "📅 查看時程", text: "查看時程" },
+    { label: "📝 新增死線", text: "新增 Deadline" },
+  ]);
+  Logger.info("發送主選單（Quick Reply）", { userId });
 }
 
 /**
@@ -406,7 +436,7 @@ async function handleCheckIn(userId: string, replyToken: string) {
         });
       }
       
-      await lineClient.sendTextMessage(replyToken, message);
+      await sendTextMessageWithQuickReply(replyToken, message);
       Logger.info("簽到回應（已簽到）", { userId, consecutiveDays: result.consecutiveDays, todayDeadlinesCount: todayDeadlines.length, appUrl });
     } else {
       const quote = await llmUtilsService.generateMotivationQuote();
@@ -422,7 +452,7 @@ async function handleCheckIn(userId: string, replyToken: string) {
         message += `\n\n📅 今天沒有任何待辦事項，可以好好休息！`;
       }
       
-      await lineClient.sendTextMessage(replyToken, message);
+      await sendTextMessageWithQuickReply(replyToken, message);
       Logger.info("簽到回應（成功）", { userId, consecutiveDays: result.consecutiveDays, todayDeadlinesCount: todayDeadlines.length, appUrl });
     }
 
@@ -434,10 +464,7 @@ async function handleCheckIn(userId: string, replyToken: string) {
     await lineClient.sendQuickReply(
       replyToken,
       "",
-      [
-        { label: "主選單", text: "主選單" },
-        { label: "查看時程", text: "查看時程" },
-      ]
+      QUICK_REPLY_ITEMS
     );
   } catch (error) {
     // 記錄詳細錯誤資訊以便除錯
@@ -454,7 +481,7 @@ async function handleCheckIn(userId: string, replyToken: string) {
         vercelUrl: process.env.VERCEL_URL,
       }
     });
-    await lineClient.sendTextMessage(replyToken, `簽到時發生錯誤：${errorMessage}\n\n請稍後再試或聯繫管理員。`);
+    await sendTextMessageWithQuickReply(replyToken, `簽到時發生錯誤：${errorMessage}\n\n請稍後再試或聯繫管理員。`);
   }
 }
 
@@ -466,21 +493,11 @@ async function handleDailyQuote(userId: string, replyToken: string) {
   try {
     const quote = quoteService.getDailyQuote(userId);
     const message = `💬 今日金句：\n\n${quote}`;
-    await lineClient.sendTextMessage(replyToken, message);
+    await sendTextMessageWithQuickReply(replyToken, message);
     Logger.info("發送每日金句", { userId });
-
-    // 提供快速回覆
-    await lineClient.sendQuickReply(
-      replyToken,
-      "",
-      [
-        { label: "主選單", text: "主選單" },
-        { label: "查看時程", text: "查看時程" },
-      ]
-    );
   } catch (error) {
     Logger.error("處理每日金句失敗", { error, userId });
-    await lineClient.sendTextMessage(replyToken, "取得金句時發生錯誤，請稍後再試。");
+    await sendTextMessageWithQuickReply(replyToken, "取得金句時發生錯誤，請稍後再試。");
   }
 }
 
@@ -621,7 +638,7 @@ async function handleViewSchedule(userId: string, replyToken: string, text?: str
       });
     }
     
-    await lineClient.sendTextMessage(replyToken, message);
+    await sendTextMessageWithQuickReply(replyToken, message);
     
     // 發送打開時程表的按鈕，並提示「詳細的行程在這邊」
     await lineClient.sendMessages(replyToken, [
@@ -648,14 +665,11 @@ async function handleViewSchedule(userId: string, replyToken: string, text?: str
     await lineClient.sendQuickReply(
       replyToken,
       "",
-      [
-        { label: "主選單", text: "主選單" },
-        { label: "輸入 Deadline", text: "輸入 Deadline" },
-      ]
+      QUICK_REPLY_ITEMS
     );
   } catch (error) {
     Logger.error("處理查看時程失敗", { error, userId });
-    await lineClient.sendTextMessage(replyToken, "查看時程時發生錯誤，請稍後再試。");
+    await sendTextMessageWithQuickReply(replyToken, "查看時程時發生錯誤，請稍後再試。");
   }
 }
 
@@ -666,16 +680,24 @@ async function handleViewDeadlineDetail(userId: string, deadlineId: string, repl
   try {
     const deadline = await deadlineService.getDeadlineById(deadlineId);
     if (!deadline) {
-      await lineClient.sendTextMessage(replyToken, "找不到這個 Deadline。");
+      await sendTextMessageWithQuickReply(replyToken, "找不到這個 Deadline。");
       return;
     }
 
     const flexMessage = buildDeadlineDetailFlexMessage(deadline);
     await lineClient.sendFlexMessage(replyToken, flexMessage.altText, flexMessage.contents);
+    
+    // 提供快速回覆
+    await lineClient.sendQuickReply(
+      replyToken,
+      "",
+      QUICK_REPLY_ITEMS
+    );
+    
     Logger.info("發送 Deadline 詳情", { userId, deadlineId, title: deadline.title });
   } catch (error) {
     Logger.error("處理查看 Deadline 詳情失敗", { error, deadlineId });
-    await lineClient.sendTextMessage(replyToken, "查看詳情時發生錯誤，請稍後再試。");
+    await sendTextMessageWithQuickReply(replyToken, "查看詳情時發生錯誤，請稍後再試。");
   }
 }
 
@@ -707,7 +729,7 @@ async function handleResetData(userId: string, replyToken: string) {
     await connectDB();
     const user = await User.findOne({ lineUserId: userId });
     if (!user) {
-      await lineClient.sendTextMessage(replyToken, "找不到使用者資訊。");
+      await sendTextMessageWithQuickReply(replyToken, "找不到使用者資訊。");
       return;
     }
 
@@ -732,11 +754,11 @@ async function handleResetData(userId: string, replyToken: string) {
       `🔑 Token：已重置\n\n` +
       `你的帳號已恢復到初始狀態。`;
     
-    await lineClient.sendTextMessage(replyToken, message);
+    await sendTextMessageWithQuickReply(replyToken, message);
     Logger.info("清除用戶資料成功", { userId });
   } catch (error) {
     Logger.error("清除資料失敗", { error, userId });
-    await lineClient.sendTextMessage(replyToken, "清除資料時發生錯誤，請稍後再試。");
+    await sendTextMessageWithQuickReply(replyToken, "清除資料時發生錯誤，請稍後再試。");
   }
 }
 
@@ -775,7 +797,7 @@ async function handleAddDeadlineFromIntent(
         estimatedHours: entities.estimatedHours || 2,
       });
       const promptText = `已解析到標題：${entities.title}\n\n請輸入截止日期（格式：YYYY/MM/DD 或 12/20）：`;
-      await lineClient.sendTextMessage(replyToken, promptText);
+      await sendTextMessageWithQuickReply(replyToken, promptText);
       // 記錄 Bot 回應到歷史
       await userStateService.addToConversationHistory(userId, "assistant", promptText);
       return;
@@ -798,7 +820,7 @@ async function handleAddDeadlineFromIntent(
     await userStateService.addToConversationHistory(userId, "assistant", summary);
   } catch (error) {
     Logger.error("從意圖建立 Deadline 失敗", { error, userId, entities });
-    await lineClient.sendTextMessage(replyToken, "處理時發生錯誤，請稍後再試。");
+    await sendTextMessageWithQuickReply(replyToken, "處理時發生錯誤，請稍後再試。");
   }
 }
 
@@ -814,7 +836,7 @@ async function handleDefaultChat(context: BotContext, userId: string, text: stri
     } catch (initError) {
       const errorMsg = initError instanceof Error ? initError.message : String(initError);
       Logger.error("ChatService 初始化失敗", { error: initError });
-      await lineClient.sendTextMessage(replyToken, `系統錯誤：${errorMsg}\n\n請檢查環境變數設定。`);
+      await sendTextMessageWithQuickReply(replyToken, `系統錯誤：${errorMsg}\n\n請檢查環境變數設定。`);
       return;
     }
 
@@ -824,11 +846,11 @@ async function handleDefaultChat(context: BotContext, userId: string, text: stri
     // 記錄回應
     Logger.info("發送 LLM 回應", { userId, textLength: text.length });
 
-    // 發送回應
-    await lineClient.sendTextMessage(replyToken, response);
+    // 發送回應（帶 Quick Reply）
+    await sendTextMessageWithQuickReply(replyToken, response);
   } catch (error) {
     Logger.error("處理預設聊天失敗", { error, userId });
-    await lineClient.sendTextMessage(replyToken, "處理訊息時發生錯誤，請稍後再試。");
+    await sendTextMessageWithQuickReply(replyToken, "處理訊息時發生錯誤，請稍後再試。");
   }
 }
 
