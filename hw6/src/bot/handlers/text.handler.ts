@@ -137,7 +137,7 @@ export async function handleText(context: BotContext) {
       await handleViewSchedule(userId, replyToken, text, "direct_open");
       return;
     }
-    
+
     // 檢查是否包含時程相關關鍵字，交給 LLM 意圖識別處理
     const scheduleKeywords = [
       "時程", "行事曆", "deadline", "待辦", "行程", "schedule", "calendar",
