@@ -2,6 +2,8 @@ import connectDB from "@/lib/db/mongoose";
 import Deadline, { IDeadline, DeadlineStatus, DeadlineType } from "@/models/Deadline";
 import User from "@/models/User";
 import { Logger } from "@/lib/utils/logger";
+import { SmartSchedulerService } from "@/services/scheduler/smart-scheduler.service";
+import { StudyBlockService } from "@/services/study-block/study-block.service";
 
 export interface CreateDeadlineData {
   userId: string;
@@ -39,6 +41,40 @@ export class DeadlineService {
         estimatedHours: data.estimatedHours || 2,
         status: "pending",
       });
+
+      // 自動排程：建立 study blocks
+      try {
+        const scheduler = new SmartSchedulerService();
+        const scheduleResult = await scheduler.scheduleDeadline(deadline, data.userId);
+
+        if (scheduleResult.blocks.length > 0) {
+          const studyBlockService = new StudyBlockService();
+          const blocksToCreate = scheduleResult.blocks.map((block) => ({
+            userId: data.userId,
+            deadlineId: deadline._id.toString(),
+            date: block.date,
+            startTime: block.startTime,
+            endTime: block.endTime,
+            duration: block.duration,
+            title: block.title,
+            blockIndex: block.blockIndex,
+            totalBlocks: block.totalBlocks,
+          }));
+
+          await studyBlockService.createStudyBlocks(blocksToCreate);
+          Logger.info("自動排程成功", {
+            deadlineId: deadline._id,
+            blocksCount: scheduleResult.blocks.length,
+            warning: scheduleResult.warning,
+          });
+        }
+      } catch (scheduleError) {
+        // 排程失敗不影響 deadline 建立，只記錄錯誤
+        Logger.error("自動排程失敗", {
+          error: scheduleError,
+          deadlineId: deadline._id,
+        });
+      }
 
       return deadline;
     } catch (error) {
@@ -149,6 +185,11 @@ export class DeadlineService {
   async deleteDeadline(id: string): Promise<void> {
     try {
       await connectDB();
+      
+      // 同時刪除相關的 study blocks
+      const studyBlockService = new StudyBlockService();
+      await studyBlockService.deleteStudyBlocksByDeadline(id);
+      
       await Deadline.findByIdAndDelete(id).exec();
     } catch (error) {
       Logger.error("刪除 Deadline 失敗", { error, id });

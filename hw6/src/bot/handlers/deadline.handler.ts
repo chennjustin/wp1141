@@ -4,14 +4,96 @@ import { UserStateService } from "@/services/user-state/user-state.service";
 import { LLMUtilsService } from "@/services/llm/llm-utils.service";
 import { buildDeadlineDetailFlexMessage } from "@/lib/line/flex-messages";
 import { LineMessagingClient } from "@/lib/line/client";
+import { UserTokenService } from "@/services/user/user-token.service";
+import { StudyBlockService } from "@/services/study-block/study-block.service";
 import { Logger } from "@/lib/utils/logger";
 import User from "@/models/User";
+import { IDeadline } from "@/models/Deadline";
 import connectDB from "@/lib/db/mongoose";
 
 const deadlineService = new DeadlineService();
 const userStateService = new UserStateService();
 const llmUtilsService = new LLMUtilsService();
 const lineClient = new LineMessagingClient();
+const userTokenService = new UserTokenService();
+const studyBlockService = new StudyBlockService();
+
+/**
+ * 發送排程成功訊息
+ */
+async function sendScheduleSuccessMessage(
+  userId: string,
+  replyToken: string,
+  deadline: IDeadline
+): Promise<void> {
+  try {
+    // 取得或創建 viewToken
+    const viewToken = await userTokenService.getOrCreateViewToken(userId);
+
+    // 取得應用程式 URL
+    let appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    if (!appUrl) {
+      if (process.env.VERCEL_URL) {
+        const vercelUrl = process.env.VERCEL_URL;
+        if (vercelUrl.startsWith("http://") || vercelUrl.startsWith("https://")) {
+          appUrl = vercelUrl;
+        } else {
+          appUrl = `https://${vercelUrl}`;
+        }
+      } else {
+        appUrl = "http://localhost:3000";
+      }
+    }
+    appUrl = appUrl.replace(/\/$/, "");
+    if (!appUrl.startsWith("http://") && !appUrl.startsWith("https://")) {
+      appUrl = `https://${appUrl}`;
+    }
+
+    const scheduleUrl = `${appUrl}/schedule?token=${viewToken}`;
+
+    // 檢查是否有排程的 blocks
+    const blocks = await studyBlockService.getStudyBlocksByDeadline(deadline._id.toString());
+    
+    // 發送成功訊息
+    let message = `我收到你要建立「${deadline.title}」，預估需要 ${deadline.estimatedHours} 小時。\n\n`;
+    
+    if (blocks.length > 0) {
+      message += `我幫你排了一份學習計畫囉！📘\n\n你可以在下面查看：\n🔗「開啟我的時程表」`;
+    } else {
+      message += `✅ 已成功建立 Deadline！`;
+    }
+
+    await lineClient.sendTextMessage(replyToken, message);
+
+    // 如果有排程，發送時程表連結按鈕
+    if (blocks.length > 0) {
+      await lineClient.sendMessages(replyToken, [
+        {
+          type: "template",
+          altText: "開啟我的時程表",
+          template: {
+            type: "buttons",
+            text: "📅 開啟我的時程表",
+            actions: [
+              {
+                type: "uri",
+                label: "開啟我的時程表",
+                uri: scheduleUrl,
+              },
+            ],
+          },
+        },
+      ]);
+    }
+  } catch (error) {
+    Logger.error("發送排程成功訊息失敗", { error, userId, deadlineId: deadline._id });
+    // 如果發送失敗，至少發送基本成功訊息
+    await lineClient.sendTextMessage(
+      replyToken,
+      `✅ 已成功建立 Deadline：${deadline.title}`
+    );
+  }
+}
 
 /**
  * 處理逐步輸入 Deadline 的流程
@@ -244,9 +326,10 @@ export async function handleAddDeadlineStepByStep(
             estimatedHours: flowData.estimatedHours || 2,
           });
 
-          const successMessage = `✅ 已成功建立 Deadline：${deadline.title}`;
           await userStateService.clearState(userId); // clearState 會清除歷史記錄
-          await context.sendText(successMessage);
+          
+          // 發送排程成功訊息
+          await sendScheduleSuccessMessage(userId, replyToken, deadline);
         } else {
           const cancelMessage = "已取消建立。";
           await userStateService.clearState(userId); // clearState 會清除歷史記錄
@@ -553,9 +636,13 @@ export async function handleConfirmNLPDeadline(
       estimatedHours,
     });
 
-    const successMessage = `✅ 已成功建立 Deadline：${deadline.title}`;
     await userStateService.clearState(userId); // clearState 會清除歷史記錄
-    await context.sendText(successMessage);
+    
+    // 發送排程成功訊息
+    const replyToken = context.event.replyToken;
+    if (replyToken) {
+      await sendScheduleSuccessMessage(userId, replyToken, deadline);
+    }
   } catch (error) {
     Logger.error("確認建立 NLP Deadline 失敗", { error, userId });
     await context.sendText("建立時發生錯誤，請稍後再試。");
