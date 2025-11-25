@@ -1,5 +1,7 @@
 import { OpenAIClient } from "@/lib/llm/openai";
 import { Logger } from "@/lib/utils/logger";
+import { getTodayChinese } from "@/lib/utils/date";
+import { APP_CONFIG } from "@/lib/config/app.config";
 
 export type Intent = "check_in" | "daily_quote" | "view_schedule" | "add_deadline" | "other";
 
