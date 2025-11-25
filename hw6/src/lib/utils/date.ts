@@ -42,3 +42,20 @@ export function getTodayChineseFull(): string {
   return `${getTaiwanNow().format("YYYY年M月D日")} 星期${weekday}`;
 }
 
+/**
+ * 取得台灣時區的當前完整日期時間字串（ISO 8601格式）
+ * 例如：2025-11-26T14:30:00+08:00
+ */
+export function getCurrentDateTime(): string {
+  return getTaiwanNow().toISOString();
+}
+
+/**
+ * 取得台灣時區的當前日期時間中文格式（例如：2025年11月26日 星期三 14:30）
+ */
+export function getCurrentDateTimeChinese(): string {
+  const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
+  const weekday = weekdays[getTaiwanNow().day()];
+  return `${getTaiwanNow().format("YYYY年M月D日")} 星期${weekday} ${getTaiwanNow().format("HH:mm")}`;
+}
+

@@ -237,88 +237,124 @@ export class SmartSchedulerService {
     let dailyHoursUsed = 0;
     let dailyBlocksUsed = 0;
 
+    // 追蹤已嘗試的天數，避免無限循環
+    const maxDaysToTry = 30; // 最多嘗試30天
+    let daysTried = 0;
+
     for (const duration of blockDurations) {
-      // 如果已經排到現在之前，停止
-      if (currentDate.isBefore(now.startOf("day"))) {
+      // 如果已經嘗試太多天，停止
+      if (daysTried >= maxDaysToTry) {
+        Logger.warn("排程時嘗試天數過多，停止排程", {
+          deadlineId: deadline._id,
+          remainingBlocks: blockDurations.length - blockIndex + 1,
+        });
         break;
       }
 
-      // 尋找這一天可以排的時間
-      const dateKey = currentDate.format("YYYY-MM-DD");
-      const hours = availableSlots.get(dateKey);
+      let blockScheduled = false;
+      let attempts = 0;
+      const maxAttemptsPerBlock = 10; // 每個 block 最多嘗試10次
 
-      if (!hours) {
-        // 如果這一天沒有可用時間，往前一天
-        currentDate = currentDate.subtract(1, "day");
-        dailyHoursUsed = 0;
-        dailyBlocksUsed = 0;
-        continue;
-      }
+      // 嘗試安排這個 block，直到成功或超過嘗試次數
+      while (!blockScheduled && attempts < maxAttemptsPerBlock) {
+        attempts++;
+        
+        // 如果已經排到現在之前，停止
+        if (currentDate.isBefore(now.startOf("day"))) {
+          break;
+        }
 
-      // 檢查是否超過每天限制
-      if (
-        dailyHoursUsed + duration > SCHEDULE_CONFIG.MAX_HOURS_PER_DAY ||
-        dailyBlocksUsed >= SCHEDULE_CONFIG.MAX_BLOCKS_PER_DAY
-      ) {
-        // 往前一天
-        currentDate = currentDate.subtract(1, "day");
-        dailyHoursUsed = 0;
-        dailyBlocksUsed = 0;
-        continue;
-      }
+        // 尋找這一天可以排的時間
+        const dateKey = currentDate.format("YYYY-MM-DD");
+        const hours = availableSlots.get(dateKey);
 
-      // 尋找合適的開始時間
-      const startHour = this.findAvailableStartHour(
-        hours,
-        duration,
-        currentDate,
-        now
-      );
+        if (!hours) {
+          // 如果這一天沒有可用時間，往前一天
+          currentDate = currentDate.subtract(1, "day");
+          dailyHoursUsed = 0;
+          dailyBlocksUsed = 0;
+          daysTried++;
+          continue;
+        }
 
-      if (startHour === -1) {
-        // 這一天找不到合適時間，往前一天
-        currentDate = currentDate.subtract(1, "day");
-        dailyHoursUsed = 0;
-        dailyBlocksUsed = 0;
-        continue;
-      }
+        // 檢查是否超過每天限制
+        if (
+          dailyHoursUsed + duration > SCHEDULE_CONFIG.MAX_HOURS_PER_DAY ||
+          dailyBlocksUsed >= SCHEDULE_CONFIG.MAX_BLOCKS_PER_DAY
+        ) {
+          // 往前一天
+          currentDate = currentDate.subtract(1, "day");
+          dailyHoursUsed = 0;
+          dailyBlocksUsed = 0;
+          daysTried++;
+          continue;
+        }
 
-      // 建立 block
-      const startTime = currentDate.hour(startHour).minute(0).second(0);
-      const endTime = startTime.add(duration, "hour");
+        // 尋找合適的開始時間
+        const startHour = this.findAvailableStartHour(
+          hours,
+          duration,
+          currentDate,
+          now
+        );
 
-      blocks.push({
-        userId: deadline.userId as mongoose.Types.ObjectId,
-        deadlineId: deadline._id as mongoose.Types.ObjectId,
-        date: currentDate.toDate(),
-        startTime: startTime.toDate(),
-        endTime: endTime.toDate(),
-        duration,
-        title: `${deadline.title}（進度 ${blockIndex}/${totalBlocks}）`,
-        blockIndex,
-        totalBlocks,
-        status: "pending" as const,
-      });
+        if (startHour === -1) {
+          // 這一天找不到合適時間，往前一天
+          currentDate = currentDate.subtract(1, "day");
+          dailyHoursUsed = 0;
+          dailyBlocksUsed = 0;
+          daysTried++;
+          continue;
+        }
 
-      // 更新可用時間地圖（標記這個時段為已使用）
-      for (let h = startHour; h < startHour + duration; h++) {
-        if (h < 24) {
-          hours[h] = false;
+        // 建立 block
+        const startTime = currentDate.hour(startHour).minute(0).second(0);
+        const endTime = startTime.add(duration, "hour");
+
+        blocks.push({
+          userId: deadline.userId as mongoose.Types.ObjectId,
+          deadlineId: deadline._id as mongoose.Types.ObjectId,
+          date: currentDate.toDate(),
+          startTime: startTime.toDate(),
+          endTime: endTime.toDate(),
+          duration,
+          title: `${deadline.title}（進度 ${blockIndex}/${totalBlocks}）`,
+          blockIndex,
+          totalBlocks,
+          status: "pending" as const,
+        });
+
+        // 更新可用時間地圖（標記這個時段為已使用）
+        for (let h = startHour; h < startHour + duration; h++) {
+          if (h < 24) {
+            hours[h] = false;
+          }
+        }
+
+        dailyHoursUsed += duration;
+        dailyBlocksUsed += 1;
+        blockIndex += 1;
+        blockScheduled = true;
+
+        // 如果這一天已經排滿，往前一天
+        if (
+          dailyHoursUsed >= SCHEDULE_CONFIG.MAX_HOURS_PER_DAY ||
+          dailyBlocksUsed >= SCHEDULE_CONFIG.MAX_BLOCKS_PER_DAY
+        ) {
+          currentDate = currentDate.subtract(1, "day");
+          dailyHoursUsed = 0;
+          dailyBlocksUsed = 0;
+          daysTried++;
         }
       }
 
-      dailyHoursUsed += duration;
-      dailyBlocksUsed += 1;
-      blockIndex += 1;
-
-      // 如果這一天已經排滿，往前一天
-      if (
-        dailyHoursUsed >= SCHEDULE_CONFIG.MAX_HOURS_PER_DAY ||
-        dailyBlocksUsed >= SCHEDULE_CONFIG.MAX_BLOCKS_PER_DAY
-      ) {
-        currentDate = currentDate.subtract(1, "day");
-        dailyHoursUsed = 0;
-        dailyBlocksUsed = 0;
+      // 如果這個 block 無法安排，繼續下一個
+      if (!blockScheduled) {
+        Logger.warn("無法安排 block", {
+          deadlineId: deadline._id,
+          blockIndex,
+          duration,
+        });
       }
     }
 

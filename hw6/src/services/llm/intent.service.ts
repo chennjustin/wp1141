@@ -1,6 +1,6 @@
 import { OpenAIClient } from "@/lib/llm/openai";
 import { Logger } from "@/lib/utils/logger";
-import { getTodayChinese } from "@/lib/utils/date";
+import { getTodayChinese, getCurrentDateTimeChinese } from "@/lib/utils/date";
 import { APP_CONFIG } from "@/lib/config/app.config";
 
 export type Intent = "check_in" | "daily_quote" | "view_schedule" | "add_deadline" | "other";
@@ -55,19 +55,32 @@ export class IntentService {
   - estimatedHours（預估小時數，如果沒有提到則為 null）
   - type（exam/assignment/project/other，如果無法確定則為 null）
 
-日期解析規則（重要：當前年份是 ${APP_CONFIG.CURRENT_YEAR} 年）：
-- "今天"、"今日" → 今天的日期（YYYY-MM-DD，必須是 ${APP_CONFIG.CURRENT_YEAR} 年）
+日期時間解析規則（非常重要：當前日期時間是 ${getCurrentDateTimeChinese()}，${APP_CONFIG.CURRENT_YEAR} 年）：
+
+日期解析：
+- "今天"、"今日" → 今天的日期（必須是 ${APP_CONFIG.CURRENT_YEAR} 年）
 - "明天"、"明日" → 明天的日期（必須是 ${APP_CONFIG.CURRENT_YEAR} 年）
 - "下週X"、"下星期X" → 計算下週對應的日期（必須是 ${APP_CONFIG.CURRENT_YEAR} 年）
 - "X月X日"、"X/X" → 轉換為 ${APP_CONFIG.CURRENT_YEAR} 年對應日期
-- 所有日期都必須使用 ${APP_CONFIG.CURRENT_YEAR} 年，絕對不要使用 2023 年、2024 年或其他年份
-- 如果無法確定，設為 null
+- 所有日期都必須使用 ${APP_CONFIG.CURRENT_YEAR} 年，絕對不要使用其他年份
+
+時間解析：
+- "早上"、"上午" → 08:00-11:59（如果沒有具體時間，預設 09:00）
+- "下午" → 12:00-17:59（如果沒有具體時間，預設 14:00）
+- "晚上"、"傍晚" → 18:00-22:59（如果沒有具體時間，預設 20:00）
+- "凌晨" → 00:00-05:59（如果沒有具體時間，預設 02:00）
+- 具體時間（例如"6點"、"18:00"、"晚上8點"、"早上6點"）→ 直接使用
+- 如果沒有提到時間，預設為當天 23:59
+
+輸出格式：
+- dueDate 應該是完整的日期時間格式：YYYY-MM-DDTHH:mm（例如：2025-12-02T18:00）
+- 如果無法確定日期，設為 null
 
 請以 JSON 格式輸出：
 {
   "intent": "check_in" | "daily_quote" | "view_schedule" | "add_deadline" | "other",
   "entities": {
-    "date": "YYYY-MM-DD" | null,
+    "date": "YYYY-MM-DDTHH:mm" | null, // 完整的日期時間格式（ISO 8601）
     "title": "string" | null,
     "estimatedHours": number | null,
     "type": "exam" | "assignment" | "project" | "other" | null
@@ -82,9 +95,10 @@ export class IntentService {
 
 使用者訊息：${text}
 
-重要：當前年份是 ${APP_CONFIG.CURRENT_YEAR} 年。
-注意：今天是 ${getTodayChinese()}（${APP_CONFIG.CURRENT_YEAR}年）。
-所有日期解析都必須使用 ${APP_CONFIG.CURRENT_YEAR} 年作為基準年份。`;
+重要提醒：
+- 當前日期時間：${getCurrentDateTimeChinese()}（${APP_CONFIG.CURRENT_YEAR}年）
+- 必須解析完整的日期時間（年、月、日、時、分），不能只有日期
+- 所有日期解析都必須使用 ${APP_CONFIG.CURRENT_YEAR} 年作為基準年份。`;
 
       const response = await this.llmClient.chat([
         {

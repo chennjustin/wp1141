@@ -1,6 +1,6 @@
 import { OpenAIClient } from "@/lib/llm/openai";
 import { Logger } from "@/lib/utils/logger";
-import { getTodayChinese } from "@/lib/utils/date";
+import { getTodayChinese, getCurrentDateTimeChinese } from "@/lib/utils/date";
 import { APP_CONFIG } from "@/lib/config/app.config";
 
 export class LLMUtilsService {
@@ -86,17 +86,18 @@ export class LLMUtilsService {
   ): Promise<{
     title: string;
     type: "exam" | "assignment" | "project" | "other";
-    dueDate: string | null; // YYYY-MM-DD
+    dueDate: string | null; // YYYY-MM-DDTHH:mm (ISO 8601格式，包含時間)
     estimatedHours: number;
   } | null> {
     try {
+      const currentDateTime = getCurrentDateTimeChinese();
       const prompt = `你是一個 deadline 解析器，專門解析台灣大學生的作業和考試資訊。
 
 請從以下中文句子中提取資訊，並以 JSON 格式輸出：
 {
   "title": "作業或考試名稱",
   "type": "exam" | "assignment" | "project" | "other",
-  "dueDate": "YYYY-MM-DD" 或 null（如果無法確定日期），
+  "dueDate": "YYYY-MM-DDTHH:mm" 或 null（完整的日期時間，ISO 8601格式，如果無法確定則為 null），
   "estimatedHours": 數字（預估需要的小時數，如果沒有提到則預設為 2）
 }
 
@@ -106,13 +107,32 @@ export class LLMUtilsService {
    - 包含「作業」「HW」「報告」→ "assignment"
    - 包含「專題」「project」→ "project"
    - 其他 → "other"
-2. dueDate 必須是 YYYY-MM-DD 格式，如果無法確定則設為 null
+
+2. dueDate 解析規則（非常重要）：
+   - 格式：YYYY-MM-DDTHH:mm（ISO 8601格式，例如：2025-12-02T18:00）
+   - 當前日期時間：${currentDateTime}（${APP_CONFIG.CURRENT_YEAR}年）
+   - 如果提到「今天」「今日」→ 使用今天的日期，時間根據上下文判斷（例如「今天下午6點」→ ${APP_CONFIG.CURRENT_YEAR}-${new Date().getMonth() + 1}-${new Date().getDate()}T18:00）
+   - 如果提到「明天」「明日」→ 使用明天的日期，時間根據上下文判斷
+   - 如果提到「下週X」「下星期X」→ 計算下週對應的日期，時間根據上下文判斷
+   - 如果提到「X月X日」→ 轉換為 ${APP_CONFIG.CURRENT_YEAR} 年對應日期，時間根據上下文判斷
+   - 時間解析：
+     * 「早上」「上午」→ 08:00-11:59（如果沒有具體時間，預設 09:00）
+     * 「下午」→ 12:00-17:59（如果沒有具體時間，預設 14:00）
+     * 「晚上」「傍晚」→ 18:00-22:59（如果沒有具體時間，預設 20:00）
+     * 「凌晨」→ 00:00-05:59（如果沒有具體時間，預設 02:00）
+     * 具體時間（例如「6點」「18:00」「晚上8點」）→ 直接使用
+   - 如果沒有提到時間，預設為當天 23:59
+   - 所有日期都必須使用 ${APP_CONFIG.CURRENT_YEAR} 年，絕對不要使用其他年份
+   - 如果無法確定日期，設為 null
+
 3. estimatedHours 如果沒有提到，預設為 2
+
 4. 只輸出 JSON，不要其他文字
 
-重要：當前年份是 ${APP_CONFIG.CURRENT_YEAR} 年。
-注意：今天是 ${getTodayChinese()}（${APP_CONFIG.CURRENT_YEAR}年）。
-所有日期解析都必須使用 ${APP_CONFIG.CURRENT_YEAR} 年作為基準年份。
+重要提醒：
+- 當前日期時間：${currentDateTime}（${APP_CONFIG.CURRENT_YEAR}年）
+- 所有日期解析都必須使用 ${APP_CONFIG.CURRENT_YEAR} 年作為基準年份
+- 必須解析完整的日期時間（年、月、日、時、分），不能只有日期
 
 使用者輸入：${text}`;
 
@@ -152,9 +172,14 @@ export class LLMUtilsService {
         return null;
       }
 
-      // 驗證日期格式（如果存在）
-      if (parsed.dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(parsed.dueDate)) {
-        parsed.dueDate = null;
+      // 驗證日期時間格式（如果存在）- 支援 YYYY-MM-DDTHH:mm 或 YYYY-MM-DD
+      if (parsed.dueDate) {
+        // 如果是只有日期的格式，轉換為當天 23:59
+        if (/^\d{4}-\d{2}-\d{2}$/.test(parsed.dueDate)) {
+          parsed.dueDate = `${parsed.dueDate}T23:59`;
+        } else if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(parsed.dueDate)) {
+          parsed.dueDate = null;
+        }
       }
 
       // 確保 estimatedHours 是數字
@@ -171,32 +196,46 @@ export class LLMUtilsService {
   }
 
   /**
-   * 從自然語言解析日期
+   * 從自然語言解析日期時間（返回完整的日期時間，ISO 8601格式）
    */
   async parseDateFromText(text: string): Promise<string | null> {
     try {
-      const prompt = `請將以下中文日期描述轉換為 YYYY-MM-DD 格式的日期。
+      const currentDateTime = getCurrentDateTimeChinese();
+      const prompt = `請將以下中文日期時間描述轉換為 YYYY-MM-DDTHH:mm 格式的完整日期時間（ISO 8601格式）。
 
-規則（重要：當前年份是 ${APP_CONFIG.CURRENT_YEAR} 年）：
+規則（非常重要：當前日期時間是 ${currentDateTime}，${APP_CONFIG.CURRENT_YEAR} 年）：
+
+日期解析：
 1. 如果提到「今天」「今日」→ 使用今天的日期（必須是 ${APP_CONFIG.CURRENT_YEAR} 年）
 2. 如果提到「明天」「明日」→ 使用明天的日期（必須是 ${APP_CONFIG.CURRENT_YEAR} 年）
 3. 如果提到「下週X」「下星期X」→ 計算下週對應的日期（必須是 ${APP_CONFIG.CURRENT_YEAR} 年）
 4. 如果提到「X月X日」「X/X」→ 轉換為 ${APP_CONFIG.CURRENT_YEAR} 年對應日期
-5. 所有日期都必須使用 ${APP_CONFIG.CURRENT_YEAR} 年，絕對不要使用 2023 年、2024 年或其他年份
-6. 如果無法確定，返回 null
-7. 只輸出 JSON 格式：{"dueDate": "YYYY-MM-DD"} 或 {"dueDate": null}
-8. 不要輸出其他文字
+5. 所有日期都必須使用 ${APP_CONFIG.CURRENT_YEAR} 年，絕對不要使用其他年份
+
+時間解析：
+- 「早上」「上午」→ 08:00-11:59（如果沒有具體時間，預設 09:00）
+- 「下午」→ 12:00-17:59（如果沒有具體時間，預設 14:00）
+- 「晚上」「傍晚」→ 18:00-22:59（如果沒有具體時間，預設 20:00）
+- 「凌晨」→ 00:00-05:59（如果沒有具體時間，預設 02:00）
+- 具體時間（例如「6點」「18:00」「晚上8點」「早上6點」）→ 直接使用
+- 如果沒有提到時間，預設為當天 23:59
+
+輸出格式：
+- 只輸出 JSON 格式：{"dueDate": "YYYY-MM-DDTHH:mm"} 或 {"dueDate": null}
+- 例如：{"dueDate": "2025-12-02T18:00"} 或 {"dueDate": "2025-12-02T06:00"}
+- 不要輸出其他文字
 
 使用者輸入：${text}
 
-重要：當前年份是 ${APP_CONFIG.CURRENT_YEAR} 年。
-注意：今天是 ${getTodayChinese()}（${APP_CONFIG.CURRENT_YEAR}年）。
-所有日期解析都必須使用 ${APP_CONFIG.CURRENT_YEAR} 年作為基準年份。`;
+重要提醒：
+- 當前日期時間：${currentDateTime}（${APP_CONFIG.CURRENT_YEAR}年）
+- 必須解析完整的日期時間（年、月、日、時、分），不能只有日期
+- 所有日期解析都必須使用 ${APP_CONFIG.CURRENT_YEAR} 年作為基準年份`;
 
       const response = await this.llmClient.chat([
         {
           role: "system",
-          content: "你是一個日期解析器，只輸出有效的 JSON 格式。",
+          content: "你是一個日期時間解析器，只輸出有效的 JSON 格式。",
         },
         {
           role: "user",
@@ -208,14 +247,19 @@ export class LLMUtilsService {
       const cleaned = response.trim().replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
       const parsed = JSON.parse(cleaned);
 
-      // 驗證日期格式
-      if (parsed.dueDate && /^\d{4}-\d{2}-\d{2}$/.test(parsed.dueDate)) {
-        return parsed.dueDate;
+      // 驗證日期時間格式
+      if (parsed.dueDate) {
+        // 如果是只有日期的格式，轉換為當天 23:59
+        if (/^\d{4}-\d{2}-\d{2}$/.test(parsed.dueDate)) {
+          return `${parsed.dueDate}T23:59`;
+        } else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(parsed.dueDate)) {
+          return parsed.dueDate;
+        }
       }
 
       return null;
     } catch (error) {
-      Logger.error("解析日期失敗", { error, text });
+      Logger.error("解析日期時間失敗", { error, text });
       return null;
     }
   }

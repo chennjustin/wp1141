@@ -38,10 +38,10 @@ const TYPE_COLORS = {
   },
 };
 
-// Deadline 紅色提醒顏色
+// Deadline 紅色提醒顏色（細的樣式）
 const DEADLINE_COLORS = {
-  bg: "bg-red-200",
-  border: "border-red-400",
+  bg: "bg-red-100",
+  border: "border-red-300",
   text: "text-red-900",
 };
 
@@ -61,6 +61,20 @@ function ScheduleContent() {
     const today = dayjs();
     return today.startOf("week").add(1, "day").toDate(); // Monday
   });
+
+  // 手機版：單日視圖管理
+  const [currentDay, setCurrentDay] = useState(() => dayjs().toDate());
+  const [isMobileView, setIsMobileView] = useState(false);
+
+  // 檢測是否為手機版
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobileView(window.innerWidth < 768); // md breakpoint
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   const weekEnd = useMemo(() => {
     return dayjs(currentWeekStart).add(6, "day").toDate();
@@ -96,13 +110,15 @@ function ScheduleContent() {
     return dayjs(date).isSame(dayjs(), "day");
   }, []);
 
-  // 獲取某個日期某個小時的 deadlines（紅色提醒，顯示在截止日當天的 23:00）
+  // 獲取某個日期某個小時的 deadlines（紅色提醒，顯示在截止日當天的實際時間）
   const getDeadlinesAtSlot = useCallback((date: Date, hour: number) => {
-    const dateStr = dayjs(date).format("YYYY-MM-DD");
     return deadlines.filter((d) => {
-      const deadlineDate = dayjs(d.dueDate).format("YYYY-MM-DD");
-      // Deadline 顯示在截止日當天的 23:00（或可設定時間）
-      return deadlineDate === dateStr && hour === 23;
+      const deadlineDateTime = dayjs(d.dueDate);
+      const deadlineDate = deadlineDateTime.format("YYYY-MM-DD");
+      const deadlineHour = deadlineDateTime.hour();
+      const slotDate = dayjs(date).format("YYYY-MM-DD");
+      // Deadline 顯示在實際的截止時間
+      return deadlineDate === slotDate && deadlineHour === hour;
     });
   }, [deadlines]);
 
@@ -123,12 +139,49 @@ function ScheduleContent() {
       const blockDate = dayjs(block.startTime).format("YYYY-MM-DD");
       return blockDate === dateStr;
     });
-    // Debug: 檢查 blocks
-    if (blocks.length > 0) {
-      console.log(`Date ${dateStr} has ${blocks.length} blocks:`, blocks);
-    }
     return blocks;
   }, [studyBlocks]);
+
+  // 根據 deadlineId 獲取對應的死線，用於決定顏色
+  const getDeadlineById = useCallback((deadlineId: string) => {
+    return deadlines.find((d) => d.id === deadlineId);
+  }, [deadlines]);
+
+  // 為不同的死線生成不同的顏色（基於 deadlineId 的 hash）
+  const getBlockColorByDeadlineId = useCallback((deadlineId: string) => {
+    const deadline = getDeadlineById(deadlineId);
+    if (!deadline) return TYPE_COLORS.other;
+    
+    // 使用 deadlineId 的 hash 來生成不同的顏色變體
+    let hash = 0;
+    for (let i = 0; i < deadlineId.length; i++) {
+      hash = deadlineId.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    // 根據 type 選擇基礎顏色，然後根據 hash 調整
+    const baseColors = TYPE_COLORS[deadline.type] || TYPE_COLORS.other;
+    
+    // 如果有多個死線，可以根據 hash 調整顏色
+    // 這裡我們直接使用 type 的顏色，但可以根據需要調整
+    return baseColors;
+  }, [getDeadlineById]);
+
+  // 手機版：獲取單日的 blocks 和 deadlines
+  const getDayBlocks = useCallback((date: Date) => {
+    const dateStr = dayjs(date).format("YYYY-MM-DD");
+    return studyBlocks.filter((block) => {
+      const blockDate = dayjs(block.startTime).format("YYYY-MM-DD");
+      return blockDate === dateStr;
+    });
+  }, [studyBlocks]);
+
+  const getDayDeadlines = useCallback((date: Date) => {
+    const dateStr = dayjs(date).format("YYYY-MM-DD");
+    return deadlines.filter((deadline) => {
+      const deadlineDate = dayjs(deadline.dueDate).format("YYYY-MM-DD");
+      return deadlineDate === dateStr;
+    });
+  }, [deadlines]);
 
   // 週切換
   const goToPrevWeek = () => {
@@ -137,6 +190,20 @@ function ScheduleContent() {
 
   const goToNextWeek = () => {
     setCurrentWeekStart(dayjs(currentWeekStart).add(1, "week").toDate());
+  };
+
+  // 手機版：單日切換
+  const goToPrevDay = () => {
+    setCurrentDay(dayjs(currentDay).subtract(1, "day").toDate());
+  };
+
+  const goToNextDay = () => {
+    setCurrentDay(dayjs(currentDay).add(1, "day").toDate());
+  };
+
+  const goToToday = () => {
+    setCurrentDay(dayjs().toDate());
+    setCurrentWeekStart(dayjs().startOf("week").add(1, "day").toDate());
   };
 
   // 週範圍文字
@@ -154,49 +221,102 @@ function ScheduleContent() {
     return `剩餘 ${days} 天`;
   };
 
-  // 拖曳處理
+  // 拖曳處理（支援死線和讀書時間）
   const handleDragEnd = async (result: DropResult) => {
     setIsDragging(false);
     
     if (!result.destination || !token) return;
 
     const { draggableId, destination } = result;
-    const block = studyBlocks.find((b) => b.id === draggableId);
-    if (!block) return;
-
-    // 解析目標位置（格式：dateStr-col，例如 "2025-11-25-col"）
-    const targetDateStr = destination.droppableId.replace("-col", "");
-    const targetDate = dayjs(targetDateStr).toDate();
-
-    // 計算目標時間（預設為該日期的第一個可用時間，例如 9:00）
-    // 這裡簡化處理，實際應該根據拖曳位置計算具體時間
-    const newStartTime = dayjs(targetDate).hour(9).minute(0).second(0).toDate();
-    const newEndTime = dayjs(newStartTime).add(block.duration, "hour").toDate();
-
-    // 更新 block
-    try {
-      const url = new URL(`${window.location.origin}/api/study-blocks/${block.id}`);
-      url.searchParams.set("token", token);
-
-      const response = await fetch(url.toString(), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          date: newStartTime.toISOString(),
-          startTime: newStartTime.toISOString(),
-          endTime: newEndTime.toISOString(),
-        }),
+    
+    // 解析目標位置
+    let targetDateStr: string;
+    let targetHour: number;
+    
+    // 判斷是手機版格式（YYYY-MM-DD-HH）還是桌面版格式（dateStr-col）
+    if (destination.droppableId.match(/^\d{4}-\d{2}-\d{2}-\d+$/)) {
+      // 手機版格式：YYYY-MM-DD-HH
+      const parts = destination.droppableId.split("-");
+      targetDateStr = `${parts[0]}-${parts[1]}-${parts[2]}`;
+      targetHour = parseInt(parts[3]) || HOURS[0] || 9;
+    } else {
+      // 桌面版格式：dateStr-col
+      targetDateStr = destination.droppableId.replace("-col", "");
+      const allDeadlinesForTargetDate = deadlines.filter((d) => {
+        const dDate = dayjs(d.dueDate).format("YYYY-MM-DD");
+        return dDate === targetDateStr;
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to update block");
+      const deadlineCount = allDeadlinesForTargetDate.length;
+      if (destination.index < deadlineCount) {
+        targetHour = HOURS[0] || 9;
+      } else {
+        const blockIndex = destination.index - deadlineCount;
+        targetHour = HOURS[Math.min(blockIndex, HOURS.length - 1)] || HOURS[0] || 9;
       }
+    }
+    
+    const targetDate = dayjs(targetDateStr).toDate();
+    const newStartTime = dayjs(targetDate).hour(targetHour).minute(0).second(0).toDate();
 
-      // 重新載入資料
-      refetchBlocks();
-    } catch (error) {
-      console.error("Failed to update block:", error);
-      alert("更新失敗，請稍後再試");
+    // 檢查是死線還是讀書時間（死線的 draggableId 格式為 "deadline-{id}"）
+    const isDeadline = draggableId.startsWith("deadline-");
+    const deadlineId = isDeadline ? draggableId.replace("deadline-", "") : null;
+    const deadline = deadlineId ? deadlines.find((d) => d.id === deadlineId) : null;
+    const block = !isDeadline ? studyBlocks.find((b) => b.id === draggableId) : null;
+
+    if (deadline) {
+      // 更新死線的截止時間
+      try {
+        const url = new URL(`${window.location.origin}/api/deadlines/${deadline.id}`);
+        url.searchParams.set("token", token);
+
+        const response = await fetch(url.toString(), {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            dueDate: newStartTime.toISOString(),
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to update deadline");
+        }
+
+        // 重新載入資料
+        refetchDeadlines();
+        refetchBlocks(); // 死線時間改變可能影響排程
+      } catch (error) {
+        console.error("Failed to update deadline:", error);
+        alert("更新失敗，請稍後再試");
+      }
+    } else if (block) {
+      // 更新讀書時間
+      const newEndTime = dayjs(newStartTime).add(block.duration, "hour").toDate();
+
+      try {
+        const url = new URL(`${window.location.origin}/api/study-blocks/${block.id}`);
+        url.searchParams.set("token", token);
+
+        const response = await fetch(url.toString(), {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            date: newStartTime.toISOString(),
+            startTime: newStartTime.toISOString(),
+            endTime: newEndTime.toISOString(),
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to update block");
+        }
+
+        // 重新載入資料
+        refetchBlocks();
+      } catch (error) {
+        console.error("Failed to update block:", error);
+        alert("更新失敗，請稍後再試");
+      }
     }
   };
 
@@ -334,40 +454,183 @@ function ScheduleContent() {
 
   return (
     <DragDropContext onDragEnd={handleDragEnd} onDragStart={handleDragStart}>
-      <div className="min-h-screen bg-[#F7F7F7] pb-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+      <div className="min-h-screen bg-[#F7F7F7] pb-16 sm:pb-8">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 pt-4 sm:pt-8">
           {/* Header */}
-          <div className="mb-8 text-center">
-            <h1 className="text-3xl font-light text-gray-800 mb-1">我的時程表</h1>
-            <p className="text-sm text-gray-500">拯救期末大作戰</p>
+          <div className="mb-4 sm:mb-8 text-center">
+            <h1 className="text-2xl sm:text-3xl font-light text-gray-800 mb-1">我的時程表</h1>
+            <p className="text-xs sm:text-sm text-gray-500">拯救期末大作戰</p>
           </div>
 
-          {/* Weekly Calendar Card */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
-            {/* 週導覽 */}
-            <div className="flex items-center justify-between mb-6">
+          {/* 手機版：單日視圖 */}
+          {isMobileView ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
+              {/* 日期導覽 */}
+              <div className="flex items-center justify-between mb-4">
+                <button
+                  onClick={goToPrevDay}
+                  className="p-2 rounded-lg active:bg-gray-50 transition-colors text-gray-600"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <div className="flex flex-col items-center">
+                  <span className="text-sm font-medium text-gray-700">
+                    {dayjs(currentDay).format("M 月 D 日")}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {WEEKDAYS[dayjs(currentDay).day()]}
+                    {isToday(currentDay) && " · 今天"}
+                  </span>
+                </div>
+                <button
+                  onClick={goToNextDay}
+                  className="p-2 rounded-lg active:bg-gray-50 transition-colors text-gray-600"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
               <button
-                onClick={goToPrevWeek}
-                className="p-2 rounded-lg hover:bg-gray-50 transition-colors text-gray-600 hover:text-gray-800"
+                onClick={goToToday}
+                className="w-full py-2 text-xs text-blue-600 hover:text-blue-700 active:bg-blue-50 rounded-lg transition-colors mb-4"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
+                回到今天
               </button>
-              <span className="text-sm font-medium text-gray-700">{weekRangeText()}</span>
-              <button
-                onClick={goToNextWeek}
-                className="p-2 rounded-lg hover:bg-gray-50 transition-colors text-gray-600 hover:text-gray-800"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
 
-            {/* Calendar Grid */}
-            <div className="overflow-x-auto">
-              <div className="flex min-w-[800px]">
+              {/* 單日時間軸 */}
+              <div className="space-y-2">
+                {HOURS.map((hour) => {
+                  const hourDeadlines = getDayDeadlines(currentDay).filter((d) => {
+                    return dayjs(d.dueDate).hour() === hour;
+                  });
+                  const hourBlocks = getDayBlocks(currentDay).filter((b) => {
+                    return dayjs(b.startTime).hour() === hour;
+                  });
+
+                  return (
+                    <Droppable key={hour} droppableId={`${dayjs(currentDay).format("YYYY-MM-DD")}-${hour}`}>
+                      {(provided) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          className="border border-gray-200 rounded-lg p-2 min-h-[60px] bg-gray-50"
+                        >
+                          <div className="flex items-start gap-2 mb-1">
+                            <span className="text-xs font-medium text-gray-500 w-12 flex-shrink-0">
+                              {hour}:00
+                            </span>
+                            <div className="flex-1 space-y-1">
+                              {/* Deadlines */}
+                              {hourDeadlines.map((deadline, idx) => {
+                                const deadlineDateTime = dayjs(deadline.dueDate);
+                                return (
+                                  <Draggable
+                                    key={`deadline-${deadline.id}`}
+                                    draggableId={`deadline-${deadline.id}`}
+                                    index={idx}
+                                  >
+                                    {(provided, snapshot) => (
+                                      <div
+                                        ref={provided.innerRef}
+                                        {...provided.draggableProps}
+                                        {...provided.dragHandleProps}
+                                        className={`${DEADLINE_COLORS.bg} ${DEADLINE_COLORS.border} border rounded px-2 py-1 text-xs ${
+                                          snapshot.isDragging ? "opacity-50" : ""
+                                        }`}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeadlineClick(deadline);
+                                        }}
+                                      >
+                                        <div className="flex items-center gap-1">
+                                          <span>⚠️</span>
+                                          <span className="font-medium text-red-900 truncate">{deadline.title}</span>
+                                          <span className="text-red-700 text-[10px]">
+                                            {deadlineDateTime.format("HH:mm")}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </Draggable>
+                                );
+                              })}
+                              {/* Blocks */}
+                              {hourBlocks.map((block, idx) => {
+                                const colors = getBlockColorByDeadlineId(block.deadlineId);
+                                return (
+                                  <Draggable
+                                    key={block.id}
+                                    draggableId={block.id}
+                                    index={hourDeadlines.length + idx}
+                                  >
+                                    {(provided, snapshot) => (
+                                      <div
+                                        ref={provided.innerRef}
+                                        {...provided.draggableProps}
+                                        {...provided.dragHandleProps}
+                                        className={`${colors.bg} ${colors.border} border rounded px-2 py-1 text-xs ${
+                                          snapshot.isDragging ? "opacity-50" : ""
+                                        }`}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleBlockClick(block);
+                                        }}
+                                      >
+                                        <div className="font-medium text-gray-800 truncate">{block.title}</div>
+                                        <div className="text-[10px] text-gray-600 flex items-center gap-1 mt-0.5">
+                                          <span className={colors.badge + " px-1 py-0.5 rounded"}>
+                                            {TYPE_NAMES[block.type]}
+                                          </span>
+                                          <span>{dayjs(block.startTime).format("HH:mm")}</span>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </Draggable>
+                                );
+                              })}
+                              {hourDeadlines.length === 0 && hourBlocks.length === 0 && (
+                                <div className="text-[10px] text-gray-400">無安排</div>
+                              )}
+                            </div>
+                          </div>
+                          {provided.placeholder}
+                        </div>
+                      )}
+                    </Droppable>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            /* 桌面版：週視圖 */
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 mb-6 sm:mb-8">
+              {/* 週導覽 */}
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <button
+                  onClick={goToPrevWeek}
+                  className="p-2 rounded-lg hover:bg-gray-50 transition-colors text-gray-600 hover:text-gray-800"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <span className="text-sm font-medium text-gray-700">{weekRangeText()}</span>
+                <button
+                  onClick={goToNextWeek}
+                  className="p-2 rounded-lg hover:bg-gray-50 transition-colors text-gray-600 hover:text-gray-800"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Calendar Grid */}
+              <div className="overflow-x-auto -mx-4 sm:mx-0">
+                <div className="flex min-w-[800px] px-4 sm:px-0">
                 {/* 時間軸 */}
                 <div className="w-20 flex-shrink-0 pr-4">
                   {HOURS.map((hour) => (
@@ -431,28 +694,64 @@ function ScheduleContent() {
                                       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-blue-50 transition-opacity" />
                                     )}
 
-                                    {/* Deadline 紅色提醒（顯示在 23:00） */}
-                                    {slotDeadlines.map((deadline) => (
-                                      <div
-                                        key={`deadline-${deadline.id}`}
-                                        className={`absolute left-1 right-1 ${DEADLINE_COLORS.bg} ${DEADLINE_COLORS.border} border-2 rounded-lg shadow-sm p-2 cursor-pointer hover:shadow-md transition-shadow z-30`}
-                                        style={{
-                                          top: "0px",
-                                          height: "64px", // 1 小時高度
-                                        }}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleDeadlineClick(deadline);
-                                        }}
-                                      >
-                                        <div className="text-xs font-semibold text-red-900 mb-1 truncate">
-                                          ⚠️ {deadline.title}
-                                        </div>
-                                        <div className="text-[10px] text-red-800">
-                                          <span className="font-medium">截止日</span>
-                                        </div>
-                                      </div>
-                                    ))}
+                                    {/* Deadline 紅色提醒（顯示在實際截止時間，細的樣式） */}
+                                    {slotDeadlines.map((deadline, deadlineIndex) => {
+                                      const deadlineDateTime = dayjs(deadline.dueDate);
+                                      const deadlineHour = deadlineDateTime.hour();
+                                      const deadlineMinute = deadlineDateTime.minute();
+                                      // 計算在該小時槽中的位置（分鐘偏移）
+                                      const minuteOffset = (deadlineMinute / 60) * 64; // 64px per hour
+                                      
+                                      // 計算該日期欄中所有可拖動項目的總索引
+                                      // 死線在前，blocks 在後
+                                      const slotDateStr = dayjs(date).format("YYYY-MM-DD");
+                                      const allDeadlinesForDate = deadlines.filter((d) => {
+                                        const dDate = dayjs(d.dueDate).format("YYYY-MM-DD");
+                                        return dDate === slotDateStr;
+                                      });
+                                      const deadlineGlobalIndex = allDeadlinesForDate.findIndex((d) => d.id === deadline.id);
+                                      
+                                      return (
+                                        <Draggable
+                                          key={`deadline-${deadline.id}`}
+                                          draggableId={`deadline-${deadline.id}`}
+                                          index={deadlineGlobalIndex >= 0 ? deadlineGlobalIndex : deadlineIndex}
+                                        >
+                                          {(provided, snapshot) => (
+                                            <div
+                                              ref={provided.innerRef}
+                                              {...provided.draggableProps}
+                                              {...provided.dragHandleProps}
+                                              className={`absolute left-2 right-2 ${DEADLINE_COLORS.bg} ${DEADLINE_COLORS.border} border rounded-md shadow-sm px-2 py-1 cursor-move hover:shadow-md transition-shadow z-30 ${
+                                                snapshot.isDragging ? "opacity-50 scale-105 shadow-lg" : ""
+                                              }`}
+                                              style={{
+                                                ...provided.draggableProps.style,
+                                                top: `${minuteOffset}px`,
+                                                height: "32px", // 細的高度
+                                                minHeight: "32px",
+                                              }}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeadlineClick(deadline);
+                                              }}
+                                            >
+                                              <div className="flex items-center gap-1.5 h-full">
+                                                <span className="text-xs">⚠️</span>
+                                                <div className="flex-1 min-w-0">
+                                                  <div className="text-xs font-semibold text-red-900 truncate leading-tight">
+                                                    {deadline.title}
+                                                  </div>
+                                                  <div className="text-[10px] text-red-700 leading-tight">
+                                                    截止日 {deadlineDateTime.format("HH:mm")}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          )}
+                                        </Draggable>
+                                      );
+                                    })}
                                   </div>
                                 );
                               })}
@@ -460,7 +759,8 @@ function ScheduleContent() {
                               {/* Study Blocks（絕對定位） */}
                               {allBlocksForDate.map((block, blockIndex) => {
                                 const { top, height } = calculateBlockPosition(block, date);
-                                const colors = TYPE_COLORS[block.type];
+                                // 使用對應死線的顏色，而不是 block.type
+                                const colors = getBlockColorByDeadlineId(block.deadlineId);
                                 
                                 // 檢查 block 是否在顯示範圍內
                                 const blockStartHour = dayjs(block.startTime).hour();
@@ -473,43 +773,80 @@ function ScheduleContent() {
                                   return null;
                                 }
 
+                                // 計算該日期欄中所有可拖動項目的總索引
+                                // 死線在前，blocks 在後
+                                const blockDateStr = dayjs(date).format("YYYY-MM-DD");
+                                const allDeadlinesForDate = deadlines.filter((d) => {
+                                  const dDate = dayjs(d.dueDate).format("YYYY-MM-DD");
+                                  return dDate === blockDateStr;
+                                });
+                                const globalBlockIndex = allDeadlinesForDate.length + blockIndex;
+
+                                // 如果是 1 小時的區塊，使用更緊湊的設計
+                                const isOneHour = block.duration <= 1;
+                                
                                 return (
-                                  <Draggable key={block.id} draggableId={block.id} index={blockIndex}>
+                                  <Draggable key={block.id} draggableId={block.id} index={globalBlockIndex}>
                                     {(provided, snapshot) => (
                                       <div
                                         ref={provided.innerRef}
                                         {...provided.draggableProps}
                                         {...provided.dragHandleProps}
-                                        className={`absolute left-1 right-1 ${colors.bg} ${colors.border} border-2 rounded-lg shadow-sm p-2 cursor-move hover:shadow-md transition-shadow z-20 ${
-                                          snapshot.isDragging ? "opacity-50" : ""
-                                        }`}
+                                        className={`absolute left-1 right-1 ${colors.bg} ${colors.border} border-2 rounded-lg shadow-sm cursor-move hover:shadow-md transition-shadow z-20 ${
+                                          snapshot.isDragging ? "opacity-50 scale-105 shadow-lg" : ""
+                                        } ${isOneHour ? "px-1.5 py-1" : "p-2"}`}
                                         style={{
                                           ...provided.draggableProps.style,
                                           top: `${top}px`,
                                           height: `${height}px`,
-                                          minHeight: "32px",
+                                          minHeight: isOneHour ? "48px" : "32px",
                                         }}
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           handleBlockClick(block);
                                         }}
                                       >
-                                        <div className="text-xs font-medium text-gray-800 mb-1 truncate leading-tight">
-                                          {block.title}
-                                        </div>
-                                        <div className="text-[10px] text-gray-600 space-y-0.5 leading-tight">
-                                          <div className="flex items-center gap-1">
-                                            <span className={`${colors.badge} px-1.5 py-0.5 rounded text-[10px]`}>
-                                              {TYPE_NAMES[block.type]}
-                                            </span>
-                                            <span className="text-gray-500">
-                                              {block.blockIndex}/{block.totalBlocks}
-                                            </span>
+                                        {isOneHour ? (
+                                          // 1 小時的緊湊設計
+                                          <div className="flex items-center gap-1.5 h-full">
+                                            <div className="flex-1 min-w-0">
+                                              <div className="text-xs font-medium text-gray-800 truncate leading-tight">
+                                                {block.title}
+                                              </div>
+                                              <div className="text-[10px] text-gray-600 leading-tight flex items-center gap-1 mt-0.5">
+                                                <span className={`${colors.badge} px-1 py-0.5 rounded text-[9px]`}>
+                                                  {TYPE_NAMES[block.type]}
+                                                </span>
+                                                <span className="text-gray-500">
+                                                  {block.blockIndex}/{block.totalBlocks}
+                                                </span>
+                                                <span className="text-gray-400">
+                                                  {dayjs(block.startTime).format("HH:mm")}
+                                                </span>
+                                              </div>
+                                            </div>
                                           </div>
-                                          <div className="truncate">
-                                            {dayjs(block.startTime).format("HH:mm")} - {dayjs(block.endTime).format("HH:mm")}
-                                          </div>
-                                        </div>
+                                        ) : (
+                                          // 多小時的完整設計
+                                          <>
+                                            <div className="text-xs font-medium text-gray-800 mb-1 truncate leading-tight">
+                                              {block.title}
+                                            </div>
+                                            <div className="text-[10px] text-gray-600 space-y-0.5 leading-tight">
+                                              <div className="flex items-center gap-1">
+                                                <span className={`${colors.badge} px-1.5 py-0.5 rounded text-[10px]`}>
+                                                  {TYPE_NAMES[block.type]}
+                                                </span>
+                                                <span className="text-gray-500">
+                                                  {block.blockIndex}/{block.totalBlocks}
+                                                </span>
+                                              </div>
+                                              <div className="truncate">
+                                                {dayjs(block.startTime).format("HH:mm")} - {dayjs(block.endTime).format("HH:mm")}
+                                              </div>
+                                            </div>
+                                          </>
+                                        )}
 
                                         {/* 調整大小 handle */}
                                         <div
@@ -565,10 +902,11 @@ function ScheduleContent() {
               </div>
             </div>
           </div>
+          )}
 
           {/* 今天的待辦事項 */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <h2 className="text-lg font-light text-gray-800 mb-4">今天的待辦事項</h2>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6">
+            <h2 className="text-base sm:text-lg font-light text-gray-800 mb-3 sm:mb-4">今天的待辦事項</h2>
             {todayDeadlines.length === 0 ? (
               <div className="text-center py-8 text-gray-400 text-sm">
                 今天沒有任何待辦事項 🌈
@@ -580,21 +918,21 @@ function ScheduleContent() {
                   return (
                     <div
                       key={deadline.id}
-                      className="flex items-center justify-between p-4 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
+                      className="flex items-center justify-between p-3 sm:p-4 rounded-xl border border-gray-100 active:bg-gray-50 sm:hover:bg-gray-50 transition-colors cursor-pointer"
                       onClick={() => handleDeadlineClick(deadline)}
                     >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-medium text-gray-800">{deadline.title}</span>
-                          <span className={`${colors.badge} px-2 py-0.5 rounded text-xs`}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className="text-sm font-medium text-gray-800 truncate">{deadline.title}</span>
+                          <span className={`${colors.badge} px-2 py-0.5 rounded text-xs flex-shrink-0`}>
                             {TYPE_NAMES[deadline.type]}
                           </span>
                         </div>
                         <div className="text-xs text-gray-500">
-                          {dayjs(deadline.dueDate).format("YYYY 年 M 月 D 日")} · {getDaysLeft(deadline.dueDate)}
+                          {dayjs(deadline.dueDate).format("M 月 D 日 HH:mm")} · {getDaysLeft(deadline.dueDate)}
                         </div>
                       </div>
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 text-gray-400 flex-shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </div>
@@ -659,11 +997,12 @@ function DetailPanel({
   useEffect(() => {
     if (item.type === "deadline") {
       const deadline = item.data as Deadline;
+      const deadlineDate = dayjs(deadline.dueDate);
       setFormData({
         title: deadline.title,
         type: deadline.type,
-        dueDate: dayjs(deadline.dueDate).format("YYYY-MM-DD"),
-        dueTime: "23:00", // 預設 23:00
+        dueDate: deadlineDate.format("YYYY-MM-DD"),
+        dueTime: deadlineDate.format("HH:mm"), // 使用實際的截止時間
         estimatedHours: deadline.estimatedHours,
       });
     } else {
@@ -760,7 +1099,7 @@ function DetailPanel({
         className="absolute inset-0 bg-black/20 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative bg-white w-full sm:w-96 h-[80vh] sm:h-auto rounded-t-2xl sm:rounded-l-2xl shadow-xl p-6 overflow-y-auto">
+      <div className="relative bg-white w-full sm:w-96 h-[85vh] sm:h-auto rounded-t-2xl sm:rounded-l-2xl shadow-xl p-4 sm:p-6 overflow-y-auto">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 rounded-lg hover:bg-gray-100 text-gray-400"
@@ -1023,6 +1362,7 @@ function AddDeadlineModal({
         throw new Error("建立失敗");
       }
 
+      // 立即刷新資料
       onSuccess();
       onClose();
     } catch (error) {
@@ -1032,12 +1372,12 @@ function AddDeadlineModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div
         className="absolute inset-0 bg-black/20 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
+      <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-xl p-4 sm:p-6 w-full max-w-md h-[90vh] sm:h-auto overflow-y-auto">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 rounded-lg hover:bg-gray-100 text-gray-400"

@@ -249,29 +249,32 @@ export async function handleAddDeadlineStepByStep(
       }
 
       case "dueDate": {
-        // 解析日期
+        // 解析日期時間
         let dueDate: Date | null = null;
 
-        // 嘗試簡單解析
-        const dateMatch = userInput.match(/(\d{1,2})\/(\d{1,2})/);
-        if (dateMatch) {
-          const month = parseInt(dateMatch[1]);
-          const day = parseInt(dateMatch[2]);
+        // 嘗試簡單解析（支援日期和時間）
+        const dateTimeMatch = userInput.match(/(\d{1,2})\/(\d{1,2})(?:\s+(\d{1,2}):?(\d{2})?)?/);
+        if (dateTimeMatch) {
+          const month = parseInt(dateTimeMatch[1]);
+          const day = parseInt(dateTimeMatch[2]);
           // 使用台灣時區的當前年份
           const { getTaiwanNow } = await import("@/lib/utils/date");
           const year = getTaiwanNow().year();
-          dueDate = new Date(year, month - 1, day);
+          const hour = dateTimeMatch[3] ? parseInt(dateTimeMatch[3]) : 23;
+          const minute = dateTimeMatch[4] ? parseInt(dateTimeMatch[4]) : 59;
+          dueDate = new Date(year, month - 1, day, hour, minute);
         } else {
-          // 使用 LLM 解析
-          const parsedDate = await llmUtilsService.parseDateFromText(userInput);
-          if (parsedDate) {
-            dueDate = new Date(parsedDate);
+          // 使用 LLM 解析（支援完整日期時間）
+          const parsedDateTime = await llmUtilsService.parseDateFromText(userInput);
+          if (parsedDateTime) {
+            // parsedDateTime 現在是 YYYY-MM-DDTHH:mm 格式
+            dueDate = new Date(parsedDateTime);
           }
         }
 
         if (!dueDate || isNaN(dueDate.getTime())) {
-          const errorText = "無法解析日期，請重新輸入（格式：YYYY/MM/DD 或 12/20）：";
-          await context.sendText(errorText);
+          const errorText = "無法解析日期時間，請重新輸入（格式：YYYY/MM/DD HH:mm 或 12/20 18:00）：";
+          await sendTextMessageWithQuickReply(replyToken, errorText);
           // 記錄 Bot 回應到歷史
           await userStateService.addToConversationHistory(userId, "assistant", errorText);
           return;
@@ -310,7 +313,10 @@ export async function handleAddDeadlineStepByStep(
         });
 
         // 顯示確認資訊
-        const summary = `請確認以下資訊：\n\n名稱：${flowData.title}\n類型：${flowData.type}\n截止日期：${new Date(flowData.dueDate).toLocaleDateString("zh-TW")}\n預估時間：${hours} 小時`;
+        const dueDateObj = new Date(flowData.dueDate);
+        const dateStr = dueDateObj.toLocaleDateString("zh-TW");
+        const timeStr = dueDateObj.toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" });
+        const summary = `請確認以下資訊：\n\n名稱：${flowData.title}\n類型：${flowData.type}\n截止日期時間：${dateStr} ${timeStr}\n預估時間：${hours} 小時`;
 
         await lineClient.sendQuickReply(
           replyToken,
@@ -620,8 +626,10 @@ export async function handleAddDeadlineNLP(
     });
 
     // 顯示確認資訊
-    const dateStr = new Date(parsed.dueDate).toLocaleDateString("zh-TW");
-    const summary = `我解析到以下資訊：\n\n名稱：${parsed.title}\n類型：${parsed.type}\n截止日期：${dateStr}\n預估時間：${parsed.estimatedHours} 小時`;
+    const dueDateObj = new Date(parsed.dueDate);
+    const dateStr = dueDateObj.toLocaleDateString("zh-TW");
+    const timeStr = dueDateObj.toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" });
+    const summary = `我解析到以下資訊：\n\n名稱：${parsed.title}\n類型：${parsed.type}\n截止日期時間：${dateStr} ${timeStr}\n預估時間：${parsed.estimatedHours} 小時`;
 
     if (replyToken) {
       await lineClient.sendQuickReply(
@@ -654,11 +662,18 @@ export async function handleConfirmNLPDeadline(
 
   try {
     const [title, type, dueDateStr, estimatedHoursStr] = dataString.split("|");
-    const dueDate = new Date(dueDateStr);
+    // dueDateStr 現在可能是 YYYY-MM-DDTHH:mm 格式或 ISO 字串
+    let dueDate: Date;
+    if (dueDateStr.includes("T")) {
+      dueDate = new Date(dueDateStr);
+    } else {
+      // 如果只有日期，加上時間 23:59
+      dueDate = new Date(`${dueDateStr}T23:59`);
+    }
     const estimatedHours = parseInt(estimatedHoursStr) || 2;
 
     if (isNaN(dueDate.getTime())) {
-      await context.sendText("日期格式錯誤，請重新輸入。");
+      await sendTextMessageWithQuickReply(replyToken, "日期時間格式錯誤，請重新輸入。");
       return;
     }
 
@@ -740,15 +755,18 @@ export async function handleEditDeadline(
       await deadlineService.updateDeadline(deadlineId, { title: newValue });
       await context.sendText(`✅ 已更新名稱：${newValue}`);
     } else if (field === "日期" && newValue) {
-      const parsedDate = await llmUtilsService.parseDateFromText(newValue);
-      if (!parsedDate) {
-        await context.sendText("無法解析日期，請重新輸入。");
+      const parsedDateTime = await llmUtilsService.parseDateFromText(newValue);
+      if (!parsedDateTime) {
+        await sendTextMessageWithQuickReply(replyToken, "無法解析日期時間，請重新輸入。");
         return;
       }
+      const dueDateObj = new Date(parsedDateTime);
       await deadlineService.updateDeadline(deadlineId, {
-        dueDate: new Date(parsedDate),
+        dueDate: dueDateObj,
       });
-      await context.sendText(`✅ 已更新截止日期：${new Date(parsedDate).toLocaleDateString("zh-TW")}`);
+      const dateStr = dueDateObj.toLocaleDateString("zh-TW");
+      const timeStr = dueDateObj.toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" });
+      await sendTextMessageWithQuickReply(replyToken, `✅ 已更新截止日期時間：${dateStr} ${timeStr}`);
     } else if (field === "時間" && newValue) {
       const hours = parseInt(newValue) || 2;
       await deadlineService.updateDeadline(deadlineId, { estimatedHours: hours });
