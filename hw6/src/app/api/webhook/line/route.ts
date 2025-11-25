@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { LineWebhookSchema } from "@/lib/utils/validation";
 import { handleText } from "@/bot/handlers/text.handler";
 import { handleFollow } from "@/bot/handlers/follow.handler";
+import { handleUnfollow } from "@/bot/handlers/unfollow.handler";
 import { Logger } from "@/lib/utils/logger";
 import { BotContext } from "@/types/bot";
 import { LineMessagingClient } from "@/lib/line/client";
@@ -75,6 +76,9 @@ export async function POST(request: NextRequest) {
         } else if (event.type === "follow") {
           Logger.info("Routing to handleFollow");
           await handleFollow(context);
+        } else if (event.type === "unfollow") {
+          Logger.info("Routing to handleUnfollow");
+          await handleUnfollow(context);
         } else {
           Logger.warn("Unhandled event type", { 
             eventType: event.type,

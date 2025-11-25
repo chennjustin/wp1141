@@ -1,5 +1,7 @@
 import { OpenAIClient } from "@/lib/llm/openai";
 import { Logger } from "@/lib/utils/logger";
+import { getTodayChinese } from "@/lib/utils/date";
+import { APP_CONFIG } from "@/lib/config/app.config";
 
 export class LLMUtilsService {
   private llmClient: OpenAIClient;
@@ -108,6 +110,10 @@ export class LLMUtilsService {
 3. estimatedHours 如果沒有提到，預設為 2
 4. 只輸出 JSON，不要其他文字
 
+重要：當前年份是 ${APP_CONFIG.CURRENT_YEAR} 年。
+注意：今天是 ${getTodayChinese()}（${APP_CONFIG.CURRENT_YEAR}年）。
+所有日期解析都必須使用 ${APP_CONFIG.CURRENT_YEAR} 年作為基準年份。
+
 使用者輸入：${text}`;
 
       // 構建 messages，包含歷史記錄（如果有的話）
@@ -171,18 +177,21 @@ export class LLMUtilsService {
     try {
       const prompt = `請將以下中文日期描述轉換為 YYYY-MM-DD 格式的日期。
 
-規則：
-1. 如果提到「今天」「今日」→ 使用今天的日期
-2. 如果提到「明天」「明日」→ 使用明天的日期
-3. 如果提到「下週X」「下星期X」→ 計算下週對應的日期
-4. 如果提到「X月X日」「X/X」→ 轉換為今年對應日期
-5. 如果無法確定，返回 null
-6. 只輸出 JSON 格式：{"dueDate": "YYYY-MM-DD"} 或 {"dueDate": null}
-7. 不要輸出其他文字
+規則（重要：當前年份是 ${APP_CONFIG.CURRENT_YEAR} 年）：
+1. 如果提到「今天」「今日」→ 使用今天的日期（必須是 ${APP_CONFIG.CURRENT_YEAR} 年）
+2. 如果提到「明天」「明日」→ 使用明天的日期（必須是 ${APP_CONFIG.CURRENT_YEAR} 年）
+3. 如果提到「下週X」「下星期X」→ 計算下週對應的日期（必須是 ${APP_CONFIG.CURRENT_YEAR} 年）
+4. 如果提到「X月X日」「X/X」→ 轉換為 ${APP_CONFIG.CURRENT_YEAR} 年對應日期
+5. 所有日期都必須使用 ${APP_CONFIG.CURRENT_YEAR} 年，絕對不要使用 2023 年、2024 年或其他年份
+6. 如果無法確定，返回 null
+7. 只輸出 JSON 格式：{"dueDate": "YYYY-MM-DD"} 或 {"dueDate": null}
+8. 不要輸出其他文字
 
 使用者輸入：${text}
 
-注意：今天是 ${new Date().toLocaleDateString("zh-TW", { year: "numeric", month: "long", day: "numeric", timeZone: "Asia/Taipei" })}`;
+重要：當前年份是 ${APP_CONFIG.CURRENT_YEAR} 年。
+注意：今天是 ${getTodayChinese()}（${APP_CONFIG.CURRENT_YEAR}年）。
+所有日期解析都必須使用 ${APP_CONFIG.CURRENT_YEAR} 年作為基準年份。`;
 
       const response = await this.llmClient.chat([
         {
@@ -243,7 +252,8 @@ export class LLMUtilsService {
 3. 用戶是否在詢問問題或聊天？
 
 特別注意：
-- 如果用戶提到「今天」「明天」「後天」等相對日期，請根據當前日期計算（今天是 ${new Date().toLocaleDateString("zh-TW", { year: "numeric", month: "long", day: "numeric", timeZone: "Asia/Taipei" })}）
+- 如果用戶提到「今天」「明天」「後天」等相對日期，請根據當前日期計算（今天是 ${getTodayChinese()}，當前年份是 ${APP_CONFIG.CURRENT_YEAR} 年）
+- 所有日期都必須使用 ${APP_CONFIG.CURRENT_YEAR} 年，不要使用其他年份
 - 如果用戶在修正之前的資訊（例如：「不對，應該是...」「更正一下...」），請更新對應的欄位
 - 如果用戶只提到日期相關資訊，請只更新 dueDate
 - 如果用戶只提到標題相關資訊，請只更新 title

@@ -122,9 +122,8 @@ export class DeadlineService {
       }
 
       // 取得台灣時區的今天日期
-      const now = new Date();
-      const taiwanTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Taipei" }));
-      taiwanTime.setHours(0, 0, 0, 0);
+      const { getTodayInTaiwan } = require("@/lib/utils/date");
+      const taiwanTime = getTodayInTaiwan();
       const tomorrow = new Date(taiwanTime);
       tomorrow.setDate(tomorrow.getDate() + 1);
 

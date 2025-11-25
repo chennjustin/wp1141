@@ -2,17 +2,9 @@ import connectDB from "@/lib/db/mongoose";
 import Checkin, { ICheckin } from "@/models/Checkin";
 import User from "@/models/User";
 import { Logger } from "@/lib/utils/logger";
+import { getTodayInTaiwan } from "@/lib/utils/date";
 
 export class CheckinService {
-  /**
-   * 取得台灣時區的今天日期（只取日期部分，時間設為 00:00:00）
-   */
-  private getTodayInTaiwan(): Date {
-    const now = new Date();
-    const taiwanTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Taipei" }));
-    taiwanTime.setHours(0, 0, 0, 0);
-    return taiwanTime;
-  }
 
   /**
    * 檢查使用者今天是否已簽到
@@ -25,7 +17,7 @@ export class CheckinService {
         return false;
       }
 
-      const today = this.getTodayInTaiwan();
+      const today = getTodayInTaiwan();
       const checkin = await Checkin.findOne({
         userId: user._id,
         checkinDate: today,
@@ -70,12 +62,17 @@ export class CheckinService {
   }> {
     try {
       await connectDB();
-      const user = await User.findOne({ lineUserId: userId });
+      
+      // 如果用戶不存在，自動創建
+      let user = await User.findOne({ lineUserId: userId });
       if (!user) {
-        throw new Error("User not found");
+        user = await User.create({
+          lineUserId: userId,
+        });
+        Logger.info("簽到時自動創建用戶", { lineUserId: userId });
       }
 
-      const today = this.getTodayInTaiwan();
+      const today = getTodayInTaiwan();
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
 

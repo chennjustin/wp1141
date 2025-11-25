@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { StudyBlockService } from "@/services/study-block/study-block.service";
 import { UserTokenService } from "@/services/user/user-token.service";
+import { DeadlineService } from "@/services/deadline/deadline.service";
 import { Logger } from "@/lib/utils/logger";
 
 export const dynamic = "force-dynamic";
 
 const studyBlockService = new StudyBlockService();
 const userTokenService = new UserTokenService();
+const deadlineService = new DeadlineService();
 
 export async function GET(request: NextRequest) {
   try {
@@ -41,6 +43,7 @@ export async function GET(request: NextRequest) {
       // 取得使用者的 blocks（可選時間範圍）
       const start = startDate ? new Date(startDate) : undefined;
       const end = endDate ? new Date(endDate) : undefined;
+      
       blocks = await studyBlockService.getStudyBlocksByUser(
         userInfo.lineUserId,
         start,
@@ -48,20 +51,27 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 格式化回應
-    const formattedBlocks = blocks.map((block: any) => ({
-      id: block._id.toString(),
-      userId: block.userId.toString(),
-      deadlineId: block.deadlineId.toString(),
-      date: block.date instanceof Date ? block.date.toISOString() : new Date(block.date).toISOString(),
-      startTime: block.startTime instanceof Date ? block.startTime.toISOString() : new Date(block.startTime).toISOString(),
-      endTime: block.endTime instanceof Date ? block.endTime.toISOString() : new Date(block.endTime).toISOString(),
-      duration: block.duration,
-      title: block.title,
-      blockIndex: block.blockIndex,
-      totalBlocks: block.totalBlocks,
-      status: block.status,
-    }));
+    // 格式化回應，並獲取每個 block 對應的 deadline type
+    const formattedBlocks = await Promise.all(
+      blocks.map(async (block: any) => {
+        // 獲取 deadline 資訊以取得 type
+        const deadline = await deadlineService.getDeadlineById(block.deadlineId.toString());
+        return {
+          id: block._id.toString(),
+          userId: block.userId.toString(),
+          deadlineId: block.deadlineId.toString(),
+          date: block.date instanceof Date ? block.date.toISOString() : new Date(block.date).toISOString(),
+          startTime: block.startTime instanceof Date ? block.startTime.toISOString() : new Date(block.startTime).toISOString(),
+          endTime: block.endTime instanceof Date ? block.endTime.toISOString() : new Date(block.endTime).toISOString(),
+          duration: block.duration,
+          title: block.title,
+          blockIndex: block.blockIndex,
+          totalBlocks: block.totalBlocks,
+          status: block.status,
+          type: deadline?.type || "other", // 從 deadline 獲取 type
+        };
+      })
+    );
 
     return NextResponse.json({
       success: true,

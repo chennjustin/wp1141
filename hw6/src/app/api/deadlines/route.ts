@@ -11,20 +11,33 @@ const userTokenService = new UserTokenService();
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
+    const token = searchParams.get("token");
+    const status = searchParams.get("status") as "pending" | "done" | undefined;
 
-    if (!userId) {
+    if (!token) {
       return NextResponse.json(
-        { success: false, error: "userId is required" },
+        { success: false, error: "Token is required" },
         { status: 400 }
       );
     }
 
-    const deadlines = await deadlineService.getDeadlinesByUser(userId, "pending");
+    // 驗證 token
+    const userInfo = await userTokenService.validateToken(token);
+    if (!userInfo) {
+      return NextResponse.json(
+        { success: false, error: "Invalid token" },
+        { status: 401 }
+      );
+    }
+
+    const deadlines = await deadlineService.getDeadlinesByUser(
+      userInfo.lineUserId,
+      status || "pending"
+    );
 
     // 將 Date 轉換為字符串
     const formattedDeadlines = deadlines.map((deadline: any) => ({
-      _id: deadline._id.toString(),
+      id: deadline._id.toString(),
       title: deadline.title,
       type: deadline.type,
       dueDate: deadline.dueDate instanceof Date 

@@ -53,11 +53,12 @@ export class IntentService {
   - estimatedHours（預估小時數，如果沒有提到則為 null）
   - type（exam/assignment/project/other，如果無法確定則為 null）
 
-日期解析規則：
-- "今天"、"今日" → 今天的日期（YYYY-MM-DD）
-- "明天"、"明日" → 明天的日期
-- "下週X"、"下星期X" → 計算下週對應的日期
-- "X月X日"、"X/X" → 轉換為今年對應日期
+日期解析規則（重要：當前年份是 ${APP_CONFIG.CURRENT_YEAR} 年）：
+- "今天"、"今日" → 今天的日期（YYYY-MM-DD，必須是 ${APP_CONFIG.CURRENT_YEAR} 年）
+- "明天"、"明日" → 明天的日期（必須是 ${APP_CONFIG.CURRENT_YEAR} 年）
+- "下週X"、"下星期X" → 計算下週對應的日期（必須是 ${APP_CONFIG.CURRENT_YEAR} 年）
+- "X月X日"、"X/X" → 轉換為 ${APP_CONFIG.CURRENT_YEAR} 年對應日期
+- 所有日期都必須使用 ${APP_CONFIG.CURRENT_YEAR} 年，絕對不要使用 2023 年、2024 年或其他年份
 - 如果無法確定，設為 null
 
 請以 JSON 格式輸出：
@@ -79,12 +80,9 @@ export class IntentService {
 
 使用者訊息：${text}
 
-注意：今天是 ${new Date().toLocaleDateString("zh-TW", {
-  year: "numeric",
-  month: "long",
-  day: "numeric",
-  timeZone: "Asia/Taipei",
-})}`;
+重要：當前年份是 ${APP_CONFIG.CURRENT_YEAR} 年。
+注意：今天是 ${getTodayChinese()}（${APP_CONFIG.CURRENT_YEAR}年）。
+所有日期解析都必須使用 ${APP_CONFIG.CURRENT_YEAR} 年作為基準年份。`;
 
       const response = await this.llmClient.chat([
         {
@@ -198,12 +196,9 @@ export class IntentService {
 
 使用者輸入：${text}
 
-注意：今天是 ${new Date().toLocaleDateString("zh-TW", {
-  year: "numeric",
-  month: "long",
-  day: "numeric",
-  timeZone: "Asia/Taipei",
-})}`;
+重要：當前年份是 ${APP_CONFIG.CURRENT_YEAR} 年。
+注意：今天是 ${getTodayChinese()}（${APP_CONFIG.CURRENT_YEAR}年）。
+所有日期解析都必須使用 ${APP_CONFIG.CURRENT_YEAR} 年作為基準年份。`;
 
       const response = await this.llmClient.chat([
         {

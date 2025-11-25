@@ -242,7 +242,9 @@ export async function handleAddDeadlineStepByStep(
         if (dateMatch) {
           const month = parseInt(dateMatch[1]);
           const day = parseInt(dateMatch[2]);
-          const year = new Date().getFullYear();
+          // 使用台灣時區的當前年份
+          const { getTaiwanNow } = await import("@/lib/utils/date");
+          const year = getTaiwanNow().year();
           dueDate = new Date(year, month - 1, day);
         } else {
           // 使用 LLM 解析

@@ -227,7 +227,13 @@ export class SmartSchedulerService {
     const totalBlocks = blockDurations.length;
 
     // 從截止日往前排
-    let currentDate = dueDate.startOf("day").subtract(1, "day"); // 從截止日前一天開始
+    // 從截止日當天開始（如果截止日是今天，就從今天開始）
+    let currentDate = dueDate.startOf("day");
+    // 如果截止日是今天，從今天開始；否則從截止日前一天開始
+    if (currentDate.isAfter(now.startOf("day"))) {
+      currentDate = currentDate.subtract(1, "day");
+    }
+    
     let dailyHoursUsed = 0;
     let dailyBlocksUsed = 0;
 
