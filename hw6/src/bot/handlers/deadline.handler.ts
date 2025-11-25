@@ -658,6 +658,7 @@ export async function handleConfirmNLPDeadline(
   dataString: string
 ): Promise<void> {
   const userId = context.event.source.userId;
+  const replyToken = context.event.replyToken;
   if (!userId) return;
 
   try {
@@ -673,7 +674,9 @@ export async function handleConfirmNLPDeadline(
     const estimatedHours = parseInt(estimatedHoursStr) || 2;
 
     if (isNaN(dueDate.getTime())) {
-      await sendTextMessageWithQuickReply(replyToken, "日期時間格式錯誤，請重新輸入。");
+      if (replyToken) {
+        await sendTextMessageWithQuickReply(replyToken, "日期時間格式錯誤，請重新輸入。");
+      }
       return;
     }
 
@@ -695,7 +698,6 @@ export async function handleConfirmNLPDeadline(
     await userStateService.clearState(userId); // clearState 會清除歷史記錄
     
     // 發送排程成功訊息
-    const replyToken = context.event.replyToken;
     if (replyToken) {
       await sendScheduleSuccessMessage(userId, replyToken, deadline);
     }
@@ -715,6 +717,7 @@ export async function handleEditDeadline(
   newValue?: string
 ): Promise<void> {
   const userId = context.event.source.userId;
+  const replyToken = context.event.replyToken;
   if (!userId) return;
 
   try {
@@ -734,7 +737,6 @@ export async function handleEditDeadline(
 
     if (!field) {
       // 詢問要修改哪一項
-      const replyToken = context.event.replyToken;
       if (replyToken) {
         await lineClient.sendQuickReply(
           replyToken,
@@ -757,7 +759,9 @@ export async function handleEditDeadline(
     } else if (field === "日期" && newValue) {
       const parsedDateTime = await llmUtilsService.parseDateFromText(newValue);
       if (!parsedDateTime) {
-        await sendTextMessageWithQuickReply(replyToken, "無法解析日期時間，請重新輸入。");
+        if (replyToken) {
+          await sendTextMessageWithQuickReply(replyToken, "無法解析日期時間，請重新輸入。");
+        }
         return;
       }
       const dueDateObj = new Date(parsedDateTime);
@@ -766,7 +770,9 @@ export async function handleEditDeadline(
       });
       const dateStr = dueDateObj.toLocaleDateString("zh-TW");
       const timeStr = dueDateObj.toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" });
-      await sendTextMessageWithQuickReply(replyToken, `✅ 已更新截止日期時間：${dateStr} ${timeStr}`);
+      if (replyToken) {
+        await sendTextMessageWithQuickReply(replyToken, `✅ 已更新截止日期時間：${dateStr} ${timeStr}`);
+      }
     } else if (field === "時間" && newValue) {
       const hours = parseInt(newValue) || 2;
       await deadlineService.updateDeadline(deadlineId, { estimatedHours: hours });
