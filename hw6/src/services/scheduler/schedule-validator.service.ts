@@ -122,6 +122,8 @@ export class ScheduleValidatorService {
 
       // 驗證時間偏好
       if (preferences.excludeHours) {
+        const startHour = startTime.hour();
+        const endHour = endTime.hour();
         for (let h = startHour; h < endHour; h++) {
           if (preferences.excludeHours.includes(h)) {
             errors.push(
