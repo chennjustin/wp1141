@@ -25,6 +25,12 @@ import {
 import { handleUpdateDeadlineFlow } from "./deadline-update.handler";
 import { handleDeleteDeadlineFlow } from "./deadline-delete.handler";
 import { Logger } from "@/lib/utils/logger";
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const checkinService = new CheckinService();
 const deadlineService = new DeadlineService();
@@ -317,6 +323,15 @@ export async function handleText(context: BotContext) {
               replyToken,
               text,
               intentResult.entities.title || undefined
+            );
+            return;
+          
+          case "modify_schedule":
+            await handleModifyScheduleFlow(
+              context,
+              userId,
+              replyToken,
+              text
             );
             return;
           
@@ -850,6 +865,227 @@ async function handleAddDeadlineFromIntent(
   } catch (error) {
     Logger.error("從意圖建立 Deadline 失敗", { error, userId, entities });
     await sendTextMessageWithQuickReply(replyToken, "處理時發生錯誤，請稍後再試。");
+  }
+}
+
+/**
+ * 處理時程修改流程
+ */
+async function handleModifyScheduleFlow(
+  context: BotContext,
+  userId: string,
+  replyToken: string,
+  text: string
+): Promise<void> {
+  try {
+    await connectDB();
+    const user = await User.findOne({ lineUserId: userId });
+    if (!user) {
+      await sendTextMessageWithQuickReply(replyToken, "找不到用戶資訊，請稍後再試。");
+      return;
+    }
+
+    // 獲取用戶的所有死線和時程
+    const deadlines = await Deadline.find({ userId: user._id, status: "pending" })
+      .sort({ dueDate: 1 })
+      .exec();
+
+    if (deadlines.length === 0) {
+      await sendTextMessageWithQuickReply(replyToken, "你目前沒有任何待辦事項可以修改時程。");
+      return;
+    }
+
+    const studyBlockService = new StudyBlockService();
+    const sixtyDaysAgo = new Date();
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 60);
+    const studyBlocks = await studyBlockService.getStudyBlocksByUser(userId, sixtyDaysAgo, futureDate);
+
+    // 獲取對話歷史
+    const conversationHistory = await userStateService.getConversationHistory(userId);
+    const history = conversationHistory.map((item) => ({
+      role: item.role,
+      content: item.content,
+    }));
+
+    // 使用 ScheduleModifierService 分析用戶請求
+    const { ScheduleModifierService } = await import("@/services/llm/schedule-modifier.service");
+    const modifierService = new ScheduleModifierService();
+    const modificationRequest = await modifierService.analyzeModificationRequest(
+      text,
+      deadlines,
+      studyBlocks,
+      history
+    );
+
+    if (!modificationRequest) {
+      // 如果無法確定用戶意圖，使用預設聊天
+      await handleDefaultChat(context, userId, text, replyToken);
+      return;
+    }
+
+    // 記錄用戶訊息到歷史
+    await userStateService.addToConversationHistory(userId, "user", text);
+
+    // 根據 action 執行操作
+    if (modificationRequest.action === "delete") {
+      // 刪除死線
+      await deadlineService.deleteDeadline(modificationRequest.deadlineId);
+      await sendTextMessageWithQuickReply(
+        replyToken,
+        `✅ 已刪除死線「${modificationRequest.deadlineTitle}」及其所有相關學習計畫。`
+      );
+      await userStateService.addToConversationHistory(
+        userId,
+        "assistant",
+        `已刪除死線「${modificationRequest.deadlineTitle}」及其所有相關學習計畫。`
+      );
+      return;
+    }
+
+    // modify action：修改截止日期和/或重新排程
+    if (modificationRequest.action === "modify") {
+      // 檢查是否有任何修改（截止日期或時程偏好）
+      const hasDueDateChange = !!modificationRequest.newDueDate;
+      const hasScheduleChange = !!modificationRequest.newSchedule?.preferences;
+      
+      if (!hasDueDateChange && !hasScheduleChange) {
+        // 如果沒有任何修改，使用預設聊天
+        await handleDefaultChat(context, userId, text, replyToken);
+        return;
+      }
+      const deadline = deadlines.find(
+        (d) => d._id.toString() === modificationRequest.deadlineId
+      );
+
+      if (!deadline) {
+        await sendTextMessageWithQuickReply(replyToken, "找不到要修改的死線，請稍後再試。");
+        return;
+      }
+
+      // 準備更新資料
+      const updateData: { dueDate?: Date } = {};
+      
+      // 如果用戶要修改截止日期
+      if (modificationRequest.newDueDate) {
+        try {
+          const newDueDate = new Date(modificationRequest.newDueDate);
+          if (isNaN(newDueDate.getTime())) {
+            Logger.warn("無效的截止日期格式", { newDueDate: modificationRequest.newDueDate });
+            await sendTextMessageWithQuickReply(replyToken, "無法解析新的截止日期，請稍後再試。");
+            return;
+          }
+          updateData.dueDate = newDueDate;
+        } catch (error) {
+          Logger.error("解析截止日期失敗", { error, newDueDate: modificationRequest.newDueDate });
+          await sendTextMessageWithQuickReply(replyToken, "無法解析新的截止日期，請稍後再試。");
+          return;
+        }
+      }
+
+      // 刪除舊的 study blocks
+      await studyBlockService.deleteStudyBlocksByDeadline(modificationRequest.deadlineId);
+
+      // 更新用戶偏好並重新排程
+      const preferences = modificationRequest.newSchedule?.preferences || {};
+      
+      // 合併現有偏好和新偏好
+      const { PreferenceExtractorService } = await import("@/services/llm/preference-extractor.service");
+      const preferenceExtractor = new PreferenceExtractorService();
+      const existingPreferences = await preferenceExtractor.extractPreferences(history);
+      const mergedPreferences: typeof preferences = {
+        excludeHours: preferences.excludeHours || existingPreferences.excludeHours,
+        preferHours: preferences.preferHours || existingPreferences.preferHours,
+        maxHoursPerDay: preferences.maxHoursPerDay || existingPreferences.maxHoursPerDay,
+      };
+
+      // 更新用戶偏好到對話歷史（讓後續排程能使用）
+      if (mergedPreferences.excludeHours || mergedPreferences.preferHours || mergedPreferences.maxHoursPerDay) {
+        const preferenceText = [
+          mergedPreferences.excludeHours ? `排除時段：${mergedPreferences.excludeHours.join(", ")}點` : "",
+          mergedPreferences.preferHours ? `偏好時段：${mergedPreferences.preferHours.join(", ")}點` : "",
+          mergedPreferences.maxHoursPerDay ? `每天最大時數：${mergedPreferences.maxHoursPerDay}小時` : "",
+        ].filter(Boolean).join("，");
+        
+        // 添加一個系統訊息到對話歷史，讓後續的偏好提取能識別
+        await userStateService.addToConversationHistory(
+          userId,
+          "user",
+          `[系統偏好設定] ${preferenceText}`
+        );
+      }
+
+      // 使用 updateDeadlineAndReschedule 更新截止日期並重新排程
+      const updatedDeadline = await deadlineService.updateDeadlineAndReschedule(
+        modificationRequest.deadlineId,
+        updateData, // 更新截止日期（如果有的話）
+        userId
+      );
+
+      if (updatedDeadline) {
+        // 獲取新排程的 blocks
+        const newBlocks = await studyBlockService.getStudyBlocksByDeadline(modificationRequest.deadlineId);
+        
+        const reasoning = modificationRequest.reasoning || "";
+        let message = `✅ 已根據你的需求`;
+        
+        // 如果修改了截止日期，顯示新的截止日期
+        if (modificationRequest.newDueDate) {
+          const newDueDateFormatted = dayjs(modificationRequest.newDueDate).format("YYYY年M月D日");
+          message += `將「${modificationRequest.deadlineTitle}」的截止日期改為 ${newDueDateFormatted}，並`;
+        }
+        
+        message += `重新安排「${modificationRequest.deadlineTitle}」的學習時間！\n\n`;
+        
+        if (reasoning) {
+          message += `${reasoning}\n\n`;
+        }
+        
+        if (newBlocks.length > 0) {
+          // 格式化排程詳情
+          const blocksByDate = new Map<string, typeof newBlocks>();
+          newBlocks.forEach((b) => {
+            const dateKey = dayjs(b.startTime).format("YYYY-MM-DD");
+            if (!blocksByDate.has(dateKey)) {
+              blocksByDate.set(dateKey, []);
+            }
+            blocksByDate.get(dateKey)!.push(b);
+          });
+
+          message += `**排程詳情：**\n\n`;
+          blocksByDate.forEach((blocks, dateKey) => {
+            const dateFormatted = dayjs(dateKey).format("M月D日");
+            message += `${dateFormatted}：\n`;
+            blocks.forEach((b) => {
+              const start = dayjs(b.startTime).format("HH:mm");
+              const end = dayjs(b.endTime).format("HH:mm");
+              message += `  • ${start}-${end}（${b.duration}小時）\n`;
+            });
+          });
+          
+          const totalHours = newBlocks.reduce((sum, b) => sum + b.duration, 0);
+          message += `\n總共安排了 ${totalHours} 小時`;
+        } else {
+          message += `⚠️ 無法安排新的時程，可能是時間不足或偏好設定過於嚴格。`;
+        }
+
+        await sendTextMessageWithQuickReply(replyToken, message);
+        await userStateService.addToConversationHistory(userId, "assistant", message);
+      } else {
+        await sendTextMessageWithQuickReply(
+          replyToken,
+          `⚠️ 無法為「${modificationRequest.deadlineTitle}」安排新的時程，請稍後再試。`
+        );
+      }
+      return;
+    }
+
+    // 如果 action 不是 modify 或 delete，使用預設聊天
+    await handleDefaultChat(context, userId, text, replyToken);
+  } catch (error) {
+    Logger.error("處理時程修改流程失敗", { error, userId, text });
+    await sendTextMessageWithQuickReply(replyToken, "處理時程修改時發生錯誤，請稍後再試。");
   }
 }
 

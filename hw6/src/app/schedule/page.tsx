@@ -1023,7 +1023,7 @@ function ScheduleContent() {
             <h2 className="text-base sm:text-lg font-light text-gray-800 mb-3 sm:mb-4">今天的待辦事項</h2>
             {todayDeadlines.length === 0 ? (
               <div className="text-center py-8 text-gray-400 text-sm">
-                今天沒有任何待辦事項 🌈
+                今天沒有任何待辦事項哦～請好好休息！！
               </div>
             ) : (
               <div className="space-y-3">

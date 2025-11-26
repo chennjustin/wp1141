@@ -3,7 +3,7 @@ import { Logger } from "@/lib/utils/logger";
 import { getTodayChinese, getCurrentDateTimeChinese } from "@/lib/utils/date";
 import { APP_CONFIG } from "@/lib/config/app.config";
 
-export type Intent = "check_in" | "daily_quote" | "view_schedule" | "add_deadline" | "update_deadline" | "delete_deadline" | "other";
+export type Intent = "check_in" | "daily_quote" | "view_schedule" | "add_deadline" | "update_deadline" | "delete_deadline" | "modify_schedule" | "other";
 
 export interface IntentResult {
   intent: Intent;
@@ -43,10 +43,13 @@ export class IntentService {
    **重要：只有在用戶明確要「新增」、「建立」、「加入」新的 deadline 時，才識別為 "add_deadline"**
    **如果用戶問到已存在的 deadline（例如：「我網服作業的8小時，你幫我分配到哪些時間」），這不是新增，應該識別為 "view_schedule" 或 "other"**
 5. "update_deadline" - 修改 Deadline 相關（例如：我想要更改我的deadline、修改deadline、更改截止時間、我想改deadline的時間）
-   **重要：只有在用戶明確要「修改」、「更改」、「更新」、「改」已存在的 deadline 時，才識別為 "update_deadline"**
+   **重要：只有在用戶明確要「修改」、「更改」、「更新」、「改」已存在的 deadline 的截止時間時，才識別為 "update_deadline"**
 6. "delete_deadline" - 刪除 Deadline 相關（例如：我不需要這個deadline了、刪除deadline、取消deadline、移除deadline）
    **重要：只有在用戶明確要「刪除」、「取消」、「移除」、「不需要」deadline 時，才識別為 "delete_deadline"**
-7. "other" - 其他對話（包括查詢已存在的 deadline 的學習時間、詢問已安排的時程等）
+7. "modify_schedule" - 修改時程安排相關（例如：我想要把做專題的時間都擺在早上、把XX改成YY、修改XX的時程、想要把XX時間都擺在YY、一次三小時等）
+   **重要：當用戶提到想要修改已存在的 deadline 的時程安排（不是截止時間），應該識別為 "modify_schedule"**
+   **範例：「我想要把做專題的時間都擺在早上然後一次三小時」、「把網服作業改成下午」、「修改時程」等**
+8. "other" - 其他對話（包括查詢已存在的 deadline 的學習時間、詢問已安排的時程等）
 
 對於 "view_schedule" 意圖，需要判斷用戶的意圖類型：
 - "direct_open": 用戶明確要求「打開」、「開啟」、「顯示」行事曆/時程表頁面
@@ -89,7 +92,7 @@ export class IntentService {
 
 請以 JSON 格式輸出：
 {
-  "intent": "check_in" | "daily_quote" | "view_schedule" | "add_deadline" | "update_deadline" | "delete_deadline" | "other",
+  "intent": "check_in" | "daily_quote" | "view_schedule" | "add_deadline" | "update_deadline" | "delete_deadline" | "modify_schedule" | "other",
   "entities": {
     "date": "YYYY-MM-DDTHH:mm" | null, // 完整的日期時間格式（ISO 8601）
     "title": "string" | null, // deadline 標題（用於識別要修改/刪除的 deadline）
@@ -203,7 +206,7 @@ export class IntentService {
    * 驗證意圖類型
    */
   private validateIntent(intent: string): Intent {
-    const validIntents: Intent[] = ["check_in", "daily_quote", "view_schedule", "add_deadline", "update_deadline", "delete_deadline", "other"];
+    const validIntents: Intent[] = ["check_in", "daily_quote", "view_schedule", "add_deadline", "update_deadline", "delete_deadline", "modify_schedule", "other"];
     if (validIntents.includes(intent as Intent)) {
       return intent as Intent;
     }

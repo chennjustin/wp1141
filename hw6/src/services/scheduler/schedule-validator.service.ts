@@ -107,20 +107,18 @@ export class ScheduleValidatorService {
         );
       }
 
-      // 驗證禁止時段
-      const startHour = startTime.hour();
-      const endHour = endTime.hour();
-      for (let h = startHour; h < endHour; h++) {
-        if (
-          SCHEDULE_CONFIG.FORBIDDEN_HOURS.some(
-            ({ start, end }) => h >= start && h < end
-          )
-        ) {
+      // 驗證禁止時段（檢查 block 是否與禁止時段重疊）
+      SCHEDULE_CONFIG.FORBIDDEN_HOURS.forEach(({ start, end }) => {
+        const forbiddenStart = startTime.startOf("day").add(start, "hour");
+        const forbiddenEnd = startTime.startOf("day").add(end, "hour");
+        
+        // 檢查是否有重疊：block 的開始時間在禁止時段結束之前，且 block 的結束時間在禁止時段開始之後
+        if (startTime.isBefore(forbiddenEnd) && endTime.isAfter(forbiddenStart)) {
           errors.push(
-            `Block ${index + 1} 包含禁止時段：${h}:00`
+            `Block ${index + 1} 跨越禁止時段：${start}:00-${end}:00（時間：${startTime.format("YYYY-MM-DD HH:mm")} - ${endTime.format("HH:mm")}）`
           );
         }
-      }
+      });
 
       // 驗證時間偏好
       if (preferences.excludeHours) {
