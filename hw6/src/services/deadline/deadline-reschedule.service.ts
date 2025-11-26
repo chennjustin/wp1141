@@ -50,7 +50,7 @@ export class DeadlineRescheduleService {
       );
       
       // 如果沒有提取到偏好，不需要重新排程
-      if (!preferences.excludeHours && !preferences.preferHours) {
+      if (!preferences.excludeHours && !preferences.preferHours && !preferences.excludeDays && !preferences.maxHoursPerDay) {
         return { rescheduled: [], message: "" };
       }
 
@@ -65,8 +65,15 @@ export class DeadlineRescheduleService {
 
         // 檢查是否有 blocks 違反偏好
         const violatingBlocks = deadlineBlocks.filter((block) => {
-          const startHour = dayjs(block.startTime).tz("Asia/Taipei").hour();
+          const startTime = dayjs(block.startTime).tz("Asia/Taipei");
+          const startHour = startTime.hour();
           const endHour = dayjs(block.endTime).tz("Asia/Taipei").hour();
+          const blockDate = startTime.format("YYYY-MM-DD");
+
+          // 檢查是否在排除日期
+          if (preferences.excludeDays && preferences.excludeDays.includes(blockDate)) {
+            return true;
+          }
 
           // 檢查是否在排除時段
           if (preferences.excludeHours) {
@@ -101,11 +108,12 @@ export class DeadlineRescheduleService {
           );
 
           // 重新排程（不改變 deadline 本身，只重新排程）
-          // 使用 updateDeadlineAndReschedule 重新排程（傳入空更新，只重新排程）
+          // 使用 updateDeadlineAndReschedule 重新排程（傳入空更新，只重新排程，並傳遞偏好設定）
           const updatedDeadline = await this.deadlineService.updateDeadlineAndReschedule(
             deadline._id.toString(),
             {}, // 不更新 deadline 本身
-            userId
+            userId,
+            preferences // 傳遞提取的偏好設定
           );
 
           if (updatedDeadline) {
@@ -125,6 +133,15 @@ export class DeadlineRescheduleService {
         const deadlineNames = rescheduledDeadlines.map((d) => d.title).join("、");
         message = `✅ 已根據你的偏好重新安排「${deadlineNames}」的學習時間！\n\n`;
         
+        const preferenceParts: string[] = [];
+        
+        if (preferences.excludeDays && preferences.excludeDays.length > 0) {
+          const excludeDaysStr = preferences.excludeDays
+            .map((d) => dayjs(d).format("M月D日"))
+            .join("、");
+          preferenceParts.push(`已排除 ${excludeDaysStr} 的時段`);
+        }
+        
         if (preferences.excludeHours) {
           const excludeHoursStr = preferences.excludeHours
             .filter((h) => h >= 0 && h <= 11)
@@ -133,7 +150,11 @@ export class DeadlineRescheduleService {
             : preferences.excludeHours.filter((h) => h >= 12 && h <= 17).length > 0
             ? "下午"
             : "晚上";
-          message += `已排除${excludeHoursStr}時段，保持總時數不變。`;
+          preferenceParts.push(`已排除${excludeHoursStr}時段`);
+        }
+        
+        if (preferenceParts.length > 0) {
+          message += preferenceParts.join("，") + "，保持總時數不變。";
         }
       }
 

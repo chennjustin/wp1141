@@ -208,11 +208,13 @@ export class DeadlineService {
    * @param id Deadline ID
    * @param updates 要更新的欄位
    * @param lineUserId LINE 用戶 ID
+   * @param preferences 用戶偏好設定（可選）
    */
   async updateDeadlineAndReschedule(
     id: string,
     updates: UpdateDeadlineData,
-    lineUserId: string
+    lineUserId: string,
+    preferences?: { excludeHours?: number[]; preferHours?: number[]; maxHoursPerDay?: number; excludeDays?: string[] }
   ): Promise<IDeadline | null> {
     try {
       await connectDB();
@@ -230,9 +232,9 @@ export class DeadlineService {
       const studyBlockService = new StudyBlockService();
       await studyBlockService.deleteStudyBlocksByDeadline(id);
 
-      // 重新排程
+      // 重新排程（傳遞偏好設定）
       try {
-        await this.scheduleDeadlineWithLLM(deadline, lineUserId);
+        await this.scheduleDeadlineWithLLM(deadline, lineUserId, preferences);
       } catch (scheduleError) {
         // 排程失敗不影響 deadline 更新，只記錄錯誤
         Logger.error("重新排程失敗", {
@@ -265,7 +267,8 @@ export class DeadlineService {
    */
   private async scheduleDeadlineWithLLM(
     deadline: IDeadline,
-    lineUserId: string
+    lineUserId: string,
+    providedPreferences?: { excludeHours?: number[]; preferHours?: number[]; maxHoursPerDay?: number; excludeDays?: string[] }
   ): Promise<void> {
     const schedulerLLM = new SchedulerLLMService();
     const validator = new ScheduleValidatorService();
@@ -281,14 +284,19 @@ export class DeadlineService {
         userId: deadline.userId,
       }).exec();
 
-      // 2. 獲取對話歷史並提取偏好
-      const conversationHistory = await userStateService.getConversationHistory(lineUserId);
-      const preferences = await preferenceExtractor.extractPreferences(
-        conversationHistory.map((item) => ({
-          role: item.role,
-          content: item.content,
-        }))
-      );
+      // 2. 獲取偏好設定（如果提供了就使用，否則從對話歷史提取）
+      let preferences: { excludeHours?: number[]; preferHours?: number[]; maxHoursPerDay?: number; excludeDays?: string[] };
+      if (providedPreferences) {
+        preferences = providedPreferences;
+      } else {
+        const conversationHistory = await userStateService.getConversationHistory(lineUserId);
+        preferences = await preferenceExtractor.extractPreferences(
+          conversationHistory.map((item) => ({
+            role: item.role,
+            content: item.content,
+          }))
+        );
+      }
 
       // 3. 計算可用時間區間
       const user = await User.findById(deadline.userId);
