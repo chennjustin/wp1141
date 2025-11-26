@@ -198,7 +198,7 @@ async function sendScheduleSuccessMessage(
     await sendTextMessageWithQuickReply(replyToken, message);
 
     // 如果有排程，發送時程表連結按鈕
-    if (blocks.length > 0) {
+    if (validBlocks.length > 0) {
       await lineClient.sendMessages(replyToken, [
         {
           type: "template",
