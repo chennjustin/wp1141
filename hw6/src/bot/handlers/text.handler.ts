@@ -25,6 +25,7 @@ import {
 import { handleUpdateDeadlineFlow } from "./deadline-update.handler";
 import { handleDeleteDeadlineFlow } from "./deadline-delete.handler";
 import { Logger } from "@/lib/utils/logger";
+import type { UserPreferences } from "@/services/llm/preference-extractor.service";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
@@ -949,9 +950,15 @@ async function handleModifyScheduleFlow(
 
     // modify action：修改截止日期和/或重新排程
     if (modificationRequest.action === "modify") {
-      // 檢查是否有任何修改（截止日期或時程偏好）
+      // 檢查是否有任何修改（截止日期或時程偏好，包含 excludeDays）
       const hasDueDateChange = !!modificationRequest.newDueDate;
-      const hasScheduleChange = !!modificationRequest.newSchedule?.preferences;
+      const newPreferences = modificationRequest.newSchedule?.preferences;
+      const hasScheduleChange = !!newPreferences && (
+        !!newPreferences.excludeHours ||
+        !!newPreferences.preferHours ||
+        !!newPreferences.maxHoursPerDay ||
+        !!newPreferences.excludeDays
+      );
       
       if (!hasDueDateChange && !hasScheduleChange) {
         // 如果沒有任何修改，使用預設聊天
@@ -991,24 +998,25 @@ async function handleModifyScheduleFlow(
       await studyBlockService.deleteStudyBlocksByDeadline(modificationRequest.deadlineId);
 
       // 更新用戶偏好並重新排程
-      const preferences = modificationRequest.newSchedule?.preferences || {};
-      
-      // 合併現有偏好和新偏好
       const { PreferenceExtractorService } = await import("@/services/llm/preference-extractor.service");
       const preferenceExtractor = new PreferenceExtractorService();
       const existingPreferences = await preferenceExtractor.extractPreferences(history);
-      const mergedPreferences: typeof preferences = {
-        excludeHours: preferences.excludeHours || existingPreferences.excludeHours,
-        preferHours: preferences.preferHours || existingPreferences.preferHours,
-        maxHoursPerDay: preferences.maxHoursPerDay || existingPreferences.maxHoursPerDay,
+      
+      // 合併現有偏好和新偏好，使用正確的類型
+      const mergedPreferences: UserPreferences = {
+        excludeHours: newPreferences?.excludeHours || existingPreferences.excludeHours,
+        preferHours: newPreferences?.preferHours || existingPreferences.preferHours,
+        maxHoursPerDay: newPreferences?.maxHoursPerDay || existingPreferences.maxHoursPerDay,
+        excludeDays: newPreferences?.excludeDays || existingPreferences.excludeDays, // 重要：包含排除日期
       };
 
       // 更新用戶偏好到對話歷史（讓後續排程能使用）
-      if (mergedPreferences.excludeHours || mergedPreferences.preferHours || mergedPreferences.maxHoursPerDay) {
+      if (mergedPreferences.excludeHours || mergedPreferences.preferHours || mergedPreferences.maxHoursPerDay || mergedPreferences.excludeDays) {
         const preferenceText = [
           mergedPreferences.excludeHours ? `排除時段：${mergedPreferences.excludeHours.join(", ")}點` : "",
           mergedPreferences.preferHours ? `偏好時段：${mergedPreferences.preferHours.join(", ")}點` : "",
           mergedPreferences.maxHoursPerDay ? `每天最大時數：${mergedPreferences.maxHoursPerDay}小時` : "",
+          mergedPreferences.excludeDays ? `排除日期：${mergedPreferences.excludeDays.join(", ")}` : "",
         ].filter(Boolean).join("，");
         
         // 添加一個系統訊息到對話歷史，讓後續的偏好提取能識別
@@ -1046,10 +1054,10 @@ async function handleModifyScheduleFlow(
         }
         
         if (newBlocks.length > 0) {
-          // 格式化排程詳情
+          // 格式化排程詳情（日期排在時間前面）
           const blocksByDate = new Map<string, typeof newBlocks>();
           newBlocks.forEach((b) => {
-            const dateKey = dayjs(b.startTime).format("YYYY-MM-DD");
+            const dateKey = dayjs(b.startTime).tz("Asia/Taipei").format("M/D");
             if (!blocksByDate.has(dateKey)) {
               blocksByDate.set(dateKey, []);
             }
@@ -1057,13 +1065,25 @@ async function handleModifyScheduleFlow(
           });
 
           message += `**排程詳情：**\n\n`;
-          blocksByDate.forEach((blocks, dateKey) => {
-            const dateFormatted = dayjs(dateKey).format("M月D日");
-            message += `${dateFormatted}：\n`;
+          // 按日期排序（使用實際的 startTime 來排序，確保跨年也能正確）
+          const sortedEntries = Array.from(blocksByDate.entries()).sort((a, b) => {
+            // 取每個日期組的第一個 block 的 startTime 來比較
+            const dateA = dayjs(a[1][0].startTime).tz("Asia/Taipei").valueOf();
+            const dateB = dayjs(b[1][0].startTime).tz("Asia/Taipei").valueOf();
+            return dateA - dateB;
+          });
+          
+          sortedEntries.forEach(([dateKey, blocks]) => {
+            // 按開始時間排序
+            blocks.sort((a, b) => {
+              return dayjs(a.startTime).tz("Asia/Taipei").valueOf() - dayjs(b.startTime).tz("Asia/Taipei").valueOf();
+            });
+            
             blocks.forEach((b) => {
-              const start = dayjs(b.startTime).format("HH:mm");
-              const end = dayjs(b.endTime).format("HH:mm");
-              message += `  • ${start}-${end}（${b.duration}小時）\n`;
+              const start = dayjs(b.startTime).tz("Asia/Taipei").format("HH:mm");
+              const end = dayjs(b.endTime).tz("Asia/Taipei").format("HH:mm");
+              // 日期排在時間前面
+              message += `${dateKey} ${start}-${end}（${b.duration}小時）\n`;
             });
           });
           

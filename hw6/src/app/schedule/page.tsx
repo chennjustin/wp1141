@@ -469,12 +469,55 @@ function ScheduleContent() {
     setIsAddModalOpen(true);
   };
 
-  // 今天的待辦事項
-  const todayDeadlines = useMemo(() => {
-    return deadlines.filter((d) => {
-      return dayjs(d.dueDate).isSame(dayjs(), "day");
+  // 今天的待辦事項：顯示今天有安排的學習時段
+  const todayTodos = useMemo(() => {
+    const today = dayjs().format("YYYY-MM-DD");
+    const todayBlocks = studyBlocks.filter((block) => {
+      try {
+        if (!block || !block.startTime) return false;
+        const blockStartTime = dayjs(block.startTime);
+        if (!blockStartTime.isValid()) return false;
+        const blockDate = blockStartTime.format("YYYY-MM-DD");
+        return blockDate === today;
+      } catch (error) {
+        return false;
+      }
     });
-  }, [deadlines]);
+
+    // 根據 deadlineId 分組，並獲取對應的 deadline 資訊
+    const deadlineMap = new Map<string, Deadline>();
+    deadlines.forEach((d) => {
+      deadlineMap.set(d.id, d);
+    });
+
+    // 創建一個 Map 來儲存每個 deadline 的今天時段
+    const todosMap = new Map<string, { deadline: Deadline; blocks: StudyBlock[]; totalHours: number }>();
+
+    todayBlocks.forEach((block) => {
+      const deadlineId = block.deadlineId;
+      const deadline = deadlineMap.get(deadlineId);
+      if (!deadline) return;
+
+      if (!todosMap.has(deadlineId)) {
+        todosMap.set(deadlineId, {
+          deadline,
+          blocks: [],
+          totalHours: 0,
+        });
+      }
+
+      const todo = todosMap.get(deadlineId)!;
+      todo.blocks.push(block);
+      const duration = dayjs(block.endTime).diff(dayjs(block.startTime), "hour", true);
+      todo.totalHours += duration;
+    });
+
+    // 轉換為陣列並排序（按開始時間）
+    return Array.from(todosMap.values()).map((todo) => ({
+      ...todo,
+      blocks: todo.blocks.sort((a, b) => dayjs(a.startTime).valueOf() - dayjs(b.startTime).valueOf()),
+    }));
+  }, [studyBlocks, deadlines]);
 
   // 計算 block 的位置和高度
   const calculateBlockPosition = (block: StudyBlock, date: Date) => {
@@ -1021,29 +1064,39 @@ function ScheduleContent() {
           {/* 今天的待辦事項 */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6">
             <h2 className="text-base sm:text-lg font-light text-gray-800 mb-3 sm:mb-4">今天的待辦事項</h2>
-            {todayDeadlines.length === 0 ? (
+            {todayTodos.length === 0 ? (
               <div className="text-center py-8 text-gray-400 text-sm">
                 今天沒有任何待辦事項哦～請好好休息！！
               </div>
             ) : (
               <div className="space-y-3">
-                {todayDeadlines.map((deadline) => {
-                  const colors = TYPE_COLORS[deadline.type];
+                {todayTodos.map((todo) => {
+                  const colors = TYPE_COLORS[todo.deadline.type];
+                  const firstBlock = todo.blocks[0];
+                  const lastBlock = todo.blocks[todo.blocks.length - 1];
+                  const startTime = dayjs(firstBlock.startTime).format("HH:mm");
+                  const endTime = dayjs(lastBlock.endTime).format("HH:mm");
+                  
                   return (
                     <div
-                      key={deadline.id}
+                      key={todo.deadline.id}
                       className="flex items-center justify-between p-3 sm:p-4 rounded-xl border border-gray-100 active:bg-gray-50 sm:hover:bg-gray-50 transition-colors cursor-pointer"
-                      onClick={() => handleDeadlineClick(deadline)}
+                      onClick={() => handleDeadlineClick(todo.deadline)}
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="text-sm font-medium text-gray-800 truncate">{deadline.title}</span>
+                          <span className="text-sm font-medium text-gray-800 truncate">{todo.deadline.title}</span>
                           <span className={`${colors.badge} px-2 py-0.5 rounded text-xs flex-shrink-0`}>
-                            {TYPE_NAMES[deadline.type]}
+                            {TYPE_NAMES[todo.deadline.type]}
                           </span>
                         </div>
-                        <div className="text-xs text-gray-500">
-                          {dayjs(deadline.dueDate).format("M 月 D 日 HH:mm")} · {getDaysLeft(deadline.dueDate)}
+                        <div className="text-xs text-gray-500 space-y-0.5">
+                          <div>
+                            {startTime} - {endTime} · 共 {todo.blocks.length} 個時段 · {todo.totalHours.toFixed(1)} 小時
+                          </div>
+                          <div>
+                            截止：{dayjs(todo.deadline.dueDate).format("M 月 D 日 HH:mm")} · {getDaysLeft(todo.deadline.dueDate)}
+                          </div>
                         </div>
                       </div>
                       <svg className="w-5 h-5 text-gray-400 flex-shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

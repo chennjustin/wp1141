@@ -10,6 +10,12 @@ import { Logger } from "@/lib/utils/logger";
 import User from "@/models/User";
 import { IDeadline } from "@/models/Deadline";
 import connectDB from "@/lib/db/mongoose";
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const deadlineService = new DeadlineService();
 const userStateService = new UserStateService();
@@ -67,21 +73,72 @@ async function sendScheduleSuccessMessage(
     const scheduleUrl = `${appUrl}/schedule?token=${viewToken}`;
 
     // 檢查是否有排程的 blocks
-    const blocks = await studyBlockService.getStudyBlocksByDeadline(deadline._id.toString());
+    const allBlocks = await studyBlockService.getStudyBlocksByDeadline(deadline._id.toString());
+    
+    // 驗證並過濾不合法的 blocks（凌晨時段、死線之後）
+    const now = dayjs().tz("Asia/Taipei");
+    const dueDate = dayjs(deadline.dueDate).tz("Asia/Taipei");
+    const FORBIDDEN_HOURS = [
+      { start: 0, end: 8 }, // 00:00-08:00
+      { start: 23, end: 24 }, // 23:00-24:00
+    ];
+    
+    const invalidBlockIds: string[] = [];
+    const validBlocks = allBlocks.filter((block) => {
+      const startTime = dayjs(block.startTime).tz("Asia/Taipei");
+      const endTime = dayjs(block.endTime).tz("Asia/Taipei");
+      
+      // 檢查是否在過去
+      if (startTime.isBefore(now)) {
+        invalidBlockIds.push(block._id.toString());
+        return false;
+      }
+      
+      // 檢查是否在死線之後
+      if (startTime.isAfter(dueDate)) {
+        invalidBlockIds.push(block._id.toString());
+        return false;
+      }
+      
+      // 檢查是否跨越禁止時段
+      for (const { start, end } of FORBIDDEN_HOURS) {
+        const forbiddenStart = startTime.startOf("day").add(start, "hour");
+        const forbiddenEnd = startTime.startOf("day").add(end, "hour");
+        if (startTime.isBefore(forbiddenEnd) && endTime.isAfter(forbiddenStart)) {
+          invalidBlockIds.push(block._id.toString());
+          return false;
+        }
+      }
+      
+      return true;
+    });
+    
+    // 刪除不合法的 blocks
+    if (invalidBlockIds.length > 0) {
+      Logger.warn("發現不合法的 blocks，正在刪除", {
+        deadlineId: deadline._id,
+        invalidBlockIds,
+        invalidCount: invalidBlockIds.length,
+      });
+      for (const blockId of invalidBlockIds) {
+        try {
+          await studyBlockService.deleteStudyBlock(blockId);
+        } catch (error) {
+          Logger.error("刪除不合法 block 失敗", { error, blockId });
+        }
+      }
+    }
     
     // 發送成功訊息
     let message = `我收到你要建立「${deadline.title}」，預估需要 ${deadline.estimatedHours} 小時。\n\n`;
     
-    if (blocks.length > 0) {
-      const totalHours = blocks.reduce((sum, b) => sum + b.duration, 0);
+    if (validBlocks.length > 0) {
+      const totalHours = validBlocks.reduce((sum, b) => sum + b.duration, 0);
       
-      // 按日期分組顯示排程
-      const blocksByDate = new Map<string, typeof blocks>();
-      blocks.forEach((block) => {
-        const dateKey = new Date(block.startTime).toLocaleDateString("zh-TW", {
-          month: "2-digit",
-          day: "2-digit",
-        });
+      // 按日期分組顯示排程（使用 dayjs 確保時區正確）
+      const blocksByDate = new Map<string, typeof validBlocks>();
+      validBlocks.forEach((block) => {
+        const dateKey = dayjs(block.startTime).tz("Asia/Taipei").format("M/D");
         if (!blocksByDate.has(dateKey)) {
           blocksByDate.set(dateKey, []);
         }
@@ -90,21 +147,30 @@ async function sendScheduleSuccessMessage(
 
       message += `我幫你排了一份學習計畫囉！📘\n\n`;
       
-      // 顯示排程詳情
+      // 顯示排程詳情（日期排在時間前面）
       if (blocksByDate.size > 0) {
-        message += `**排程詳情：**\n`;
-        blocksByDate.forEach((dayBlocks, dateKey) => {
-          message += `\n${dateKey}：\n`;
+        message += `**排程詳情：**\n\n`;
+        // 按日期排序（使用實際的 startTime 來排序，確保跨年也能正確）
+        const sortedEntries = Array.from(blocksByDate.entries()).sort((a, b) => {
+          // 取每個日期組的第一個 block 的 startTime 來比較
+          const dateA = dayjs(a[1][0].startTime).tz("Asia/Taipei").valueOf();
+          const dateB = dayjs(b[1][0].startTime).tz("Asia/Taipei").valueOf();
+          return dateA - dateB;
+        });
+        
+        sortedEntries.forEach(([dateKey, dayBlocks]) => {
+          // 按開始時間排序
+          dayBlocks.sort((a, b) => {
+            return dayjs(a.startTime).tz("Asia/Taipei").valueOf() - dayjs(b.startTime).tz("Asia/Taipei").valueOf();
+          });
+          
           dayBlocks.forEach((block) => {
-            const start = new Date(block.startTime).toLocaleTimeString("zh-TW", {
-              hour: "2-digit",
-              minute: "2-digit",
-            });
-            const end = new Date(block.endTime).toLocaleTimeString("zh-TW", {
-              hour: "2-digit",
-              minute: "2-digit",
-            });
-            message += `  • ${start}-${end}（${block.duration}小時）\n`;
+            const startTime = dayjs(block.startTime).tz("Asia/Taipei");
+            const endTime = dayjs(block.endTime).tz("Asia/Taipei");
+            const start = startTime.format("HH:mm");
+            const end = endTime.format("HH:mm");
+            // 日期排在時間前面
+            message += `${dateKey} ${start}-${end}（${block.duration}小時）\n`;
           });
         });
       }
@@ -113,9 +179,20 @@ async function sendScheduleSuccessMessage(
       if (totalHours < deadline.estimatedHours) {
         message += `（預估 ${deadline.estimatedHours} 小時，剩餘 ${deadline.estimatedHours - totalHours} 小時請手動調整）`;
       }
+      
+      // 如果有不合法的 blocks，提示用戶
+      if (validBlocks.length < allBlocks.length) {
+        const invalidCount = allBlocks.length - validBlocks.length;
+        message += `\n\n⚠️ 已過濾 ${invalidCount} 個不合法的時段（凌晨時段或死線之後）`;
+      }
+      
       message += `\n\n你可以在下面查看：\n🔗「開啟我的時程表」`;
     } else {
-      message += `✅ 已成功建立 Deadline！`;
+      if (allBlocks.length > 0) {
+        message += `⚠️ 已建立 Deadline，但所有排程時段都不合法（凌晨時段或死線之後），請手動調整。`;
+      } else {
+        message += `✅ 已成功建立 Deadline！`;
+      }
     }
 
     await sendTextMessageWithQuickReply(replyToken, message);

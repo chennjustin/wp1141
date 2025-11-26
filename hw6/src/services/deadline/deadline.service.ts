@@ -301,7 +301,8 @@ export class DeadlineService {
       const availableSlots = await smartScheduler.calculateAvailableSlots(
         user._id.toString(),
         now.toDate(),
-        dueDate.toDate()
+        dueDate.toDate(),
+        preferences // 傳遞偏好設定，包含 excludeDays
       );
 
       // 4. 嘗試使用 LLM 排程

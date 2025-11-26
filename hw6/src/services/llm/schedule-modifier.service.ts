@@ -7,7 +7,7 @@ import { UserPreferences } from "./preference-extractor.service";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
-import { getCurrentDateTimeChinese } from "@/lib/utils/date";
+import { getCurrentDateTimeChinese, getTodayString } from "@/lib/utils/date";
 import { APP_CONFIG } from "@/lib/config/app.config";
 
 dayjs.extend(utc);
@@ -29,6 +29,7 @@ export interface ScheduleModificationRequest {
       excludeHours?: number[];
       preferHours?: number[];
       maxHoursPerDay?: number;
+      excludeDays?: string[]; // 排除的日期（格式：YYYY-MM-DD）
     };
   };
   reasoning?: string; // LLM 的推理過程
@@ -51,6 +52,14 @@ export class ScheduleModifierService {
     conversationHistory: Array<{ role: string; content: string }>
   ): Promise<ScheduleModificationRequest | null> {
     try {
+      // 獲取當前日期
+      const todayString = getTodayString(); // YYYY-MM-DD
+      const currentDateTime = getCurrentDateTimeChinese();
+      const today = new Date(todayString);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowString = tomorrow.toISOString().split('T')[0]; // YYYY-MM-DD
+      
       // 格式化所有死線資訊
       const deadlinesText = this.formatDeadlines(deadlines, studyBlocks);
 
@@ -62,7 +71,8 @@ export class ScheduleModifierService {
 
       const prompt = `你是一個時程管理助手，專門幫助用戶修改或刪除學習時程。
 
-**當前時間：**${getCurrentDateTimeChinese()}（${APP_CONFIG.CURRENT_YEAR}年）
+**當前時間：**${currentDateTime}（${APP_CONFIG.CURRENT_YEAR}年）
+**今天日期：**${todayString}（${new Date(todayString).toLocaleDateString("zh-TW", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}）
 
 **用戶的所有死線和時程資訊：**
 ${deadlinesText}
@@ -93,6 +103,8 @@ ${userMessage}
      * excludeHours：排除的小時（例如：用戶說「不要在早上」→ [0,1,2,3,4,5,6,7,8,9,10,11]）
      * preferHours：偏好的小時（例如：用戶說「都擺在早上」→ [8,9,10,11]）
      * maxHoursPerDay：每天最大時數（例如：用戶說「一次三小時」→ 3）
+     * **excludeDays：排除的日期（例如：用戶說「今天不要排」、「今天不要」、「我明天開始才有時間」→ ["${todayString}"]）**
+   - **重要：當用戶說「今天不要排」、「今天不要」等，必須提取 excludeDays，並且必須重新排程以確保總時數不變**
    - 如果用戶只修改截止日期，不需要提供 preferences
    - 如果用戶只修改時程偏好，不需要提供 newDueDate
    - 如果用戶同時修改截止日期和時程偏好，兩者都要提供
@@ -111,7 +123,8 @@ ${userMessage}
     "preferences": {
       "excludeHours": [0, 1, 2],
       "preferHours": [8, 9, 10, 11],
-      "maxHoursPerDay": 3
+      "maxHoursPerDay": 3,
+      "excludeDays": ["${todayString}"] // 排除的日期，例如用戶說「今天不要排」→ ["${todayString}"]
     }
   }, // 僅當 action 為 "modify" 且用戶要修改時程偏好時需要
   "reasoning": "你的推理過程"
@@ -121,13 +134,17 @@ ${userMessage}
 - 如果用戶只是詢問時程，沒有明確要修改或刪除，返回 null（不輸出 JSON）
 - deadlineId 必須是有效的死線 ID（從提供的死線資訊中選擇）
 - 如果無法確定用戶意圖，返回 null
-- 如果用戶想要修改時程偏好，newSchedule.preferences 必須包含至少一個偏好設定
+- **當用戶說「今天不要排」、「今天不要」、「今天不排」、「我明天開始才有時間」等，必須識別為 modify action，並提取 excludeDays: ["${todayString}"]**
+- 如果用戶想要修改時程偏好，newSchedule.preferences 必須包含至少一個偏好設定（excludeHours、preferHours、maxHoursPerDay 或 excludeDays）
 - 如果用戶想要修改截止日期，newDueDate 必須是有效的 ISO 8601 格式日期時間（時區 +08:00）
 - newDueDate 和 newSchedule.preferences 可以同時存在（用戶同時修改截止日期和時程偏好）
+- **重要：當用戶要求排除某個日期（如「今天不要排」）時，必須重新排程以確保總時數不變，只是將時間移到其他日期**
 - 日期解析規則：
   * "X月X日"、"X/X" → 轉換為 ${APP_CONFIG.CURRENT_YEAR} 年對應日期，時間預設為 23:59
   * "下週X"、"下星期X" → 計算下週對應的日期，時間預設為 23:59
   * "X天前"、"X天內" → 從當前日期計算，時間預設為 23:59
+  * "今天" → ${todayString}
+  * "明天" → ${tomorrowString}
   * 所有日期都必須使用 ${APP_CONFIG.CURRENT_YEAR} 年
 
 請只返回 JSON，不要有其他文字。如果無法確定用戶意圖，返回 null。`;
@@ -180,9 +197,16 @@ ${userMessage}
             return null;
           }
 
-          // 如果是 modify，驗證至少要有 newDueDate 或 newSchedule.preferences
+          // 如果是 modify，驗證至少要有 newDueDate 或 newSchedule.preferences（包含 excludeDays）
           if (result.action === "modify") {
-            if (!result.newDueDate && (!result.newSchedule || !result.newSchedule.preferences)) {
+            const hasPreferences = result.newSchedule?.preferences && (
+              result.newSchedule.preferences.excludeHours ||
+              result.newSchedule.preferences.preferHours ||
+              result.newSchedule.preferences.maxHoursPerDay ||
+              result.newSchedule.preferences.excludeDays
+            );
+            
+            if (!result.newDueDate && !hasPreferences) {
               Logger.warn("LLM 返回的 modify action 缺少 newDueDate 或 newSchedule.preferences", { result });
               return null;
             }
