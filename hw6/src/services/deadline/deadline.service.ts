@@ -4,6 +4,18 @@ import User from "@/models/User";
 import { Logger } from "@/lib/utils/logger";
 import { SmartSchedulerService } from "@/services/scheduler/smart-scheduler.service";
 import { StudyBlockService } from "@/services/study-block/study-block.service";
+import { SchedulerLLMService } from "@/services/llm/scheduler-llm.service";
+import { ScheduleValidatorService } from "@/services/scheduler/schedule-validator.service";
+import { PreferenceExtractorService } from "@/services/llm/preference-extractor.service";
+import { UserStateService } from "@/services/user-state/user-state.service";
+import StudyBlock from "@/models/StudyBlock";
+import mongoose from "mongoose";
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export interface CreateDeadlineData {
   userId: string;
@@ -42,32 +54,9 @@ export class DeadlineService {
         status: "pending",
       });
 
-      // 自動排程：建立 study blocks
+      // 自動排程：先嘗試 LLM 排程，失敗則使用備用方案
       try {
-        const scheduler = new SmartSchedulerService();
-        const scheduleResult = await scheduler.scheduleDeadline(deadline, data.userId);
-
-        if (scheduleResult.blocks.length > 0) {
-          const studyBlockService = new StudyBlockService();
-          const blocksToCreate = scheduleResult.blocks.map((block) => ({
-            userId: data.userId,
-            deadlineId: deadline._id.toString(),
-            date: block.date,
-            startTime: block.startTime,
-            endTime: block.endTime,
-            duration: block.duration,
-            title: block.title,
-            blockIndex: block.blockIndex,
-            totalBlocks: block.totalBlocks,
-          }));
-
-          await studyBlockService.createStudyBlocks(blocksToCreate);
-          Logger.info("自動排程成功", {
-            deadlineId: deadline._id,
-            blocksCount: scheduleResult.blocks.length,
-            warning: scheduleResult.warning,
-          });
-        }
+        await this.scheduleDeadlineWithLLM(deadline, data.userId);
       } catch (scheduleError) {
         // 排程失敗不影響 deadline 建立，只記錄錯誤
         Logger.error("自動排程失敗", {
@@ -215,6 +204,51 @@ export class DeadlineService {
   }
 
   /**
+   * 更新 Deadline 並重新排程
+   * @param id Deadline ID
+   * @param updates 要更新的欄位
+   * @param lineUserId LINE 用戶 ID
+   */
+  async updateDeadlineAndReschedule(
+    id: string,
+    updates: UpdateDeadlineData,
+    lineUserId: string
+  ): Promise<IDeadline | null> {
+    try {
+      await connectDB();
+      
+      // 更新 deadline
+      const deadline = await Deadline.findByIdAndUpdate(id, updates, {
+        new: true,
+      }).exec();
+      
+      if (!deadline) {
+        return null;
+      }
+
+      // 刪除舊的 study blocks
+      const studyBlockService = new StudyBlockService();
+      await studyBlockService.deleteStudyBlocksByDeadline(id);
+
+      // 重新排程
+      try {
+        await this.scheduleDeadlineWithLLM(deadline, lineUserId);
+      } catch (scheduleError) {
+        // 排程失敗不影響 deadline 更新，只記錄錯誤
+        Logger.error("重新排程失敗", {
+          error: scheduleError,
+          deadlineId: deadline._id,
+        });
+      }
+
+      return deadline;
+    } catch (error) {
+      Logger.error("更新 Deadline 並重新排程失敗", { error, id, updates });
+      return null;
+    }
+  }
+
+  /**
    * 計算剩餘天數（負數表示已過期）
    */
   calculateDaysLeft(dueDate: Date): number {
@@ -224,6 +258,143 @@ export class DeadlineService {
     const diffTime = due.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
+  }
+
+  /**
+   * 使用 LLM 排程，失敗則使用備用方案
+   */
+  private async scheduleDeadlineWithLLM(
+    deadline: IDeadline,
+    lineUserId: string
+  ): Promise<void> {
+    const schedulerLLM = new SchedulerLLMService();
+    const validator = new ScheduleValidatorService();
+    const preferenceExtractor = new PreferenceExtractorService();
+    const userStateService = new UserStateService();
+    const smartScheduler = new SmartSchedulerService();
+    const studyBlockService = new StudyBlockService();
+
+    try {
+      // 1. 獲取用戶現有行程
+      const existingDeadlines = await this.getDeadlinesByUser(lineUserId, "pending");
+      const existingStudyBlocks = await StudyBlock.find({
+        userId: deadline.userId,
+      }).exec();
+
+      // 2. 獲取對話歷史並提取偏好
+      const conversationHistory = await userStateService.getConversationHistory(lineUserId);
+      const preferences = await preferenceExtractor.extractPreferences(
+        conversationHistory.map((item) => ({
+          role: item.role,
+          content: item.content,
+        }))
+      );
+
+      // 3. 計算可用時間區間
+      const user = await User.findById(deadline.userId);
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      const now = dayjs().tz("Asia/Taipei");
+      const dueDate = dayjs(deadline.dueDate).tz("Asia/Taipei");
+      const availableSlots = await smartScheduler.calculateAvailableSlots(
+        user._id.toString(),
+        now.toDate(),
+        dueDate.toDate()
+      );
+
+      // 4. 嘗試使用 LLM 排程
+      const llmResult = await schedulerLLM.generateSchedule(
+        deadline,
+        existingDeadlines.filter((d) => d._id.toString() !== deadline._id.toString()),
+        existingStudyBlocks,
+        preferences,
+        availableSlots
+      );
+
+      if (llmResult) {
+        // 5. 驗證 LLM 結果
+        const validation = validator.validateSchedule(
+          llmResult,
+          deadline,
+          existingStudyBlocks,
+          preferences
+        );
+
+        if (validation.isValid) {
+          // 6. 轉換 LLM 結果為 StudyBlock 格式並創建
+          const blocksToCreate = llmResult.blocks.map((block, index) => ({
+            userId: lineUserId,
+            deadlineId: deadline._id.toString(),
+            date: new Date(block.date),
+            startTime: new Date(block.startTime),
+            endTime: new Date(block.endTime),
+            duration: block.duration,
+            title: `${deadline.title}（進度 ${block.blockIndex}/${block.totalBlocks}）`,
+            blockIndex: block.blockIndex,
+            totalBlocks: block.totalBlocks,
+          }));
+
+          await studyBlockService.createStudyBlocks(blocksToCreate);
+
+          Logger.info("LLM 排程成功", {
+            deadlineId: deadline._id,
+            blocksCount: llmResult.blocks.length,
+            totalHours: llmResult.totalHours,
+            reasoning: llmResult.reasoning,
+            warnings: validation.warnings,
+          });
+
+          // 儲存 LLM reasoning 到 deadline（如果需要）
+          return;
+        } else {
+          Logger.warn("LLM 排程驗證失敗，使用備用方案", {
+            deadlineId: deadline._id,
+            errors: validation.errors,
+            warnings: validation.warnings,
+          });
+        }
+      }
+    } catch (llmError) {
+      Logger.warn("LLM 排程失敗，使用備用方案", {
+        error: llmError,
+        deadlineId: deadline._id,
+      });
+    }
+
+    // 7. 使用備用方案（SmartSchedulerService）
+    try {
+      const scheduleResult = await smartScheduler.scheduleDeadline(deadline, lineUserId);
+
+      if (scheduleResult.blocks.length > 0) {
+        const studyBlockService = new StudyBlockService();
+        const blocksToCreate = scheduleResult.blocks.map((block) => ({
+          userId: lineUserId,
+          deadlineId: deadline._id.toString(),
+          date: block.date,
+          startTime: block.startTime,
+          endTime: block.endTime,
+          duration: block.duration,
+          title: block.title,
+          blockIndex: block.blockIndex,
+          totalBlocks: block.totalBlocks,
+        }));
+
+        await studyBlockService.createStudyBlocks(blocksToCreate);
+        Logger.info("備用排程成功", {
+          deadlineId: deadline._id,
+          blocksCount: scheduleResult.blocks.length,
+          warning: scheduleResult.warning,
+        });
+      }
+    } catch (fallbackError) {
+      Logger.error("備用排程也失敗", {
+        error: fallbackError,
+        deadlineId: deadline._id,
+      });
+      throw fallbackError;
+    }
   }
 }
 

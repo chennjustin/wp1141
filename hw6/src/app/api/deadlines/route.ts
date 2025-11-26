@@ -35,6 +35,12 @@ export async function GET(request: NextRequest) {
       status || "pending"
     );
 
+    Logger.info("Get deadlines API", {
+      userId: userInfo.lineUserId,
+      status: status || "pending",
+      count: deadlines.length,
+    });
+
     // 將 Date 轉換為字符串
     const formattedDeadlines = deadlines.map((deadline: any) => ({
       id: deadline._id.toString(),

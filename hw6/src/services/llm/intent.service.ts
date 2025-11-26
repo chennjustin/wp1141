@@ -3,7 +3,7 @@ import { Logger } from "@/lib/utils/logger";
 import { getTodayChinese, getCurrentDateTimeChinese } from "@/lib/utils/date";
 import { APP_CONFIG } from "@/lib/config/app.config";
 
-export type Intent = "check_in" | "daily_quote" | "view_schedule" | "add_deadline" | "other";
+export type Intent = "check_in" | "daily_quote" | "view_schedule" | "add_deadline" | "update_deadline" | "delete_deadline" | "other";
 
 export interface IntentResult {
   intent: Intent;
@@ -38,14 +38,22 @@ export class IntentService {
 1. "check_in" - 簽到相關（例如：我要簽到、簽到一下、報到、簽到）
 2. "daily_quote" - 每日金句相關（例如：來一句、我要金句、每日金句、給我一句話）
 3. "view_schedule" - 查看時程相關（例如：今天要幹嘛、我的行程、查看時程表、明天的待辦、有什麼作業、我想看行事曆、打開行事曆）
+   **重要：如果用戶問到「已存在的 deadline 的學習時間分配」、「你幫我分配到哪些時間」、「分配在哪裡」等問題，應該識別為 "view_schedule" 或 "other"，而不是 "add_deadline"**
 4. "add_deadline" - 新增 Deadline 相關（例如：我有一個作業、新增 deadline、下週三要交作業）
-5. "other" - 其他對話
+   **重要：只有在用戶明確要「新增」、「建立」、「加入」新的 deadline 時，才識別為 "add_deadline"**
+   **如果用戶問到已存在的 deadline（例如：「我網服作業的8小時，你幫我分配到哪些時間」），這不是新增，應該識別為 "view_schedule" 或 "other"**
+5. "update_deadline" - 修改 Deadline 相關（例如：我想要更改我的deadline、修改deadline、更改截止時間、我想改deadline的時間）
+   **重要：只有在用戶明確要「修改」、「更改」、「更新」、「改」已存在的 deadline 時，才識別為 "update_deadline"**
+6. "delete_deadline" - 刪除 Deadline 相關（例如：我不需要這個deadline了、刪除deadline、取消deadline、移除deadline）
+   **重要：只有在用戶明確要「刪除」、「取消」、「移除」、「不需要」deadline 時，才識別為 "delete_deadline"**
+7. "other" - 其他對話（包括查詢已存在的 deadline 的學習時間、詢問已安排的時程等）
 
 對於 "view_schedule" 意圖，需要判斷用戶的意圖類型：
 - "direct_open": 用戶明確要求「打開」、「開啟」、「顯示」行事曆/時程表頁面
   範例：「我想看行事曆」、「打開行事曆」、「開啟時程表」、「給我看行事曆」、「顯示時程表」
-- "inquiry": 用戶以詢問方式想知道有什麼事、要做什麼
+- "inquiry": 用戶以詢問方式想知道有什麼事、要做什麼，或查詢已存在的 deadline 的學習時間分配
   範例：「我今天有什麼事」、「明天要做什麼」、「可以給我看明天我要讀哪些書嗎」、「今天要幹嘛」、「有什麼作業」
+  **特別注意：如果用戶問「我XX作業的X小時，你幫我分配到哪些時間」或「XX作業的時間分配在哪裡」，這是查詢已存在的 deadline 的學習時間，應該識別為 "view_schedule" 的 "inquiry" 類型，而不是 "add_deadline"**
 
 實體提取規則：
 - 如果意圖是 "view_schedule" 或 "add_deadline"，嘗試提取日期（date）
@@ -54,6 +62,9 @@ export class IntentService {
   - dueDate（日期，YYYY-MM-DD 格式，如果無法確定則為 null）
   - estimatedHours（預估小時數，如果沒有提到則為 null）
   - type（exam/assignment/project/other，如果無法確定則為 null）
+- 如果意圖是 "update_deadline" 或 "delete_deadline"，嘗試提取：
+  - title（deadline 標題，用於識別要修改/刪除的 deadline）
+  - date（如果是 update_deadline，嘗試提取新的截止日期時間）
 
 日期時間解析規則（非常重要：當前日期時間是 ${getCurrentDateTimeChinese()}，${APP_CONFIG.CURRENT_YEAR} 年）：
 
@@ -78,10 +89,10 @@ export class IntentService {
 
 請以 JSON 格式輸出：
 {
-  "intent": "check_in" | "daily_quote" | "view_schedule" | "add_deadline" | "other",
+  "intent": "check_in" | "daily_quote" | "view_schedule" | "add_deadline" | "update_deadline" | "delete_deadline" | "other",
   "entities": {
     "date": "YYYY-MM-DDTHH:mm" | null, // 完整的日期時間格式（ISO 8601）
-    "title": "string" | null,
+    "title": "string" | null, // deadline 標題（用於識別要修改/刪除的 deadline）
     "estimatedHours": number | null,
     "type": "exam" | "assignment" | "project" | "other" | null
   },
@@ -94,6 +105,11 @@ export class IntentService {
 - 如果 intent 不是 "view_schedule"，actionType 為 null
 
 使用者訊息：${text}
+
+**關鍵判斷規則：**
+1. 如果用戶問到「你幫我分配到哪些時間」、「分配在哪裡」、「時間分配」、「學習時間」等，且提到了已存在的 deadline 名稱（例如「網服作業」），這是**查詢已存在的 deadline 的學習時間**，應該識別為 "view_schedule" 或 "other"，**絕對不是 "add_deadline"**
+2. 只有在用戶明確要「新增」、「建立」、「加入」新的 deadline 時，才識別為 "add_deadline"
+3. 如果用戶問到已存在的 deadline 的相關問題（學習時間、進度、截止日期等），應該識別為 "view_schedule" 或 "other"
 
 重要提醒：
 - 當前日期時間：${getCurrentDateTimeChinese()}（${APP_CONFIG.CURRENT_YEAR}年）
@@ -187,7 +203,7 @@ export class IntentService {
    * 驗證意圖類型
    */
   private validateIntent(intent: string): Intent {
-    const validIntents: Intent[] = ["check_in", "daily_quote", "view_schedule", "add_deadline", "other"];
+    const validIntents: Intent[] = ["check_in", "daily_quote", "view_schedule", "add_deadline", "update_deadline", "delete_deadline", "other"];
     if (validIntents.includes(intent as Intent)) {
       return intent as Intent;
     }

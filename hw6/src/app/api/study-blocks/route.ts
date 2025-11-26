@@ -51,6 +51,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    Logger.info("Get study blocks API", {
+      userId: userInfo.lineUserId,
+      deadlineId: deadlineId || null,
+      startDate: startDate || null,
+      endDate: endDate || null,
+      count: blocks.length,
+    });
+
     // 格式化回應，並獲取每個 block 對應的 deadline type
     const formattedBlocks = await Promise.all(
       blocks.map(async (block: any) => {

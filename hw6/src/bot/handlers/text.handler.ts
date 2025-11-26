@@ -13,6 +13,7 @@ import connectDB from "@/lib/db/mongoose";
 import User from "@/models/User";
 import Deadline from "@/models/Deadline";
 import Checkin from "@/models/Checkin";
+import { StudyBlockService } from "@/services/study-block/study-block.service";
 import {
   handleAddDeadlineStepByStep,
   handleAddDeadlineNLP,
@@ -21,6 +22,8 @@ import {
   handleDeleteDeadline,
   handleMarkDeadlineDone,
 } from "./deadline.handler";
+import { handleUpdateDeadlineFlow } from "./deadline-update.handler";
+import { handleDeleteDeadlineFlow } from "./deadline-delete.handler";
 import { Logger } from "@/lib/utils/logger";
 
 const checkinService = new CheckinService();
@@ -121,6 +124,12 @@ export async function handleText(context: BotContext) {
         await handleEditDeadline(context, deadlineId, field, text);
         // 清除狀態
         await userStateService.clearState(userId);
+        return;
+      } else if (userState.currentFlow === "update_deadline") {
+        await handleUpdateDeadlineFlow(context, userId, replyToken, text);
+        return;
+      } else if (userState.currentFlow === "delete_deadline") {
+        await handleDeleteDeadlineFlow(context, userId, replyToken, text);
         return;
       }
     }
@@ -290,6 +299,26 @@ export async function handleText(context: BotContext) {
               await handleAddDeadlinePrompt(userId, replyToken);
               return;
             }
+          
+          case "update_deadline":
+            await handleUpdateDeadlineFlow(
+              context,
+              userId,
+              replyToken,
+              text,
+              intentResult.entities.title || undefined
+            );
+            return;
+          
+          case "delete_deadline":
+            await handleDeleteDeadlineFlow(
+              context,
+              userId,
+              replyToken,
+              text,
+              intentResult.entities.title || undefined
+            );
+            return;
           
           case "other":
           default:
@@ -825,7 +854,7 @@ async function handleAddDeadlineFromIntent(
 }
 
 /**
- * 處理預設聊天（LLM 功能，不保存對話歷史）
+ * 處理預設聊天（LLM 功能，保存對話歷史）
  */
 async function handleDefaultChat(context: BotContext, userId: string, text: string, replyToken: string) {
   try {
@@ -840,14 +869,106 @@ async function handleDefaultChat(context: BotContext, userId: string, text: stri
       return;
     }
 
-    // 生成 AI 回應（不保存對話歷史）
-    const response = await chatService.generateResponse(text, []);
+    // 獲取對話歷史（最多10條）
+    const conversationHistory = await userStateService.getConversationHistory(userId);
+    const history = conversationHistory.map((item) => ({
+      role: item.role,
+      content: item.content,
+    }));
+
+    // 查詢用戶的 deadlines 和 study blocks
+    await connectDB();
+    const user = await User.findOne({ lineUserId: userId });
+    let userData: {
+      deadlines?: Array<{ title: string; dueDate: string; estimatedHours: number; type: string; id: string }>;
+      studyBlocks?: Array<{ title: string; startTime: string; endTime: string; duration: number; deadlineId: string; deadlineTitle?: string; deadlineEstimatedHours?: number }>;
+    } = {};
+
+    if (user) {
+      // 獲取 pending 的 deadlines
+      const deadlines = await Deadline.find({ userId: user._id, status: "pending" })
+        .sort({ dueDate: 1 })
+        .limit(20)
+        .exec();
+      
+      userData.deadlines = deadlines.map((d) => ({
+        id: d._id.toString(),
+        title: d.title,
+        dueDate: d.dueDate.toISOString(),
+        estimatedHours: d.estimatedHours,
+        type: d.type,
+      }));
+
+      // 獲取 study blocks（最近60天，確保包含所有相關的 blocks）
+      const studyBlockService = new StudyBlockService();
+      const sixtyDaysAgo = new Date();
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 60);
+      const studyBlocks = await studyBlockService.getStudyBlocksByUser(userId, sixtyDaysAgo, futureDate);
+      
+      // 按 deadlineId 分組，並包含 deadline 資訊
+      const blocksWithDeadlineInfo = studyBlocks.map((b) => {
+        const deadline = deadlines.find((d) => d._id.toString() === b.deadlineId.toString());
+        return {
+          title: b.title,
+          startTime: b.startTime.toISOString(),
+          endTime: b.endTime.toISOString(),
+          duration: b.duration,
+          deadlineId: b.deadlineId.toString(),
+          deadlineTitle: deadline?.title || "未知",
+          deadlineEstimatedHours: deadline?.estimatedHours || 0,
+        };
+      });
+      
+      userData.studyBlocks = blocksWithDeadlineInfo;
+    }
+
+    // 記錄用戶訊息到歷史
+    await userStateService.addToConversationHistory(userId, "user", text);
+
+    // 檢查是否需要重新排程（基於用戶偏好）
+    let rescheduleMessage = "";
+    if (user) {
+      const { DeadlineRescheduleService } = await import("@/services/deadline/deadline-reschedule.service");
+      const rescheduleService = new DeadlineRescheduleService();
+      const studyBlockService = new StudyBlockService();
+      const sixtyDaysAgo = new Date();
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 60);
+      const deadlines = await Deadline.find({ userId: user._id, status: "pending" }).exec();
+      const studyBlocks = await studyBlockService.getStudyBlocksByUser(userId, sixtyDaysAgo, futureDate);
+      
+      const rescheduleResult = await rescheduleService.checkAndRescheduleIfNeeded(
+        text,
+        userId,
+        deadlines,
+        studyBlocks
+      );
+      
+      if (rescheduleResult.rescheduled.length > 0 && rescheduleResult.message) {
+        rescheduleMessage = rescheduleResult.message;
+      }
+    }
+
+    // 生成 AI 回應（使用對話歷史和用戶資料）
+    const response = await chatService.generateResponse(text, history, userData);
+
+    // 記錄 Bot 回應到歷史
+    await userStateService.addToConversationHistory(userId, "assistant", response);
 
     // 記錄回應
     Logger.info("發送 LLM 回應", { userId, textLength: text.length });
 
+    // 如果有重新排程，在回應前加上重新排程訊息
+    let finalResponse = response;
+    if (rescheduleMessage) {
+      finalResponse = rescheduleMessage + "\n\n" + response;
+    }
+
     // 發送回應（帶 Quick Reply）
-    await sendTextMessageWithQuickReply(replyToken, response);
+    await sendTextMessageWithQuickReply(replyToken, finalResponse);
   } catch (error) {
     Logger.error("處理預設聊天失敗", { error, userId });
     await sendTextMessageWithQuickReply(replyToken, "處理訊息時發生錯誤，請稍後再試。");

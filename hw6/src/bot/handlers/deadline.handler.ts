@@ -73,7 +73,47 @@ async function sendScheduleSuccessMessage(
     let message = `我收到你要建立「${deadline.title}」，預估需要 ${deadline.estimatedHours} 小時。\n\n`;
     
     if (blocks.length > 0) {
-      message += `我幫你排了一份學習計畫囉！📘\n\n你可以在下面查看：\n🔗「開啟我的時程表」`;
+      const totalHours = blocks.reduce((sum, b) => sum + b.duration, 0);
+      
+      // 按日期分組顯示排程
+      const blocksByDate = new Map<string, typeof blocks>();
+      blocks.forEach((block) => {
+        const dateKey = new Date(block.startTime).toLocaleDateString("zh-TW", {
+          month: "2-digit",
+          day: "2-digit",
+        });
+        if (!blocksByDate.has(dateKey)) {
+          blocksByDate.set(dateKey, []);
+        }
+        blocksByDate.get(dateKey)!.push(block);
+      });
+
+      message += `我幫你排了一份學習計畫囉！📘\n\n`;
+      
+      // 顯示排程詳情
+      if (blocksByDate.size > 0) {
+        message += `**排程詳情：**\n`;
+        blocksByDate.forEach((dayBlocks, dateKey) => {
+          message += `\n${dateKey}：\n`;
+          dayBlocks.forEach((block) => {
+            const start = new Date(block.startTime).toLocaleTimeString("zh-TW", {
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+            const end = new Date(block.endTime).toLocaleTimeString("zh-TW", {
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+            message += `  • ${start}-${end}（${block.duration}小時）\n`;
+          });
+        });
+      }
+      
+      message += `\n總共安排了 ${totalHours} 小時`;
+      if (totalHours < deadline.estimatedHours) {
+        message += `（預估 ${deadline.estimatedHours} 小時，剩餘 ${deadline.estimatedHours - totalHours} 小時請手動調整）`;
+      }
+      message += `\n\n你可以在下面查看：\n🔗「開啟我的時程表」`;
     } else {
       message += `✅ 已成功建立 Deadline！`;
     }

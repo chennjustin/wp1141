@@ -57,16 +57,32 @@ export function useDeadlines(
       setLoading(true);
       setError(null);
 
+      // 確保在客戶端環境中執行
+      if (typeof window === "undefined") {
+        setLoading(false);
+        return;
+      }
+
       const url = new URL(`${window.location.origin}/api/deadlines`);
       url.searchParams.set("token", token);
       url.searchParams.set("status", "pending");
 
+      console.log("Fetching deadlines from:", url.toString());
       const response = await fetch(url.toString());
-      const data = await response.json();
-
+      
       if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch deadlines");
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { error: errorText || "Failed to fetch deadlines" };
+        }
+        throw new Error(errorData.error || "Failed to fetch deadlines");
       }
+      
+      const data = await response.json();
+      console.log("Deadlines API response:", { ok: response.ok, status: response.status, data });
 
       // 如果提供了週範圍，過濾 deadlines
       let filteredDeadlines = data.data || [];
@@ -91,6 +107,7 @@ export function useDeadlines(
 
   useEffect(() => {
     fetchDeadlines();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, weekStart, weekEnd]);
 
   return {
@@ -120,6 +137,12 @@ export function useStudyBlocks(
       setLoading(true);
       setError(null);
 
+      // 確保在客戶端環境中執行
+      if (typeof window === "undefined") {
+        setLoading(false);
+        return;
+      }
+
       const url = new URL(`${window.location.origin}/api/study-blocks`);
       url.searchParams.set("token", token);
       
@@ -130,12 +153,22 @@ export function useStudyBlocks(
         url.searchParams.set("endDate", weekEnd.toISOString());
       }
 
+      console.log("Fetching study blocks from:", url.toString());
       const response = await fetch(url.toString());
-      const data = await response.json();
-
+      
       if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch study blocks");
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { error: errorText || "Failed to fetch study blocks" };
+        }
+        throw new Error(errorData.error || "Failed to fetch study blocks");
       }
+      
+      const data = await response.json();
+      console.log("Study blocks API response:", { ok: response.ok, status: response.status, data });
 
       setStudyBlocks(data.data || []);
     } catch (err) {

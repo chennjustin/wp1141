@@ -59,18 +59,42 @@ function ScheduleContent() {
   // 週管理
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const today = dayjs();
-    return today.startOf("week").add(1, "day").toDate(); // Monday
+    // 計算包含今天的那一週的星期一
+    // dayjs().day() 返回 0-6（0=星期日，1=星期一，...，6=星期六）
+    const dayOfWeek = today.day(); // 0=日, 1=一, 2=二, ..., 6=六
+    // 計算到星期一的距離：
+    // 如果今天是星期日（0），則星期一需要 +1 天（但我們要的是上週一，所以是 -6 天）
+    // 如果今天是星期一（1），則星期一是今天（0天前）
+    // 如果今天是星期二（2），則星期一是1天前（-1天）
+    // 如果今天是星期三（3），則星期一是2天前（-2天）
+    // 以此類推
+    let daysToMonday: number;
+    if (dayOfWeek === 0) {
+      // 星期日：回到上週一（-6天）
+      daysToMonday = -6;
+    } else {
+      // 其他日子：回到本週一（1 - dayOfWeek 天前）
+      daysToMonday = 1 - dayOfWeek;
+    }
+    return today.add(daysToMonday, "day").startOf("day").toDate(); // Monday
   });
 
   // 手機版：單日視圖管理
   const [currentDay, setCurrentDay] = useState(() => dayjs().toDate());
-  const [isMobileView, setIsMobileView] = useState(false);
+  // 初始化時檢查是否為手機版（避免 SSR 問題）
+  const [isMobileView, setIsMobileView] = useState(() => {
+    if (typeof window !== "undefined") {
+      return window.innerWidth < 768; // md breakpoint
+    }
+    return false;
+  });
 
   // 檢測是否為手機版
   useEffect(() => {
     const checkMobile = () => {
       setIsMobileView(window.innerWidth < 768); // md breakpoint
     };
+    // 初始檢查
     checkMobile();
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
@@ -80,14 +104,52 @@ function ScheduleContent() {
     return dayjs(currentWeekStart).add(6, "day").toDate();
   }, [currentWeekStart]);
 
-  // 載入資料
-  const { deadlines, loading: deadlinesLoading, error: deadlinesError, refetch: refetchDeadlines } = useDeadlines(token, currentWeekStart, weekEnd);
-  const { studyBlocks, loading: blocksLoading, error: blocksError, refetch: refetchBlocks } = useStudyBlocks(token, currentWeekStart, weekEnd);
+  // 手機版：根據 currentDay 計算資料載入範圍（前後各7天，確保切換日期時資料已載入）
+  const mobileDateRange = useMemo(() => {
+    if (isMobileView) {
+      const start = dayjs(currentDay).subtract(7, "day").toDate();
+      const end = dayjs(currentDay).add(7, "day").toDate();
+      return { start, end };
+    }
+    return null;
+  }, [isMobileView, currentDay]);
 
-  // Debug: 檢查載入的資料
+  // 載入資料：手機版使用 currentDay 的範圍，桌面版使用 currentWeekStart 的範圍
+  // 擴大查詢範圍，確保包含所有相關的 blocks（前後各擴展 7 天）
+  const expandedWeekStart = useMemo(() => {
+    const base = isMobileView && mobileDateRange ? mobileDateRange.start : currentWeekStart;
+    return dayjs(base).subtract(7, "day").toDate();
+  }, [isMobileView, mobileDateRange, currentWeekStart]);
+  
+  const expandedWeekEnd = useMemo(() => {
+    const base = isMobileView && mobileDateRange ? mobileDateRange.end : weekEnd;
+    return dayjs(base).add(7, "day").toDate();
+  }, [isMobileView, mobileDateRange, weekEnd]);
+
+  const { deadlines, loading: deadlinesLoading, error: deadlinesError, refetch: refetchDeadlines } = useDeadlines(
+    token, 
+    expandedWeekStart,
+    expandedWeekEnd
+  );
+  const { studyBlocks, loading: blocksLoading, error: blocksError, refetch: refetchBlocks } = useStudyBlocks(
+    token,
+    expandedWeekStart,
+    expandedWeekEnd
+  );
+
+  // Debug: 檢查載入的資料（僅在客戶端）
   useEffect(() => {
-    console.log("Study blocks loaded:", studyBlocks);
-    console.log("Deadlines loaded:", deadlines);
+    if (typeof window === "undefined") return;
+    
+    console.log("Study blocks loaded:", studyBlocks.length, studyBlocks);
+    console.log("Deadlines loaded:", deadlines.length, deadlines);
+    
+    // 檢查每個 deadline 的 blocks 數量
+    deadlines.forEach((deadline) => {
+      const blocksForDeadline = studyBlocks.filter((b) => b.deadlineId === deadline.id);
+      const totalHours = blocksForDeadline.reduce((sum, b) => sum + b.duration, 0);
+      console.log(`Deadline "${deadline.title}": ${blocksForDeadline.length} blocks, ${totalHours}/${deadline.estimatedHours} hours`);
+    });
   }, [studyBlocks, deadlines]);
 
   // Modal/Drawer 狀態
@@ -112,32 +174,58 @@ function ScheduleContent() {
 
   // 獲取某個日期某個小時的 deadlines（紅色提醒，顯示在截止日當天的實際時間）
   const getDeadlinesAtSlot = useCallback((date: Date, hour: number) => {
+    if (!deadlines || deadlines.length === 0) return [];
     return deadlines.filter((d) => {
-      const deadlineDateTime = dayjs(d.dueDate);
-      const deadlineDate = deadlineDateTime.format("YYYY-MM-DD");
-      const deadlineHour = deadlineDateTime.hour();
-      const slotDate = dayjs(date).format("YYYY-MM-DD");
-      // Deadline 顯示在實際的截止時間
-      return deadlineDate === slotDate && deadlineHour === hour;
+      try {
+        if (!d || !d.dueDate) return false;
+        const deadlineDateTime = dayjs(d.dueDate);
+        if (!deadlineDateTime.isValid()) return false;
+        const deadlineDate = deadlineDateTime.format("YYYY-MM-DD");
+        const deadlineHour = deadlineDateTime.hour();
+        const slotDate = dayjs(date).format("YYYY-MM-DD");
+        // Deadline 顯示在實際的截止時間
+        return deadlineDate === slotDate && deadlineHour === hour;
+      } catch (error) {
+        console.error("Error processing deadline:", error, d);
+        return false;
+      }
     });
   }, [deadlines]);
 
   // 獲取某個日期某個小時的 study blocks
   const getStudyBlocksAtSlot = useCallback((date: Date, hour: number) => {
+    if (!studyBlocks || studyBlocks.length === 0) return [];
     const dateStr = dayjs(date).format("YYYY-MM-DD");
     return studyBlocks.filter((block) => {
-      const blockDate = dayjs(block.startTime).format("YYYY-MM-DD");
-      const blockHour = dayjs(block.startTime).hour();
-      return blockDate === dateStr && blockHour === hour;
+      try {
+        if (!block || !block.startTime) return false;
+        const blockStartTime = dayjs(block.startTime);
+        if (!blockStartTime.isValid()) return false;
+        const blockDate = blockStartTime.format("YYYY-MM-DD");
+        const blockHour = blockStartTime.hour();
+        return blockDate === dateStr && blockHour === hour;
+      } catch (error) {
+        console.error("Error processing study block:", error, block);
+        return false;
+      }
     });
   }, [studyBlocks]);
 
   // 獲取某個日期所有時間的 study blocks（用於計算位置和高度）
   const getAllStudyBlocksForDate = useCallback((date: Date) => {
+    if (!studyBlocks || studyBlocks.length === 0) return [];
     const dateStr = dayjs(date).format("YYYY-MM-DD");
     const blocks = studyBlocks.filter((block) => {
-      const blockDate = dayjs(block.startTime).format("YYYY-MM-DD");
-      return blockDate === dateStr;
+      try {
+        if (!block || !block.startTime) return false;
+        const blockStartTime = dayjs(block.startTime);
+        if (!blockStartTime.isValid()) return false;
+        const blockDate = blockStartTime.format("YYYY-MM-DD");
+        return blockDate === dateStr;
+      } catch (error) {
+        console.error("Error processing study block:", error, block);
+        return false;
+      }
     });
     return blocks;
   }, [studyBlocks]);
@@ -390,36 +478,59 @@ function ScheduleContent() {
 
   // 計算 block 的位置和高度
   const calculateBlockPosition = (block: StudyBlock, date: Date) => {
-    const blockStart = dayjs(block.startTime);
-    const blockEnd = dayjs(block.endTime);
-    const slotDate = dayjs(date);
-    
-    const startHour = blockStart.hour();
-    const startMinute = blockStart.minute();
-    const endHour = blockEnd.hour();
-    const endMinute = blockEnd.minute();
+    try {
+      if (!block || !block.startTime || !block.endTime) {
+        return { top: 0, height: 32 };
+      }
+      const blockStart = dayjs(block.startTime);
+      const blockEnd = dayjs(block.endTime);
+      const slotDate = dayjs(date);
+      
+      if (!blockStart.isValid() || !blockEnd.isValid() || !slotDate.isValid()) {
+        return { top: 0, height: 32 };
+      }
+      
+      const startHour = blockStart.hour();
+      const startMinute = blockStart.minute();
+      const endHour = blockEnd.hour();
+      const endMinute = blockEnd.minute();
 
-    // 計算在該日期中的位置（相對於該日期的第一個小時）
-    const slotStartHour = HOURS[0]; // 8
-    const topOffset = (startHour - slotStartHour) * 64 + (startMinute / 60) * 64; // 64px per hour
-    const height = (endHour - startHour) * 64 + ((endMinute - startMinute) / 60) * 64;
+      // 計算在該日期中的位置（相對於該日期的第一個小時）
+      const slotStartHour = HOURS[0]; // 8
+      const topOffset = (startHour - slotStartHour) * 64 + (startMinute / 60) * 64; // 64px per hour
+      const height = (endHour - startHour) * 64 + ((endMinute - startMinute) / 60) * 64;
 
-    // Debug: 檢查計算結果
-    console.log(`Block ${block.title} position:`, {
-      startHour,
-      startMinute,
-      endHour,
-      endMinute,
-      topOffset,
-      height,
-      blockStart: blockStart.format("YYYY-MM-DD HH:mm"),
-      blockEnd: blockEnd.format("YYYY-MM-DD HH:mm"),
-    });
+      // Debug: 檢查計算結果
+      console.log(`Block ${block.title} position:`, {
+        startHour,
+        startMinute,
+        endHour,
+        endMinute,
+        topOffset,
+        height,
+        blockStart: blockStart.format("YYYY-MM-DD HH:mm"),
+        blockEnd: blockEnd.format("YYYY-MM-DD HH:mm"),
+      });
 
-    return { top: topOffset, height: Math.max(height, 32) }; // 最小高度 32px
+      return { top: topOffset, height: Math.max(height, 32) }; // 最小高度 32px
+    } catch (error) {
+      console.error("Error calculating block position:", error, block);
+      return { top: 0, height: 32 };
+    }
   };
 
   // 載入狀態
+  if (!token) {
+    return (
+      <div className="min-h-screen bg-[#F7F7F7] flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-lg font-light text-red-700 mb-2">錯誤</div>
+          <div className="text-sm text-gray-500">缺少 token 參數，請從 LINE Bot 開啟時程表</div>
+        </div>
+      </div>
+    );
+  }
+
   if (deadlinesLoading || blocksLoading) {
     return (
       <div className="min-h-screen bg-[#F7F7F7] flex items-center justify-center">
@@ -649,6 +760,8 @@ function ScheduleContent() {
                     const isTodayColumn = isToday(date);
                     const dateStr = dayjs(date).format("YYYY-MM-DD");
                     const allBlocksForDate = getAllStudyBlocksForDate(date);
+                    // 使用實際日期的星期幾，而不是 colIndex
+                    const actualDayOfWeek = dayjs(date).day(); // 0=日, 1=一, ..., 6=六
 
                     return (
                       <Droppable key={colIndex} droppableId={`${dateStr}-col`}>
@@ -661,7 +774,7 @@ function ScheduleContent() {
                             {/* 日期標題 */}
                             <div className="sticky top-0 z-10 bg-inherit border-b border-gray-100 p-2">
                               <div className="text-center">
-                                <div className="text-xs text-gray-500 mb-1">{WEEKDAYS[colIndex]}</div>
+                                <div className="text-xs text-gray-500 mb-1">{WEEKDAYS[actualDayOfWeek]}</div>
                                 <div className="text-sm font-medium text-gray-700">
                                   {dayjs(date).format("D")}
                                 </div>
@@ -758,7 +871,8 @@ function ScheduleContent() {
 
                               {/* Study Blocks（絕對定位） */}
                               {allBlocksForDate.map((block, blockIndex) => {
-                                const { top, height } = calculateBlockPosition(block, date);
+                                const position = calculateBlockPosition(block, date);
+                                const { top, height } = position;
                                 // 使用對應死線的顏色，而不是 block.type
                                 const colors = getBlockColorByDeadlineId(block.deadlineId);
                                 
@@ -1469,17 +1583,19 @@ function AddDeadlineModal({
 
 export default function SchedulePage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-[#F7F7F7] flex items-center justify-center">
-          <div className="text-center">
-            <div className="text-lg font-light text-gray-700 mb-2">載入中...</div>
-            <div className="text-sm text-gray-500">正在載入你的時程表</div>
+    <>
+      <Suspense
+        fallback={
+          <div className="min-h-screen bg-[#F7F7F7] flex items-center justify-center">
+            <div className="text-center">
+              <div className="text-lg font-light text-gray-700 mb-2">載入中...</div>
+              <div className="text-sm text-gray-500">正在載入你的時程表</div>
+            </div>
           </div>
-        </div>
-      }
-    >
-      <ScheduleContent />
-    </Suspense>
+        }
+      >
+        <ScheduleContent />
+      </Suspense>
+    </>
   );
 }

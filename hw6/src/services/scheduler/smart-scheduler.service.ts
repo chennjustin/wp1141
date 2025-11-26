@@ -45,11 +45,22 @@ export interface ScheduleResult {
   warning?: string; // 時間不足的警告訊息
 }
 
+export interface SchedulePreferences {
+  excludeHours?: number[]; // 排除的小時 [0-23]
+  preferHours?: number[]; // 偏好的小時
+  excludeDays?: string[]; // 排除的日期（格式：YYYY-MM-DD）
+  maxHoursPerDay?: number; // 每天最大時數（覆蓋預設值）
+}
+
 export class SmartSchedulerService {
   /**
-   * 為一個 Deadline 自動排程
+   * 為一個 Deadline 自動排程（支援偏好）
    */
-  async scheduleDeadline(deadline: IDeadline, userId: string): Promise<ScheduleResult> {
+  async scheduleDeadline(
+    deadline: IDeadline,
+    userId: string,
+    preferences?: SchedulePreferences
+  ): Promise<ScheduleResult> {
     try {
       await connectDB();
 
@@ -67,7 +78,8 @@ export class SmartSchedulerService {
       const availableSlots = await this.calculateAvailableSlots(
         user._id.toString(),
         now.toDate(),
-        dueDate.toDate()
+        dueDate.toDate(),
+        preferences
       );
 
       // STEP 2: 拆分任務
@@ -79,7 +91,8 @@ export class SmartSchedulerService {
         blockDurations,
         availableSlots,
         dueDate,
-        now
+        now,
+        preferences
       );
 
       // STEP 4: 檢查時間是否足夠
@@ -101,12 +114,13 @@ export class SmartSchedulerService {
   }
 
   /**
-   * 計算可用時間區間
+   * 計算可用時間區間（公開方法，供 LLM 排程服務使用）
    */
-  private async calculateAvailableSlots(
+  async calculateAvailableSlots(
     userId: string, // ObjectId string
     startDate: Date,
-    endDate: Date
+    endDate: Date,
+    preferences?: SchedulePreferences
   ): Promise<Map<string, boolean[]>> {
     // 取得該使用者在此時間範圍內的所有 blocks
     const existingBlocks = await StudyBlock.find({
@@ -134,11 +148,19 @@ export class SmartSchedulerService {
         }
       });
 
-      // 標記今天已過的時間
-      if (current.isSame(dayjs().tz("Asia/Taipei"), "day")) {
-        const currentHour = dayjs().tz("Asia/Taipei").hour();
-        for (let h = 0; h <= currentHour; h++) {
+      // 標記今天已過的時間（精確到分鐘）
+      const now = dayjs().tz("Asia/Taipei");
+      if (current.isSame(now, "day")) {
+        const currentHour = now.hour();
+        const currentMinute = now.minute();
+        // 標記已過的小時（完全過去的時間）
+        for (let h = 0; h < currentHour; h++) {
           hours[h] = false;
+        }
+        // 如果當前小時已經開始（即使只有1分鐘），標記為不可用
+        // 這是為了確保不會排程到「現在」或「過去」的時間
+        if (currentMinute >= 0) {
+          hours[currentHour] = false;
         }
       }
 
@@ -153,6 +175,23 @@ export class SmartSchedulerService {
           }
         }
       });
+
+      // 標記用戶偏好的排除時段
+      if (preferences?.excludeHours && preferences.excludeHours.length > 0) {
+        preferences.excludeHours.forEach((h) => {
+          if (h >= 0 && h < 24) {
+            hours[h] = false;
+          }
+        });
+      }
+
+      // 標記排除的日期
+      if (preferences?.excludeDays && preferences.excludeDays.includes(dateKey)) {
+        // 將整天的時間都標記為不可用
+        for (let h = 0; h < 24; h++) {
+          hours[h] = false;
+        }
+      }
 
       availableSlots.set(dateKey, hours);
       current = current.add(1, "day");
@@ -198,7 +237,8 @@ export class SmartSchedulerService {
     blockDurations: number[],
     availableSlots: Map<string, boolean[]>,
     dueDate: dayjs.Dayjs,
-    now: dayjs.Dayjs
+    now: dayjs.Dayjs,
+    preferences?: SchedulePreferences
   ): Array<{
     userId: mongoose.Types.ObjectId;
     deadlineId: mongoose.Types.ObjectId;
@@ -229,39 +269,53 @@ export class SmartSchedulerService {
     // 從截止日往前排
     // 從截止日當天開始（如果截止日是今天，就從今天開始）
     let currentDate = dueDate.startOf("day");
-    // 如果截止日是今天，從今天開始；否則從截止日前一天開始
+    // 如果截止日是未來，從截止日前一天開始；如果截止日是今天或過去，從今天開始
     if (currentDate.isAfter(now.startOf("day"))) {
       currentDate = currentDate.subtract(1, "day");
+    } else {
+      // 如果截止日是今天或過去，從今天開始排程
+      currentDate = now.startOf("day");
     }
     
     let dailyHoursUsed = 0;
     let dailyBlocksUsed = 0;
+    // 計算每天最大時數（考慮用戶偏好）
+    const maxHoursPerDay = preferences?.maxHoursPerDay || SCHEDULE_CONFIG.MAX_HOURS_PER_DAY;
 
     // 追蹤已嘗試的天數，避免無限循環
     const maxDaysToTry = 30; // 最多嘗試30天
     let daysTried = 0;
 
     for (const duration of blockDurations) {
-      // 如果已經嘗試太多天，停止
-      if (daysTried >= maxDaysToTry) {
-        Logger.warn("排程時嘗試天數過多，停止排程", {
-          deadlineId: deadline._id,
-          remainingBlocks: blockDurations.length - blockIndex + 1,
-        });
-        break;
-      }
-
       let blockScheduled = false;
       let attempts = 0;
-      const maxAttemptsPerBlock = 10; // 每個 block 最多嘗試10次
+      const maxAttemptsPerBlock = 50; // 每個 block 最多嘗試50次（增加嘗試次數以確保能找到時間）
 
       // 嘗試安排這個 block，直到成功或超過嘗試次數
       while (!blockScheduled && attempts < maxAttemptsPerBlock) {
         attempts++;
         
+        // 如果已經嘗試太多天，停止
+        if (daysTried >= maxDaysToTry) {
+          Logger.warn("排程時嘗試天數過多，停止排程", {
+            deadlineId: deadline._id,
+            remainingBlocks: blockDurations.length - blockIndex + 1,
+          });
+          break;
+        }
+        
         // 如果已經排到現在之前，停止
+        // 檢查日期和時間：如果當前日期在今天之前，或當前日期是今天但所有可用時間都已過，則停止
         if (currentDate.isBefore(now.startOf("day"))) {
           break;
+        }
+        
+        // 如果是今天，確保不排程到過去的時間
+        if (currentDate.isSame(now, "day")) {
+          const currentHour = now.hour();
+          const currentMinute = now.minute();
+          // 如果當前時間已經很晚（例如晚上11點），且沒有足夠時間安排這個 block，則停止
+          // 這個檢查會在 findAvailableStartHour 中更精確地處理
         }
 
         // 尋找這一天可以排的時間
@@ -277,9 +331,9 @@ export class SmartSchedulerService {
           continue;
         }
 
-        // 檢查是否超過每天限制
+        // 檢查是否超過每天限制（考慮用戶偏好）
         if (
-          dailyHoursUsed + duration > SCHEDULE_CONFIG.MAX_HOURS_PER_DAY ||
+          dailyHoursUsed + duration > maxHoursPerDay ||
           dailyBlocksUsed >= SCHEDULE_CONFIG.MAX_BLOCKS_PER_DAY
         ) {
           // 往前一天
@@ -295,7 +349,8 @@ export class SmartSchedulerService {
           hours,
           duration,
           currentDate,
-          now
+          now,
+          preferences
         );
 
         if (startHour === -1) {
@@ -304,6 +359,7 @@ export class SmartSchedulerService {
           dailyHoursUsed = 0;
           dailyBlocksUsed = 0;
           daysTried++;
+          // 繼續嘗試，不要 break
           continue;
         }
 
@@ -336,9 +392,9 @@ export class SmartSchedulerService {
         blockIndex += 1;
         blockScheduled = true;
 
-        // 如果這一天已經排滿，往前一天
+        // 如果這一天已經排滿，往前一天（考慮用戶偏好）
         if (
-          dailyHoursUsed >= SCHEDULE_CONFIG.MAX_HOURS_PER_DAY ||
+          dailyHoursUsed >= maxHoursPerDay ||
           dailyBlocksUsed >= SCHEDULE_CONFIG.MAX_BLOCKS_PER_DAY
         ) {
           currentDate = currentDate.subtract(1, "day");
@@ -348,13 +404,25 @@ export class SmartSchedulerService {
         }
       }
 
-      // 如果這個 block 無法安排，繼續下一個
+      // 如果這個 block 無法安排，記錄警告但繼續下一個
+      // 這樣可以確保即使某些 blocks 無法安排，也會嘗試安排其他 blocks
       if (!blockScheduled) {
         Logger.warn("無法安排 block", {
           deadlineId: deadline._id,
           blockIndex,
           duration,
+          attempts,
+          daysTried,
+          currentDate: currentDate.format("YYYY-MM-DD"),
         });
+        // 重置 dailyHoursUsed 和 dailyBlocksUsed，以便下一個 block 可以從新的一天開始
+        dailyHoursUsed = 0;
+        dailyBlocksUsed = 0;
+        // 往前一天，為下一個 block 做準備
+        if (!currentDate.isBefore(now.startOf("day"))) {
+          currentDate = currentDate.subtract(1, "day");
+          daysTried++;
+        }
       }
     }
 
@@ -368,19 +436,41 @@ export class SmartSchedulerService {
     hours: boolean[],
     duration: number,
     date: dayjs.Dayjs,
-    now: dayjs.Dayjs
+    now: dayjs.Dayjs,
+    preferences?: SchedulePreferences
   ): number {
-    // 優先時段：09:00-12:00, 14:00-18:00, 19:00-21:00
-    const preferredRanges = [
-      { start: 9, end: 12 },
-      { start: 14, end: 18 },
-      { start: 19, end: 21 },
-    ];
+    // 優先時段：根據用戶偏好或預設
+    let preferredRanges: Array<{ start: number; end: number }>;
+    if (preferences?.preferHours && preferences.preferHours.length > 0) {
+      // 使用用戶偏好時段
+      const sortedHours = preferences.preferHours.sort((a, b) => a - b);
+      preferredRanges = [];
+      let rangeStart = sortedHours[0];
+      let rangeEnd = sortedHours[0];
+      
+      for (let i = 1; i < sortedHours.length; i++) {
+        if (sortedHours[i] === rangeEnd + 1) {
+          rangeEnd = sortedHours[i];
+        } else {
+          preferredRanges.push({ start: rangeStart, end: rangeEnd + 1 });
+          rangeStart = sortedHours[i];
+          rangeEnd = sortedHours[i];
+        }
+      }
+      preferredRanges.push({ start: rangeStart, end: rangeEnd + 1 });
+    } else {
+      // 預設優先時段：09:00-12:00, 14:00-18:00, 19:00-21:00
+      preferredRanges = [
+        { start: 9, end: 12 },
+        { start: 14, end: 18 },
+        { start: 19, end: 21 },
+      ];
+    }
 
     // 先嘗試優先時段
     for (const range of preferredRanges) {
       for (let h = range.start; h <= range.end - duration; h++) {
-        if (this.isSlotAvailable(hours, h, duration, date, now)) {
+        if (this.isSlotAvailable(hours, h, duration, date, now, preferences)) {
           return h;
         }
       }
@@ -406,7 +496,7 @@ export class SmartSchedulerService {
         continue;
       }
 
-      if (this.isSlotAvailable(hours, h, duration, date, now)) {
+      if (this.isSlotAvailable(hours, h, duration, date, now, preferences)) {
         return h;
       }
     }
@@ -422,7 +512,8 @@ export class SmartSchedulerService {
     startHour: number,
     duration: number,
     date: dayjs.Dayjs,
-    now: dayjs.Dayjs
+    now: dayjs.Dayjs,
+    preferences?: SchedulePreferences
   ): boolean {
     // 檢查是否在禁止時段內
     for (let h = startHour; h < startHour + duration; h++) {
@@ -441,9 +532,19 @@ export class SmartSchedulerService {
         return false;
       }
 
-      // 如果是今天，檢查是否已過
-      if (date.isSame(now, "day") && h <= now.hour()) {
-        return false;
+      // 如果是今天，檢查是否已過（精確到分鐘）
+      if (date.isSame(now, "day")) {
+        const currentHour = now.hour();
+        const currentMinute = now.minute();
+        // 如果開始時間在當前時間之前，不可用
+        if (h < currentHour) {
+          return false;
+        }
+        // 如果開始時間是當前小時，且當前時間已經過了該小時的開始，不可用
+        // 為了安全起見，如果當前時間在該小時內，也標記為不可用
+        if (h === currentHour && currentMinute >= 0) {
+          return false;
+        }
       }
     }
 

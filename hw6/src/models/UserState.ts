@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document } from "mongoose";
 
-export type FlowType = "add_deadline_step" | "add_deadline_nlp" | "edit_deadline" | null;
+export type FlowType = "add_deadline_step" | "add_deadline_nlp" | "edit_deadline" | "update_deadline" | "delete_deadline" | null;
 
 export interface ConversationHistoryItem {
   role: "user" | "assistant";
@@ -26,7 +26,7 @@ const UserStateSchema: Schema = new Schema(
     },
     currentFlow: {
       type: String,
-      enum: ["add_deadline_step", "add_deadline_nlp", "edit_deadline", null],
+      enum: ["add_deadline_step", "add_deadline_nlp", "edit_deadline", "update_deadline", "delete_deadline", null],
       default: null,
     },
     flowData: {
