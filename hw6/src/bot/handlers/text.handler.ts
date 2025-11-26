@@ -44,7 +44,7 @@ const intentService = new IntentService();
 // Quick Reply 按鈕配置
 const QUICK_REPLY_ITEMS = [
   { label: "🍀 每日簽到", text: "簽到" },
-  { label: "🔮 抽!!!", text: "每日金句" },
+  { label: "🔮 抽!!!", text: "今日占卜" },
   { label: "📅 查看時程", text: "查看時程" },
   { label: "📝 新增死線", text: "新增 Deadline" },
 ];
@@ -152,13 +152,16 @@ export async function handleText(context: BotContext) {
     }
 
 
-    // 處理每日金句（支援更寬鬆的匹配）
+    // 處理今日占卜（支援更寬鬆的匹配）
     if (
       text === "每日金句" ||
-      text === "金句" ||
+      text === "今日占卜" ||
+      text === "占卜" ||
       text.includes("金句") ||
+      text.includes("占卜") ||
       text.includes("來一句") ||
-      text.includes("我要金句")
+      text.includes("我要金句") ||
+      text.includes("抽!!!")
     ) {
       await handleDailyQuote(userId, replyToken);
       return;
@@ -423,7 +426,7 @@ function isChatMessage(text: string): boolean {
 async function sendMainMenu(userId: string, replyToken: string) {
   await lineClient.sendQuickReply(replyToken, "請選擇功能：", [
     { label: "🍀 每日簽到", text: "簽到" },
-    { label: "🔮 抽!!!", text: "每日金句" },
+    { label: "🔮 抽!!!", text: "今日占卜" },
     { label: "📅 查看時程", text: "查看時程" },
     { label: "📝 新增死線", text: "新增 Deadline" },
   ]);
@@ -483,8 +486,8 @@ async function handleCheckIn(userId: string, replyToken: string) {
       await sendTextMessageWithQuickReply(replyToken, message);
       Logger.info("簽到回應（已簽到）", { userId, consecutiveDays: result.consecutiveDays, todayDeadlinesCount: todayDeadlines.length, appUrl });
     } else {
-      const quote = await llmUtilsService.generateMotivationQuote();
-      let message = `✔ 今天已成功簽到！你已連續簽到 ${result.consecutiveDays} 天\n\n💬 今日金句：${quote}`;
+      const fortune = await quoteService.getDailyQuote(userId);
+      let message = `✔ 今天已成功簽到！你已連續簽到 ${result.consecutiveDays} 天\n\n${fortune}`;
       
       if (todayDeadlines.length > 0) {
         message += `\n\n📅 今天的待辦事項：\n`;
@@ -531,17 +534,17 @@ async function handleCheckIn(userId: string, replyToken: string) {
 
 
 /**
- * 處理每日金句（從列表選擇）
+ * 處理今日占卜（使用 LLM 生成）
  */
 async function handleDailyQuote(userId: string, replyToken: string) {
   try {
-    const quote = quoteService.getDailyQuote(userId);
-    const message = `💬 今日金句：\n\n${quote}`;
+    const fortune = await quoteService.getDailyQuote(userId);
+    const message = `${fortune}`;
     await sendTextMessageWithQuickReply(replyToken, message);
-    Logger.info("發送每日金句", { userId });
+    Logger.info("發送今日占卜", { userId });
   } catch (error) {
-    Logger.error("處理每日金句失敗", { error, userId });
-    await sendTextMessageWithQuickReply(replyToken, "取得金句時發生錯誤，請稍後再試。");
+    Logger.error("處理今日占卜失敗", { error, userId });
+    await sendTextMessageWithQuickReply(replyToken, "取得占卜時發生錯誤，請稍後再試。");
   }
 }
 

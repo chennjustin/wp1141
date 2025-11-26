@@ -1,6 +1,6 @@
 /**
  * Rich Menu 配置
- * 四個按鈕：簽到、每日金句、查看時程、新增 Deadline
+ * 四個按鈕：簽到、今日占卜、查看時程、新增 Deadline
  */
 
 export const RICH_MENU_CONFIG = {
@@ -25,7 +25,7 @@ export const RICH_MENU_CONFIG = {
         text: "簽到",
       },
     },
-    // 右上：每日金句
+    // 右上：今日占卜
     {
       bounds: {
         x: 1250,
@@ -35,7 +35,7 @@ export const RICH_MENU_CONFIG = {
       },
       action: {
         type: "message",
-        text: "每日金句",
+        text: "今日占卜",
       },
     },
     // 左下：查看時程

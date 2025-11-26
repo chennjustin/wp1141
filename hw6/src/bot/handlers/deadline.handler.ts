@@ -21,7 +21,7 @@ const studyBlockService = new StudyBlockService();
 // Quick Reply 按鈕配置
 const QUICK_REPLY_ITEMS = [
   { label: "🍀 每日簽到", text: "簽到" },
-  { label: "🔮 抽!!!", text: "每日金句" },
+  { label: "🔮 抽!!!", text: "今日占卜" },
   { label: "📅 查看時程", text: "查看時程" },
   { label: "📝 新增死線", text: "新增 Deadline" },
 ];

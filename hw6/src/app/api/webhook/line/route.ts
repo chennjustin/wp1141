@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
               "抱歉，處理您的訊息時發生錯誤，請稍後再試。",
               [
                 { label: "🍀 每日簽到", text: "簽到" },
-                { label: "🔮 抽!!!", text: "每日金句" },
+                { label: "🔮 抽!!!", text: "今日占卜" },
                 { label: "📅 查看時程", text: "查看時程" },
                 { label: "📝 新增死線", text: "新增 Deadline" },
               ]

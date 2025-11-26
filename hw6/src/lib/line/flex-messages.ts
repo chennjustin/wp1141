@@ -128,7 +128,7 @@ export function buildMainMenuFlexMessage() {
                     action: {
                       type: "message",
                       label: "🔮 抽！！",
-                      text: "每日金句",
+                      text: "今日占卜",
                     },
                     style: "primary",
                     color: "#FF6B6B",

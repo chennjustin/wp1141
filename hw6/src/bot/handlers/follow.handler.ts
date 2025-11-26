@@ -50,7 +50,7 @@ export async function handleFollow(context: BotContext) {
     // 發送歡迎訊息並附上 Quick Reply
     await lineClient.sendQuickReply(replyToken, welcomeMessage, [
       { label: "🍀 每日簽到", text: "簽到" },
-      { label: "🔮 抽!!!", text: "每日金句" },
+      { label: "🔮 抽!!!", text: "今日占卜" },
       { label: "📅 查看時程", text: "查看時程" },
       { label: "📝 新增死線", text: "新增 Deadline" },
     ]);
@@ -65,7 +65,7 @@ export async function handleFollow(context: BotContext) {
       try {
         await lineClient.sendQuickReply(replyToken, "歡迎使用拯救期末大作戰！", [
           { label: "🍀 每日簽到", text: "簽到" },
-          { label: "🔮 抽!!!", text: "每日金句" },
+          { label: "🔮 抽!!!", text: "今日占卜" },
           { label: "📅 查看時程", text: "查看時程" },
           { label: "📝 新增死線", text: "新增 Deadline" },
         ]);

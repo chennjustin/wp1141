@@ -36,7 +36,7 @@ export class IntentService {
 
 意圖類型：
 1. "check_in" - 簽到相關（例如：我要簽到、簽到一下、報到、簽到）
-2. "daily_quote" - 每日金句相關（例如：來一句、我要金句、每日金句、給我一句話）
+2. "daily_quote" - 今日占卜相關（例如：來一句、我要占卜、今日占卜、給我占卜、抽!!!）
 3. "view_schedule" - 查看時程相關（例如：今天要幹嘛、我的行程、查看時程表、明天的待辦、有什麼作業、我想看行事曆、打開行事曆）
    **重要：如果用戶問到「已存在的 deadline 的學習時間分配」、「你幫我分配到哪些時間」、「分配在哪裡」等問題，應該識別為 "view_schedule" 或 "other"，而不是 "add_deadline"**
 4. "add_deadline" - 新增 Deadline 相關（例如：我有一個作業、新增 deadline、下週三要交作業）
