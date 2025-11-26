@@ -407,6 +407,8 @@ export class SmartSchedulerService {
       // 如果這個 block 無法安排，記錄警告但繼續下一個
       // 這樣可以確保即使某些 blocks 無法安排，也會嘗試安排其他 blocks
       if (!blockScheduled) {
+        // 如果無法安排，跳過這個 block，但 blockIndex 不增加
+        // 這樣可以確保已安排的 blocks 序號連續
         Logger.warn("無法安排 block", {
           deadlineId: deadline._id,
           blockIndex,
@@ -425,6 +427,20 @@ export class SmartSchedulerService {
         }
       }
     }
+
+    // 按開始時間排序，確保時間較早的 block 序號較小
+    blocks.sort((a, b) => {
+      const timeA = dayjs(a.startTime).valueOf();
+      const timeB = dayjs(b.startTime).valueOf();
+      return timeA - timeB;
+    });
+
+    // 重新分配 blockIndex，確保時間較早的序號較小
+    blocks.forEach((block, index) => {
+      block.blockIndex = index + 1;
+      block.totalBlocks = blocks.length;
+      block.title = `${deadline.title}（進度 ${block.blockIndex}/${block.totalBlocks}）`;
+    });
 
     return blocks;
   }

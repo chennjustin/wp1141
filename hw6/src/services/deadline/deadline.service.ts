@@ -325,16 +325,23 @@ export class DeadlineService {
 
         if (validation.isValid) {
           // 6. 轉換 LLM 結果為 StudyBlock 格式並創建
-          const blocksToCreate = llmResult.blocks.map((block, index) => ({
+          // 先按開始時間排序，確保時間較早的 block 序號較小
+          const sortedBlocks = [...llmResult.blocks].sort((a, b) => {
+            const timeA = new Date(a.startTime).getTime();
+            const timeB = new Date(b.startTime).getTime();
+            return timeA - timeB;
+          });
+          
+          const blocksToCreate = sortedBlocks.map((block, index) => ({
             userId: lineUserId,
             deadlineId: deadline._id.toString(),
             date: new Date(block.date),
             startTime: new Date(block.startTime),
             endTime: new Date(block.endTime),
             duration: block.duration,
-            title: `${deadline.title}（進度 ${block.blockIndex}/${block.totalBlocks}）`,
-            blockIndex: block.blockIndex,
-            totalBlocks: block.totalBlocks,
+            title: `${deadline.title}（進度 ${index + 1}/${sortedBlocks.length}）`,
+            blockIndex: index + 1, // 根據排序後的順序重新分配 blockIndex
+            totalBlocks: sortedBlocks.length,
           }));
 
           await studyBlockService.createStudyBlocks(blocksToCreate);

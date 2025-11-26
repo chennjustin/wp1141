@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense, useMemo, useCallback, useEffect } from "react";
+import { useState, Suspense, useMemo, useCallback, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import dayjs from "dayjs";
 import { DragDropContext, Droppable, Draggable, DropResult } from "react-beautiful-dnd";
@@ -212,6 +212,7 @@ function ScheduleContent() {
   }, [studyBlocks]);
 
   // 獲取某個日期所有時間的 study blocks（用於計算位置和高度）
+  // 按開始時間排序，確保時間較早的 block 序號較小
   const getAllStudyBlocksForDate = useCallback((date: Date) => {
     if (!studyBlocks || studyBlocks.length === 0) return [];
     const dateStr = dayjs(date).format("YYYY-MM-DD");
@@ -227,7 +228,12 @@ function ScheduleContent() {
         return false;
       }
     });
-    return blocks;
+    // 按開始時間排序，確保時間較早的 block 在前面
+    return blocks.sort((a, b) => {
+      const timeA = dayjs(a.startTime).valueOf();
+      const timeB = dayjs(b.startTime).valueOf();
+      return timeA - timeB;
+    });
   }, [studyBlocks]);
 
   // 根據 deadlineId 獲取對應的死線，用於決定顏色
@@ -236,6 +242,7 @@ function ScheduleContent() {
   }, [deadlines]);
 
   // 為不同的死線生成不同的顏色（基於 deadlineId 的 hash）
+  // 確保同一個 deadline 的所有 blocks 使用相同顏色，不同 deadline 使用不同顏色
   const getBlockColorByDeadlineId = useCallback((deadlineId: string) => {
     const deadline = getDeadlineById(deadlineId);
     if (!deadline) return TYPE_COLORS.other;
@@ -246,12 +253,35 @@ function ScheduleContent() {
       hash = deadlineId.charCodeAt(i) + ((hash << 5) - hash);
     }
     
-    // 根據 type 選擇基礎顏色，然後根據 hash 調整
-    const baseColors = TYPE_COLORS[deadline.type] || TYPE_COLORS.other;
+    // 預定義的顏色調色板（基於 type，但每個 deadline 會有不同的色調）
+    const colorPalettes = {
+      exam: [
+        { bg: "bg-red-100", border: "border-red-300", text: "text-red-800", badge: "bg-red-50 text-red-700" },
+        { bg: "bg-red-200", border: "border-red-400", text: "text-red-900", badge: "bg-red-100 text-red-800" },
+        { bg: "bg-pink-100", border: "border-pink-300", text: "text-pink-800", badge: "bg-pink-50 text-pink-700" },
+      ],
+      assignment: [
+        { bg: "bg-blue-100", border: "border-blue-300", text: "text-blue-800", badge: "bg-blue-50 text-blue-700" },
+        { bg: "bg-blue-200", border: "border-blue-400", text: "text-blue-900", badge: "bg-blue-100 text-blue-800" },
+        { bg: "bg-cyan-100", border: "border-cyan-300", text: "text-cyan-800", badge: "bg-cyan-50 text-cyan-700" },
+        { bg: "bg-indigo-100", border: "border-indigo-300", text: "text-indigo-800", badge: "bg-indigo-50 text-indigo-700" },
+      ],
+      project: [
+        { bg: "bg-purple-100", border: "border-purple-300", text: "text-purple-800", badge: "bg-purple-50 text-purple-700" },
+        { bg: "bg-purple-200", border: "border-purple-400", text: "text-purple-900", badge: "bg-purple-100 text-purple-800" },
+        { bg: "bg-violet-100", border: "border-violet-300", text: "text-violet-800", badge: "bg-violet-50 text-violet-700" },
+        { bg: "bg-fuchsia-100", border: "border-fuchsia-300", text: "text-fuchsia-800", badge: "bg-fuchsia-50 text-fuchsia-700" },
+      ],
+      other: [
+        { bg: "bg-gray-100", border: "border-gray-300", text: "text-gray-800", badge: "bg-gray-50 text-gray-700" },
+        { bg: "bg-slate-100", border: "border-slate-300", text: "text-slate-800", badge: "bg-slate-50 text-slate-700" },
+      ],
+    };
     
-    // 如果有多個死線，可以根據 hash 調整顏色
-    // 這裡我們直接使用 type 的顏色，但可以根據需要調整
-    return baseColors;
+    const palette = colorPalettes[deadline.type] || colorPalettes.other;
+    const colorIndex = Math.abs(hash) % palette.length;
+    
+    return palette[colorIndex];
   }, [getDeadlineById]);
 
   // 手機版：獲取單日的 blocks 和 deadlines
@@ -412,45 +442,80 @@ function ScheduleContent() {
     setIsDragging(true);
   };
 
-  // 調整大小處理
+  // 調整大小處理 - 使用 debounce 優化性能
   const handleResizeStart = (blockId: string) => {
     setResizingBlockId(blockId);
   };
 
-  const handleResize = async (blockId: string, newDuration: number) => {
+  // 使用 useRef 來存儲 debounce timer
+  const resizeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingResizeRef = useRef<{ blockId: string; newDuration: number } | null>(null);
+
+  const handleResize = useCallback((blockId: string, newDuration: number) => {
     if (newDuration < 0.5 || newDuration > 4) return;
 
-    const block = studyBlocks.find((b) => b.id === blockId);
-    if (!block || !token) return;
+    // 保存待處理的 resize 請求
+    pendingResizeRef.current = { blockId, newDuration };
 
-    const startTime = new Date(block.startTime);
-    const newEndTime = dayjs(startTime).add(newDuration, "hour").toDate();
+    // 清除之前的 timer
+    if (resizeTimerRef.current) {
+      clearTimeout(resizeTimerRef.current);
+    }
 
-    try {
-      const url = new URL(`${window.location.origin}/api/study-blocks/${blockId}`);
-      url.searchParams.set("token", token);
-
-      const response = await fetch(url.toString(), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          endTime: newEndTime.toISOString(),
-          duration: newDuration,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update block");
+    // 設置新的 timer，300ms 後執行實際更新
+    resizeTimerRef.current = setTimeout(async () => {
+      const pending = pendingResizeRef.current;
+      if (!pending || !token) {
+        setResizingBlockId(null);
+        return;
       }
 
-      refetchBlocks();
-    } catch (error) {
-      console.error("Failed to resize block:", error);
-      alert("調整失敗，請稍後再試");
-    } finally {
-      setResizingBlockId(null);
-    }
-  };
+      const block = studyBlocks.find((b) => b.id === pending.blockId);
+      if (!block) {
+        setResizingBlockId(null);
+        return;
+      }
+
+      const startTime = new Date(block.startTime);
+      const newEndTime = dayjs(startTime).add(pending.newDuration, "hour").toDate();
+
+      try {
+        const url = new URL(`${window.location.origin}/api/study-blocks/${pending.blockId}`);
+        url.searchParams.set("token", token);
+
+        const response = await fetch(url.toString(), {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            endTime: newEndTime.toISOString(),
+            duration: pending.newDuration,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to update block");
+        }
+
+        // 只在成功後才重新載入資料
+        refetchBlocks();
+      } catch (error) {
+        console.error("Failed to resize block:", error);
+        alert("調整失敗，請稍後再試");
+      } finally {
+        setResizingBlockId(null);
+        pendingResizeRef.current = null;
+      }
+    }, 300);
+  }, [studyBlocks, token, refetchBlocks]);
+
+  // 清理 timer
+  useEffect(() => {
+    return () => {
+      if (resizeTimerRef.current) {
+        clearTimeout(resizeTimerRef.current);
+      }
+    };
+  }, []);
 
   // 點擊處理
   const handleDeadlineClick = (deadline: Deadline) => {
@@ -712,7 +777,9 @@ function ScheduleContent() {
                                 );
                               })}
                               {/* Blocks */}
-                              {hourBlocks.map((block, idx) => {
+                              {hourBlocks
+                                .sort((a, b) => dayjs(a.startTime).valueOf() - dayjs(b.startTime).valueOf())
+                                .map((block, idx) => {
                                 const colors = getBlockColorByDeadlineId(block.deadlineId);
                                 return (
                                   <Draggable
@@ -725,12 +792,21 @@ function ScheduleContent() {
                                         ref={provided.innerRef}
                                         {...provided.draggableProps}
                                         {...provided.dragHandleProps}
-                                        className={`${colors.bg} ${colors.border} border rounded px-2 py-1 text-xs ${
-                                          snapshot.isDragging ? "opacity-50" : ""
-                                        }`}
+                                        className={`${colors.bg} ${colors.border} border rounded px-2 py-1 text-xs cursor-grab active:cursor-grabbing touch-none ${
+                                          snapshot.isDragging ? "opacity-70 scale-105 shadow-lg" : "hover:shadow-md"
+                                        } transition-all`}
+                                        style={{
+                                          touchAction: "none",
+                                          userSelect: "none",
+                                        }}
                                         onClick={(e) => {
+                                          if (!snapshot.isDragging) {
+                                            e.stopPropagation();
+                                            handleBlockClick(block);
+                                          }
+                                        }}
+                                        onTouchStart={(e) => {
                                           e.stopPropagation();
-                                          handleBlockClick(block);
                                         }}
                                       >
                                         <div className="font-medium text-gray-800 truncate">{block.title}</div>
@@ -949,18 +1025,27 @@ function ScheduleContent() {
                                         ref={provided.innerRef}
                                         {...provided.draggableProps}
                                         {...provided.dragHandleProps}
-                                        className={`absolute left-1 right-1 ${colors.bg} ${colors.border} border-2 rounded-lg shadow-sm cursor-move hover:shadow-md transition-shadow z-20 ${
-                                          snapshot.isDragging ? "opacity-50 scale-105 shadow-lg" : ""
+                                        className={`absolute left-1 right-1 ${colors.bg} ${colors.border} border-2 rounded-lg shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md transition-all z-20 touch-none ${
+                                          snapshot.isDragging ? "opacity-70 scale-105 shadow-xl rotate-1" : ""
                                         } ${isOneHour ? "px-1.5 py-1" : "p-2"}`}
                                         style={{
                                           ...provided.draggableProps.style,
                                           top: `${top}px`,
                                           height: `${height}px`,
                                           minHeight: isOneHour ? "48px" : "32px",
+                                          touchAction: "none", // 防止觸摸滾動干擾拖曳
+                                          userSelect: "none", // 防止文字選擇干擾拖曳
                                         }}
                                         onClick={(e) => {
+                                          // 只有在沒有拖曳時才觸發點擊
+                                          if (!snapshot.isDragging) {
+                                            e.stopPropagation();
+                                            handleBlockClick(block);
+                                          }
+                                        }}
+                                        onTouchStart={(e) => {
+                                          // 確保觸摸事件不會被阻止
                                           e.stopPropagation();
-                                          handleBlockClick(block);
                                         }}
                                       >
                                         {isOneHour ? (
