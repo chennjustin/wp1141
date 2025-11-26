@@ -45,7 +45,8 @@ export default function AddDeadlineModal({
           body: JSON.stringify({
             title,
             type,
-            dueDate,
+            // 如果 dueDate 沒有時間部分，加上 23:59
+            dueDate: dueDate.includes("T") ? dueDate : `${dueDate}T23:59`,
             estimatedHours,
           }),
         }

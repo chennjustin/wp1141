@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, type, dueDate, estimatedHours } = body;
+    let { title, type, dueDate, estimatedHours } = body;
 
     // 驗證必填欄位
     if (!title || !type || !dueDate) {
@@ -107,6 +107,11 @@ export async function POST(request: NextRequest) {
         { success: false, error: "Invalid type" },
         { status: 400 }
       );
+    }
+
+    // 如果 dueDate 只有日期沒有時間，加上 23:59
+    if (typeof dueDate === "string" && !dueDate.includes("T")) {
+      dueDate = `${dueDate}T23:59`;
     }
 
     // 建立 deadline

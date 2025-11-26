@@ -173,6 +173,10 @@ function ScheduleContent() {
   }, []);
 
   // 獲取某個日期某個小時的 deadlines（紅色提醒，顯示在截止日當天的實際時間）
+  // 確保所有 deadline 都會顯示：
+  // - 如果時間在 08:00-23:59 範圍內，顯示在對應的小時槽
+  // - 如果時間 < 08:00，顯示在 08:00 的時間槽
+  // - 如果時間 >= 24:00，顯示在 23:00 的時間槽（23:59）
   const getDeadlinesAtSlot = useCallback((date: Date, hour: number) => {
     if (!deadlines || deadlines.length === 0) return [];
     return deadlines.filter((d) => {
@@ -183,8 +187,26 @@ function ScheduleContent() {
         const deadlineDate = deadlineDateTime.format("YYYY-MM-DD");
         const deadlineHour = deadlineDateTime.hour();
         const slotDate = dayjs(date).format("YYYY-MM-DD");
-        // Deadline 顯示在實際的截止時間
-        return deadlineDate === slotDate && deadlineHour === hour;
+        
+        // 確保日期匹配
+        if (deadlineDate !== slotDate) return false;
+        
+        // 如果時間在 HOURS 範圍內（08:00-24:00），直接匹配小時
+        if (deadlineHour >= 8 && deadlineHour <= 23) {
+          return deadlineHour === hour;
+        }
+        
+        // 如果時間 < 08:00，顯示在 08:00 的時間槽
+        if (deadlineHour < 8 && hour === 8) {
+          return true;
+        }
+        
+        // 如果時間 >= 24:00（實際上不會發生，但為了安全），顯示在 23:00 的時間槽
+        if (deadlineHour >= 24 && hour === 23) {
+          return true;
+        }
+        
+        return false;
       } catch (error) {
         console.error("Error processing deadline:", error, d);
         return false;
@@ -722,8 +744,22 @@ function ScheduleContent() {
               {/* 單日時間軸 */}
               <div className="space-y-2">
                 {HOURS.map((hour) => {
+                  // 獲取該小時的 deadlines，確保所有 deadline 都會顯示
                   const hourDeadlines = getDayDeadlines(currentDay).filter((d) => {
-                    return dayjs(d.dueDate).hour() === hour;
+                    const deadlineHour = dayjs(d.dueDate).hour();
+                    // 如果時間在 HOURS 範圍內（08:00-23:59），直接匹配小時
+                    if (deadlineHour >= 8 && deadlineHour <= 23) {
+                      return deadlineHour === hour;
+                    }
+                    // 如果時間 < 08:00，顯示在 08:00 的時間槽
+                    if (deadlineHour < 8 && hour === 8) {
+                      return true;
+                    }
+                    // 如果時間 >= 24:00，顯示在 23:00 的時間槽
+                    if (deadlineHour >= 24 && hour === 23) {
+                      return true;
+                    }
+                    return false;
                   });
                   const hourBlocks = getDayBlocks(currentDay).filter((b) => {
                     return dayjs(b.startTime).hour() === hour;
