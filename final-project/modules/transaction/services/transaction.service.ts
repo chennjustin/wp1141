@@ -14,6 +14,8 @@ import type {
   UpdateTransactionData,
   TransactionFilters,
   TransactionServiceResult,
+  MonthlySummaryFilters,
+  MonthlySummary,
 } from "../domain/transaction.types";
 import {
   NotFoundError,
@@ -32,6 +34,8 @@ import {
   determineUpdateExchangeRate,
 } from "../utils/transaction.currency";
 import { handleTransactionError } from "../utils/transaction.error-handler";
+import { calculateMonthlySummary } from "../utils/transaction.summary";
+import { DEFAULT_CURRENCY } from "@/config/constants";
 
 /**
  * Transaction service interface
@@ -301,6 +305,81 @@ export const transactionService = {
       };
     } catch (error: any) {
       const handledError = handleTransactionError(error, "delete");
+      return { success: false, error: handledError };
+    }
+  },
+
+  /**
+   * Get monthly summary with income and expense totals
+   */
+  async getMonthlySummary(
+    filters: MonthlySummaryFilters,
+    userId: string
+  ): Promise<TransactionServiceResult<MonthlySummary>> {
+    // Validate wallet access
+    const hasAccess = await transactionRepository.hasAccess(
+      filters.walletId,
+      userId
+    );
+    if (!hasAccess) {
+      return {
+        success: false,
+        error: new NotFoundError("Wallet not found or access denied"),
+      };
+    }
+
+    // Validate month
+    if (filters.month < 1 || filters.month > 12) {
+      return {
+        success: false,
+        error: new ValidationError("Month must be between 1 and 12"),
+      };
+    }
+
+    try {
+      // Get transactions for the month
+      const transactions = await transactionRepository.findMonthlyTransactions(
+        filters
+      );
+
+      // Determine target currency (default to NTD)
+      const targetCurrency = filters.targetCurrency || DEFAULT_CURRENCY;
+
+      // Get exchange rate for target currency if needed
+      let targetRateToNTD: number | null = null;
+      if (targetCurrency !== DEFAULT_CURRENCY) {
+        const lastRate = await transactionRepository.findLastExchangeRate(
+          filters.walletId,
+          targetCurrency
+        );
+        targetRateToNTD = lastRate?.rateToNTD ?? null;
+      }
+
+      // Calculate summary
+      const summary = calculateMonthlySummary(
+        transactions,
+        targetCurrency,
+        targetRateToNTD
+      );
+
+      const result: MonthlySummary = {
+        walletId: filters.walletId,
+        year: filters.year,
+        month: filters.month,
+        totalIncome: summary.totalIncome,
+        totalExpense: summary.totalExpense,
+        netAmount: summary.totalIncome - summary.totalExpense,
+        currency: targetCurrency,
+        incomeCount: summary.incomeCount,
+        expenseCount: summary.expenseCount,
+      };
+
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error: any) {
+      const handledError = handleTransactionError(error, "get");
       return { success: false, error: handledError };
     }
   },

@@ -12,6 +12,7 @@ import type {
   UpdateTransactionData,
   TransactionFilters,
   TransactionType,
+  MonthlySummaryFilters,
 } from "../domain/transaction.types";
 import { DEFAULT_TRANSACTION_TYPE } from "../domain/transaction.types";
 
@@ -390,6 +391,34 @@ export const transactionRepository = {
       where: { id },
     });
     return transaction !== null && !transaction.isDeleted;
+  },
+
+  /**
+   * Get transactions for monthly summary
+   * Returns transactions within the specified month with basic fields for calculation
+   */
+  async findMonthlyTransactions(filters: MonthlySummaryFilters) {
+    // Calculate start and end dates for the month
+    const startDate = new Date(filters.year, filters.month - 1, 1);
+    const endDate = new Date(filters.year, filters.month, 0, 23, 59, 59, 999);
+
+    return prisma.transaction.findMany({
+      where: {
+        walletId: filters.walletId,
+        isDeleted: false,
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      select: {
+        id: true,
+        type: true,
+        amount: true,
+        currency: true,
+        rateToNTD: true,
+      } as any,
+    });
   },
 };
 

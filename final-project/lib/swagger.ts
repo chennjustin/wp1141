@@ -621,6 +621,66 @@ const swaggerDefinition = {
           },
         },
       },
+      MonthlySummary: {
+        type: "object",
+        properties: {
+          walletId: {
+            type: "string",
+            description: "Wallet ID",
+          },
+          year: {
+            type: "integer",
+            description: "Year",
+            example: 2024,
+          },
+          month: {
+            type: "integer",
+            description: "Month (1-12)",
+            example: 11,
+          },
+          totalIncome: {
+            type: "number",
+            description: "Total income for the month in target currency",
+            example: 50000.0,
+          },
+          totalExpense: {
+            type: "number",
+            description: "Total expense for the month in target currency",
+            example: 30000.0,
+          },
+          netAmount: {
+            type: "number",
+            description: "Net amount (totalIncome - totalExpense)",
+            example: 20000.0,
+          },
+          currency: {
+            type: "string",
+            description: "Currency of the summary amounts",
+            example: "TWD",
+          },
+          incomeCount: {
+            type: "integer",
+            description: "Number of income transactions",
+            example: 5,
+          },
+          expenseCount: {
+            type: "integer",
+            description: "Number of expense transactions",
+            example: 10,
+          },
+        },
+        required: [
+          "walletId",
+          "year",
+          "month",
+          "totalIncome",
+          "totalExpense",
+          "netAmount",
+          "currency",
+          "incomeCount",
+          "expenseCount",
+        ],
+      },
     },
   },
   security: [
