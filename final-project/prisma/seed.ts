@@ -32,11 +32,12 @@ async function main() {
   });
   console.log("✅ System user created/verified");
 
-  // Create super user
+  // Create super user with simple ID
   const superUser = await prisma.user.upsert({
-    where: { userID: "superuser" },
+    where: { id: "1" },
     update: {},
     create: {
+      id: "1",
       userID: "superuser",
       name: "Super User",
       email: "superuser@example.com",
@@ -45,11 +46,12 @@ async function main() {
   });
   console.log("✅ Super user created:", superUser.id);
 
-  // Create regular users
+  // Create regular users with simple IDs
   const user1 = await prisma.user.upsert({
-    where: { userID: "user1" },
+    where: { id: "2" },
     update: {},
     create: {
+      id: "2",
       userID: "user1",
       name: "User One",
       email: "user1@example.com",
@@ -58,9 +60,10 @@ async function main() {
   });
 
   const user2 = await prisma.user.upsert({
-    where: { userID: "user2" },
+    where: { id: "3" },
     update: {},
     create: {
+      id: "3",
       userID: "user2",
       name: "User Two",
       email: "user2@example.com",
