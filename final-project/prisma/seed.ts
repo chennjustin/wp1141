@@ -6,12 +6,14 @@
  * - Multiple wallets
  * - Transactions with payers and shares
  * - Custom tags
+ * - System tags (using existing repository logic)
  * 
  * Run with: npm run seed
  */
 
 import { PrismaClient } from "@prisma/client";
-import { SYSTEM_USER_ID } from "../config/constants";
+import { SYSTEM_USER_ID, DEFAULT_SYSTEM_TAGS } from "../config/constants";
+import { tagRepository } from "../modules/tag/repositories/tag.repository";
 
 const prisma = new PrismaClient();
 
@@ -67,34 +69,18 @@ async function main() {
   });
   console.log("✅ Regular users created");
 
-  // Ensure system tags exist
-  const systemTags = await Promise.all([
-    prisma.tag.upsert({
-      where: { name: "food" },
-      update: {},
-      create: {
-        name: "food",
-        createdBy: SYSTEM_USER_ID,
-      },
-    }),
-    prisma.tag.upsert({
-      where: { name: "drinks" },
-      update: {},
-      create: {
-        name: "drinks",
-        createdBy: SYSTEM_USER_ID,
-      },
-    }),
-    prisma.tag.upsert({
-      where: { name: "entertainment" },
-      update: {},
-      create: {
-        name: "entertainment",
-        createdBy: SYSTEM_USER_ID,
-      },
-    }),
-  ]);
+  // Ensure all system tags exist using repository logic
+  await tagRepository.ensureSystemTagsExist();
   console.log("✅ System tags created/verified");
+
+  // Get system tags for use in transactions
+  const systemTags = await Promise.all(
+    DEFAULT_SYSTEM_TAGS.slice(0, 3).map((tagName) =>
+      prisma.tag.findUnique({
+        where: { name: tagName },
+      })
+    )
+  );
 
   // Create custom tags
   const customTag1 = await prisma.tag.upsert({
@@ -352,12 +338,17 @@ async function main() {
   });
   console.log("✅ Transactions created with payers and shares");
 
+  // Count all tags
+  const tagCount = await prisma.tag.count({
+    where: { isDeleted: false },
+  });
+
   console.log("\n📊 Seed Summary:");
   console.log(`- Super User: ${superUser.userID} (${superUser.id})`);
   console.log(`- Regular Users: ${user1.userID}, ${user2.userID}`);
   console.log(`- Wallets: ${wallet1.name}, ${wallet2.name}, ${wallet3.name}`);
   console.log(`- Transactions: 5 transactions created`);
-  console.log(`- Tags: 2 custom tags + system tags`);
+  console.log(`- Tags: ${tagCount} total tags (${DEFAULT_SYSTEM_TAGS.length} system tags + 2 custom tags)`);
   console.log("\n✅ Seed completed successfully!");
 }
 
