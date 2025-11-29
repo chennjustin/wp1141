@@ -104,7 +104,7 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
   return (
     <div className="min-h-screen bg-[#E8E8E8] flex justify-center px-4 py-4">
       {/* Mobile-sized container with thick black border and rounded corners */}
-      <div className="relative flex min-h-[calc(100vh-2rem)] w-full max-w-sm flex-col border-[3px] border-black bg-[#E8E8E8] rounded-[3rem] overflow-visible">
+      <div className="relative flex min-h-[calc(100vh-2rem)] w-full max-w-sm flex-col border-[3px] border-black bg-[#E8E8E8] rounded-[3rem] overflow-clip">
         {/* Header */}
         <header className="relative mb-4 flex items-center justify-between bg-[#E8E8E8] px-4 py-3">
           {/* Left: main menu toggle */}
@@ -125,7 +125,7 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
             <button
               type="button"
-              className="relative inline-flex items-center justify-center rounded-full bg-white px-6 py-2 text-sm font-medium text-black hover:bg-gray-100 active:bg-white focus:bg-white"
+              className="relative inline-flex items-center justify-center rounded-full bg-white px-6 py-2 text-sm font-medium text-black hover:bg-gray-100 active:bg-white focus:bg-white focus:outline-none focus:ring-0"
               onClick={() => setIsWalletSelectorOpen(true)}
               aria-label="Select wallet"
             >
@@ -139,7 +139,7 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
                   className="fixed inset-0 z-40 bg-black/20"
                   onClick={() => setIsWalletSelectorOpen(false)}
                 />
-                <div className="absolute top-full left-1/2 z-50 mt-2 -translate-x-1/2 rounded-lg bg-white shadow-lg border border-gray-200 min-w-[200px] max-h-[300px] overflow-y-auto">
+                <div className="absolute top-full left-1/2 z-50 mt-2 -translate-x-1/2 rounded-lg bg-white shadow-lg min-w-[200px] max-h-[300px] overflow-y-auto border-0">
                   <div className="py-2">
                     {wallets.map((wallet) => (
                       <button
