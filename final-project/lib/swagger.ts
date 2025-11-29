@@ -127,7 +127,7 @@ const swaggerDefinition = {
           name: {
             type: "string",
             description: "Wallet name",
-            example: "My Wallet",
+            example: "Personal Wallet",
           },
           defaultCurrency: {
             type: "string",
@@ -149,7 +149,7 @@ const swaggerDefinition = {
           name: {
             type: "string",
             description: "Wallet name",
-            example: "Updated Wallet Name",
+            example: "Shared Wallet",
           },
           defaultCurrency: {
             type: "string",
@@ -357,18 +357,18 @@ const swaggerDefinition = {
           walletId: {
             type: "string",
             description: "Wallet ID",
-            example: "clx1234567890",
+            example: "1",
           },
           date: {
             type: "string",
             format: "date-time",
             description: "Transaction date (ISO 8601)",
-            example: "2024-01-15T10:30:00Z",
+            example: "2024-11-15T10:00:00Z",
           },
           amount: {
             type: "number",
             description: "Transaction amount",
-            example: 1000.5,
+            example: 5000,
           },
           currency: {
             type: "string",
@@ -379,13 +379,13 @@ const swaggerDefinition = {
             type: "number",
             nullable: true,
             description: "Exchange rate to NTD (defaults to last used rate for currency)",
-            example: 1.0,
+            example: null,
           },
           name: {
             type: "string",
             nullable: true,
             description: "Transaction name/description",
-            example: "Lunch",
+            example: "Lunch with team",
           },
           note: {
             type: "string",
@@ -402,7 +402,7 @@ const swaggerDefinition = {
           tagId: {
             type: "string",
             description: "Tag ID (required, must exist in database)",
-            example: "clx1234567890",
+            example: "food",
           },
           payers: {
             type: "array",
@@ -412,19 +412,19 @@ const swaggerDefinition = {
               properties: {
                 payerId: {
                   type: "string",
-                  example: "clx1234567890",
+                  example: "2",
                 },
                 paidAmount: {
                   type: "number",
-                  example: 1000.5,
+                  example: 5000,
                 },
               },
               required: ["payerId", "paidAmount"],
             },
             example: [
               {
-                payerId: "clx1234567890",
-                paidAmount: 1000.5,
+                payerId: "2",
+                paidAmount: 5000,
               },
             ],
           },
@@ -436,23 +436,19 @@ const swaggerDefinition = {
               properties: {
                 userId: {
                   type: "string",
-                  example: "clx1234567890",
+                  example: "2",
                 },
                 shareAmount: {
                   type: "number",
-                  example: 500.25,
+                  example: 5000,
                 },
               },
               required: ["userId", "shareAmount"],
             },
             example: [
               {
-                userId: "clx1234567890",
-                shareAmount: 500.25,
-              },
-              {
-                userId: "clx0987654321",
-                shareAmount: 500.25,
+                userId: "2",
+                shareAmount: 5000,
               },
             ],
           },
@@ -466,12 +462,12 @@ const swaggerDefinition = {
             type: "string",
             format: "date-time",
             description: "Transaction date (ISO 8601)",
-            example: "2024-01-15T10:30:00Z",
+            example: "2024-11-20T14:30:00Z",
           },
           amount: {
             type: "number",
             description: "Transaction amount",
-            example: 1000.5,
+            example: 100,
           },
           currency: {
             type: "string",
@@ -482,19 +478,19 @@ const swaggerDefinition = {
             type: "number",
             nullable: true,
             description: "Exchange rate to NTD",
-            example: 30.5,
+            example: 32.5,
           },
           name: {
             type: "string",
             nullable: true,
             description: "Transaction name/description",
-            example: "Updated Lunch",
+            example: "Coffee",
           },
           note: {
             type: "string",
             nullable: true,
             description: "Transaction note",
-            example: "Updated note",
+            example: "Starbucks coffee",
           },
           type: {
             type: "string",
@@ -505,7 +501,7 @@ const swaggerDefinition = {
           tagId: {
             type: "string",
             description: "Tag ID (required, must exist in database)",
-            example: "clx1234567890",
+            example: "drinks",
           },
           payers: {
             type: "array",
@@ -515,19 +511,19 @@ const swaggerDefinition = {
               properties: {
                 payerId: {
                   type: "string",
-                  example: "clx1234567890",
+                  example: "2",
                 },
                 paidAmount: {
                   type: "number",
-                  example: 1000.5,
+                  example: 100,
                 },
               },
               required: ["payerId", "paidAmount"],
             },
             example: [
               {
-                payerId: "clx1234567890",
-                paidAmount: 1000.5,
+                payerId: "2",
+                paidAmount: 100,
               },
             ],
           },
@@ -539,23 +535,23 @@ const swaggerDefinition = {
               properties: {
                 userId: {
                   type: "string",
-                  example: "clx1234567890",
+                  example: "2",
                 },
                 shareAmount: {
                   type: "number",
-                  example: 500.25,
+                  example: 50,
                 },
               },
               required: ["userId", "shareAmount"],
             },
             example: [
               {
-                userId: "clx1234567890",
-                shareAmount: 500.25,
+                userId: "2",
+                shareAmount: 50,
               },
               {
-                userId: "clx0987654321",
-                shareAmount: 500.25,
+                userId: "3",
+                shareAmount: 50,
               },
             ],
           },
@@ -606,7 +602,7 @@ const swaggerDefinition = {
           name: {
             type: "string",
             description: "Tag name (must be unique)",
-            example: "groceries",
+            example: "custom-tag-1",
           },
         },
         required: ["name"],
@@ -617,7 +613,7 @@ const swaggerDefinition = {
           name: {
             type: "string",
             description: "Tag name (must be unique)",
-            example: "updated-groceries",
+            example: "custom-tag-2",
           },
         },
       },
@@ -690,12 +686,12 @@ const swaggerDefinition = {
           totalExpense: {
             type: "number",
             description: "Total expense for the month in target currency",
-            example: 30000.0,
+            example: 7000.0,
           },
           netAmount: {
             type: "number",
             description: "Net amount (totalIncome - totalExpense)",
-            example: 20000.0,
+            example: 43000.0,
           },
           currency: {
             type: "string",
@@ -705,12 +701,12 @@ const swaggerDefinition = {
           incomeCount: {
             type: "integer",
             description: "Number of income transactions",
-            example: 5,
+            example: 1,
           },
           expenseCount: {
             type: "integer",
             description: "Number of expense transactions",
-            example: 10,
+            example: 1,
           },
           incomes: {
             type: "array",
