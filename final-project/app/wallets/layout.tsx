@@ -188,10 +188,27 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
                 <button
                   type="button"
                   className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-black/5"
-                  onClick={() => setIsMenuOpen(false)}
-                  aria-label="Close main menu"
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    router.push("/wallets");
+                  }}
+                  aria-label="Go to wallet home"
                 >
-                  <span className="h-4 w-4 rotate-45 border-b-2 border-r-2 border-black" />
+                  {/* House icon */}
+                  <svg
+                    className="h-5 w-5 text-black"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                    />
+                  </svg>
                 </button>
               </div>
 
