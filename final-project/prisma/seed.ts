@@ -2,7 +2,7 @@
  * Database seed script
  * 
  * This script creates seed data for development and testing:
- * - Super user (can access all wallets)
+ * - System user (for system tags)
  * - Multiple wallets
  * - Transactions with payers and shares
  * - Custom tags
@@ -31,20 +31,6 @@ async function main() {
     },
   });
   console.log("✅ System user created/verified");
-
-  // Create super user with simple ID
-  const superUser = await prisma.user.upsert({
-    where: { id: "1" },
-    update: {},
-    create: {
-      id: "1",
-      userID: "superuser",
-      name: "Super User",
-      email: "superuser@example.com",
-      isDeleted: false,
-    },
-  });
-  console.log("✅ Super user created:", superUser.id);
 
   // Create regular users with simple IDs
   const user1 = await prisma.user.upsert({
@@ -95,7 +81,7 @@ async function main() {
     update: {},
     create: {
       name: "custom-tag-1",
-      createdBy: superUser.id,
+      createdBy: user1.id,
     },
   });
 
@@ -104,7 +90,7 @@ async function main() {
     update: {},
     create: {
       name: "custom-tag-2",
-      createdBy: superUser.id,
+      createdBy: user1.id,
     },
   });
   console.log("✅ Custom tags created");
@@ -120,12 +106,8 @@ async function main() {
       members: {
         create: [
           {
-            userId: superUser.id,
-            role: "OWNER",
-          },
-          {
             userId: user1.id,
-            role: "MEMBER",
+            role: "OWNER",
           },
         ],
       },
@@ -142,12 +124,8 @@ async function main() {
       members: {
         create: [
           {
-            userId: superUser.id,
-            role: "OWNER",
-          },
-          {
             userId: user1.id,
-            role: "MEMBER",
+            role: "OWNER",
           },
           {
             userId: user2.id,
@@ -168,7 +146,7 @@ async function main() {
       members: {
         create: [
           {
-            userId: superUser.id,
+            userId: user2.id,
             role: "OWNER",
           },
         ],
@@ -181,7 +159,7 @@ async function main() {
   const transaction1 = await prisma.transaction.create({
     data: {
       walletId: wallet1.id,
-      createdById: superUser.id,
+      createdById: user1.id,
       date: new Date("2024-11-15T10:00:00Z"),
       amount: 5000,
       currency: "TWD",
@@ -193,7 +171,7 @@ async function main() {
       payers: {
         create: [
           {
-            payerId: superUser.id,
+            payerId: user1.id,
             paidAmount: 5000,
           },
         ],
@@ -201,12 +179,8 @@ async function main() {
       shares: {
         create: [
           {
-            userId: superUser.id,
-            shareAmount: 2500,
-          },
-          {
             userId: user1.id,
-            shareAmount: 2500,
+            shareAmount: 5000,
           },
         ],
       },
@@ -236,16 +210,12 @@ async function main() {
       shares: {
         create: [
           {
-            userId: superUser.id,
+            userId: user1.id,
             shareAmount: 50,
           },
           {
-            userId: user1.id,
-            shareAmount: 30,
-          },
-          {
             userId: user2.id,
-            shareAmount: 20,
+            shareAmount: 50,
           },
         ],
       },
@@ -255,7 +225,7 @@ async function main() {
   const transaction3 = await prisma.transaction.create({
     data: {
       walletId: wallet1.id,
-      createdById: superUser.id,
+      createdById: user1.id,
       date: new Date("2024-11-25T09:00:00Z"),
       amount: 50000,
       currency: "TWD",
@@ -267,7 +237,7 @@ async function main() {
       payers: {
         create: [
           {
-            payerId: superUser.id,
+            payerId: user1.id,
             paidAmount: 50000,
           },
         ],
@@ -275,7 +245,7 @@ async function main() {
       shares: {
         create: [
           {
-            userId: superUser.id,
+            userId: user1.id,
             shareAmount: 50000,
           },
         ],
@@ -286,7 +256,7 @@ async function main() {
   const transaction4 = await prisma.transaction.create({
     data: {
       walletId: wallet3.id,
-      createdById: superUser.id,
+      createdById: user2.id,
       date: new Date("2024-11-28T16:00:00Z"),
       amount: 2000,
       currency: "TWD",
@@ -298,7 +268,7 @@ async function main() {
       payers: {
         create: [
           {
-            payerId: superUser.id,
+            payerId: user2.id,
             paidAmount: 2000,
           },
         ],
@@ -306,7 +276,7 @@ async function main() {
       shares: {
         create: [
           {
-            userId: superUser.id,
+            userId: user2.id,
             shareAmount: 2000,
           },
         ],
@@ -337,16 +307,12 @@ async function main() {
       shares: {
         create: [
           {
-            userId: superUser.id,
-            shareAmount: 50,
-          },
-          {
             userId: user1.id,
             shareAmount: 50,
           },
           {
             userId: user2.id,
-            shareAmount: 50,
+            shareAmount: 100,
           },
         ],
       },
@@ -360,7 +326,6 @@ async function main() {
   });
 
   console.log("\n📊 Seed Summary:");
-  console.log(`- Super User: ${superUser.userID} (${superUser.id})`);
   console.log(`- Regular Users: ${user1.userID}, ${user2.userID}`);
   console.log(`- Wallets: ${wallet1.name}, ${wallet2.name}, ${wallet3.name}`);
   console.log(`- Transactions: 5 transactions created`);
