@@ -30,6 +30,54 @@ export default function WalletHomePage() {
   const mockIncomeTotal = 10000;
   const mockExpenseTotal = 20000;
 
+  // Carrier code - placeholder, should be fetched from user's device carriers
+  const carrierCode = "/ABCDEF";
+
+  // Generate barcode pattern from carrier code
+  // Barcode width:height ratio is 5:2, height is 64px (h-16), so width should be 160px
+  const generateBarcodePattern = (code: string) => {
+    const pattern: number[] = [];
+    const minWidth = 2;
+    const maxWidth = 5;
+    const gapWidth = 0.5; // gap between bars
+    const targetTotalWidth = 160; // 5:2 ratio with 64px height
+    const numBars = Math.floor(code.length * 2.5); // Generate enough bars to fill width
+    
+    let currentWidth = 0;
+    
+    // Generate pattern based on code characters
+    for (let i = 0; i < numBars && currentWidth < targetTotalWidth; i++) {
+      const charIndex = i % code.length;
+      const char = code[charIndex];
+      const charCode = char.charCodeAt(0);
+      // Generate width between min and max based on character code
+      const width = minWidth + ((charCode + i) % (maxWidth - minWidth + 1));
+      const roundedWidth = Math.round(width * 10) / 10;
+      
+      // Calculate total width including gap (except for last bar)
+      const widthWithGap = currentWidth + roundedWidth + (i < numBars - 1 ? gapWidth : 0);
+      
+      // Ensure we don't exceed target width
+      if (widthWithGap <= targetTotalWidth) {
+        pattern.push(roundedWidth);
+        currentWidth += roundedWidth + (i < numBars - 1 ? gapWidth : 0);
+      } else {
+        // Add remaining width if there's space
+        const remaining = targetTotalWidth - currentWidth;
+        if (remaining > minWidth) {
+          pattern.push(remaining);
+        }
+        break;
+      }
+    }
+    
+    return pattern;
+  };
+
+  const barcodePattern = generateBarcodePattern(carrierCode);
+  const barcodeHeight = 64; // h-16 = 64px
+  const barcodeWidth = (barcodeHeight * 5) / 2; // 160px for 5:2 ratio
+
   const mockTransactions = [
     { id: "1", title: "早餐", amount: -80, time: "08:30" },
     { id: "2", title: "午餐", amount: -120, time: "12:15" },
@@ -120,22 +168,18 @@ export default function WalletHomePage() {
 
         {/* Barcode area */}
         <div className="mb-3 flex flex-col items-center gap-3">
-          {/* Barcode - centered, same length, different thickness, wider */}
-          <div className="flex h-16 items-center justify-center">
+          {/* Barcode - generated from carrier code, 5:2 aspect ratio */}
+          <div className="flex h-16 items-center justify-center" style={{ width: `${barcodeWidth}px` }}>
             <div className="flex items-center justify-center gap-0.5">
-              {Array.from({ length: 12 }).map((_, index) => {
-                // Different widths for different thickness - made wider
-                const widths = [2, 3, 2.5, 4, 2, 3, 2.5, 3, 2.5, 4, 2, 3];
-                return (
-                  <span
-                    key={index}
-                    className={`block h-12 ${
-                      brightCarrier ? "bg-black" : "bg-white"
-                    }`}
-                    style={{ width: `${widths[index]}px` }}
-                  />
-                );
-              })}
+              {barcodePattern.map((width, index) => (
+                <span
+                  key={index}
+                  className={`block h-16 ${
+                    brightCarrier ? "bg-black" : "bg-white"
+                  }`}
+                  style={{ width: `${width}px` }}
+                />
+              ))}
             </div>
           </div>
 
@@ -147,9 +191,8 @@ export default function WalletHomePage() {
                 brightCarrier ? "border-black" : "border-white"
               }`}
               onClick={() => {
-                const code = "/ABCDEF";
                 if (navigator?.clipboard?.writeText) {
-                  navigator.clipboard.writeText(code).catch(() => {
+                  navigator.clipboard.writeText(carrierCode).catch(() => {
                     // Swallow clipboard errors silently for now.
                   });
                 }
@@ -164,7 +207,7 @@ export default function WalletHomePage() {
             </button>
             <span className={`text-sm font-mono ${
               brightCarrier ? "text-black" : "text-white"
-            }`}>/ABCDEF</span>
+            }`}>{carrierCode}</span>
           </div>
         </div>
       </section>
@@ -188,7 +231,7 @@ export default function WalletHomePage() {
                   </span>
                 </div>
                 {index < mockTransactions.length - 1 && (
-                  <div className="border-b border-[#D2D2D2]" />
+                  <div className="border-b border-[#E8E8E8]" />
                 )}
               </li>
             ))}
@@ -199,7 +242,7 @@ export default function WalletHomePage() {
       {/* Floating add button */}
       <button
         type="button"
-        className="fixed bottom-8 left-1/2 z-20 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-[#D2D2D2] text-2xl text-black shadow-lg"
+        className="fixed bottom-8 left-1/2 z-20 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-[#E8E8E8] text-2xl text-black shadow-lg"
         onClick={handleAddTransaction}
         aria-label="Add new transaction"
         disabled={!activeWallet}
