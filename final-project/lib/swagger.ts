@@ -168,6 +168,380 @@ const swaggerDefinition = {
         },
         required: ["success"],
       },
+      Transaction: {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+            description: "Transaction ID",
+          },
+          walletId: {
+            type: "string",
+            description: "Wallet ID",
+          },
+          createdById: {
+            type: "string",
+            description: "User ID who created the transaction",
+          },
+          date: {
+            type: "string",
+            format: "date-time",
+            description: "Transaction date",
+          },
+          amount: {
+            type: "number",
+            description: "Transaction amount",
+          },
+          currency: {
+            type: "string",
+            description: "Currency code (e.g., TWD, USD)",
+          },
+          rateToNTD: {
+            type: "number",
+            nullable: true,
+            description: "Exchange rate to NTD",
+          },
+          name: {
+            type: "string",
+            nullable: true,
+            description: "Transaction name/description",
+          },
+          note: {
+            type: "string",
+            nullable: true,
+            description: "Transaction note",
+          },
+          isDeleted: {
+            type: "boolean",
+            description: "Soft delete flag",
+          },
+          tagId: {
+            type: "string",
+            nullable: true,
+            description: "Tag ID",
+          },
+          tag: {
+            type: "object",
+            nullable: true,
+            properties: {
+              id: {
+                type: "string",
+              },
+              name: {
+                type: "string",
+              },
+            },
+          },
+          createdAt: {
+            type: "string",
+            format: "date-time",
+            description: "Creation timestamp",
+          },
+          updatedAt: {
+            type: "string",
+            format: "date-time",
+            description: "Last update timestamp",
+          },
+          payers: {
+            type: "array",
+            items: {
+              $ref: "#/components/schemas/TransactionPayer",
+            },
+            description: "Transaction payers",
+          },
+          shares: {
+            type: "array",
+            items: {
+              $ref: "#/components/schemas/TransactionShare",
+            },
+            description: "Transaction shares",
+          },
+          createdBy: {
+            type: "object",
+            properties: {
+              id: {
+                type: "string",
+              },
+              name: {
+                type: "string",
+              },
+            },
+          },
+        },
+        required: [
+          "id",
+          "walletId",
+          "createdById",
+          "date",
+          "amount",
+          "currency",
+          "isDeleted",
+          "createdAt",
+          "updatedAt",
+        ],
+      },
+      TransactionPayer: {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+          },
+          transactionId: {
+            type: "string",
+          },
+          payerId: {
+            type: "string",
+          },
+          paidAmount: {
+            type: "number",
+          },
+          payer: {
+            type: "object",
+            properties: {
+              id: {
+                type: "string",
+              },
+              name: {
+                type: "string",
+              },
+              image: {
+                type: "string",
+                nullable: true,
+              },
+            },
+          },
+        },
+      },
+      TransactionShare: {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+          },
+          transactionId: {
+            type: "string",
+          },
+          userId: {
+            type: "string",
+          },
+          shareAmount: {
+            type: "number",
+          },
+          user: {
+            type: "object",
+            properties: {
+              id: {
+                type: "string",
+              },
+              name: {
+                type: "string",
+              },
+              image: {
+                type: "string",
+                nullable: true,
+              },
+            },
+          },
+        },
+      },
+      CreateTransactionRequest: {
+        type: "object",
+        properties: {
+          walletId: {
+            type: "string",
+            description: "Wallet ID",
+            example: "clx1234567890",
+          },
+          date: {
+            type: "string",
+            format: "date-time",
+            description: "Transaction date (ISO 8601)",
+            example: "2024-01-15T10:30:00Z",
+          },
+          amount: {
+            type: "number",
+            description: "Transaction amount",
+            example: 1000.5,
+          },
+          currency: {
+            type: "string",
+            description: "Currency code (defaults to last transaction's currency or wallet's default)",
+            example: "TWD",
+          },
+          rateToNTD: {
+            type: "number",
+            nullable: true,
+            description: "Exchange rate to NTD (defaults to last used rate for currency)",
+            example: 1.0,
+          },
+          name: {
+            type: "string",
+            nullable: true,
+            description: "Transaction name/description",
+            example: "Lunch",
+          },
+          note: {
+            type: "string",
+            nullable: true,
+            description: "Transaction note",
+            example: "Team lunch at restaurant",
+          },
+          tagId: {
+            type: "string",
+            description: "Tag ID (required, must exist in database)",
+            example: "clx1234567890",
+          },
+          payers: {
+            type: "array",
+            description: "Transaction payers (for v2.0 - defaults to creator if not provided). Total paidAmount must equal transaction amount.",
+            items: {
+              type: "object",
+              properties: {
+                payerId: {
+                  type: "string",
+                  example: "clx1234567890",
+                },
+                paidAmount: {
+                  type: "number",
+                  example: 1000.5,
+                },
+              },
+              required: ["payerId", "paidAmount"],
+            },
+            example: [
+              {
+                payerId: "clx1234567890",
+                paidAmount: 1000.5,
+              },
+            ],
+          },
+          shares: {
+            type: "array",
+            description: "Transaction shares (for v2.0 - defaults to creator if not provided). Total shareAmount must equal transaction amount.",
+            items: {
+              type: "object",
+              properties: {
+                userId: {
+                  type: "string",
+                  example: "clx1234567890",
+                },
+                shareAmount: {
+                  type: "number",
+                  example: 500.25,
+                },
+              },
+              required: ["userId", "shareAmount"],
+            },
+            example: [
+              {
+                userId: "clx1234567890",
+                shareAmount: 500.25,
+              },
+              {
+                userId: "clx0987654321",
+                shareAmount: 500.25,
+              },
+            ],
+          },
+        },
+        required: ["walletId", "date", "amount", "tagId"],
+      },
+      UpdateTransactionRequest: {
+        type: "object",
+        properties: {
+          date: {
+            type: "string",
+            format: "date-time",
+            description: "Transaction date (ISO 8601)",
+            example: "2024-01-15T10:30:00Z",
+          },
+          amount: {
+            type: "number",
+            description: "Transaction amount",
+            example: 1000.5,
+          },
+          currency: {
+            type: "string",
+            description: "Currency code",
+            example: "USD",
+          },
+          rateToNTD: {
+            type: "number",
+            nullable: true,
+            description: "Exchange rate to NTD",
+            example: 30.5,
+          },
+          name: {
+            type: "string",
+            nullable: true,
+            description: "Transaction name/description",
+            example: "Updated Lunch",
+          },
+          note: {
+            type: "string",
+            nullable: true,
+            description: "Transaction note",
+            example: "Updated note",
+          },
+          tagId: {
+            type: "string",
+            description: "Tag ID (required, must exist in database)",
+            example: "clx1234567890",
+          },
+          payers: {
+            type: "array",
+            description: "Transaction payers (for v2.0). Total paidAmount must equal transaction amount.",
+            items: {
+              type: "object",
+              properties: {
+                payerId: {
+                  type: "string",
+                  example: "clx1234567890",
+                },
+                paidAmount: {
+                  type: "number",
+                  example: 1000.5,
+                },
+              },
+              required: ["payerId", "paidAmount"],
+            },
+            example: [
+              {
+                payerId: "clx1234567890",
+                paidAmount: 1000.5,
+              },
+            ],
+          },
+          shares: {
+            type: "array",
+            description: "Transaction shares (for v2.0). Total shareAmount must equal transaction amount.",
+            items: {
+              type: "object",
+              properties: {
+                userId: {
+                  type: "string",
+                  example: "clx1234567890",
+                },
+                shareAmount: {
+                  type: "number",
+                  example: 500.25,
+                },
+              },
+              required: ["userId", "shareAmount"],
+            },
+            example: [
+              {
+                userId: "clx1234567890",
+                shareAmount: 500.25,
+              },
+              {
+                userId: "clx0987654321",
+                shareAmount: 500.25,
+              },
+            ],
+          },
+        },
+      },
     },
   },
   security: [
@@ -186,4 +560,8 @@ const options: swaggerJsdoc.Options = {
 };
 
 export const swaggerSpec = swaggerJsdoc(options);
+
+
+
+
 
