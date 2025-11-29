@@ -109,9 +109,12 @@ async function main() {
   });
   console.log("✅ Custom tags created");
 
-  // Create wallets
-  const wallet1 = await prisma.wallet.create({
-    data: {
+  // Create wallets with simple IDs
+  const wallet1 = await prisma.wallet.upsert({
+    where: { id: "1" },
+    update: {},
+    create: {
+      id: "1",
       name: "Personal Wallet",
       defaultCurrency: "TWD",
       members: {
@@ -129,8 +132,11 @@ async function main() {
     } as any,
   });
 
-  const wallet2 = await prisma.wallet.create({
-    data: {
+  const wallet2 = await prisma.wallet.upsert({
+    where: { id: "2" },
+    update: {},
+    create: {
+      id: "2",
       name: "Shared Wallet",
       defaultCurrency: "USD",
       members: {
@@ -152,8 +158,11 @@ async function main() {
     } as any,
   });
 
-  const wallet3 = await prisma.wallet.create({
-    data: {
+  const wallet3 = await prisma.wallet.upsert({
+    where: { id: "3" },
+    update: {},
+    create: {
+      id: "3",
       name: "Business Wallet",
       defaultCurrency: "TWD",
       members: {
