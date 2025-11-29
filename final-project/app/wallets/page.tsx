@@ -76,7 +76,7 @@ export default function WalletHomePage() {
             <span className="text-xl font-semibold text-black">
               {showAmounts
                 ? mockIncomeTotal.toLocaleString()
-                : "*".repeat(mockIncomeTotal.toLocaleString().length)}
+                : "*".repeat(mockIncomeTotal.toString().length)}
             </span>
           </div>
           <div className="flex flex-1 flex-col gap-1 items-end text-right">
@@ -84,7 +84,7 @@ export default function WalletHomePage() {
             <span className="text-xl font-semibold text-black">
               {showAmounts
                 ? mockExpenseTotal.toLocaleString()
-                : "*".repeat(mockExpenseTotal.toLocaleString().length)}
+                : "*".repeat(mockExpenseTotal.toString().length)}
             </span>
           </div>
         </div>
