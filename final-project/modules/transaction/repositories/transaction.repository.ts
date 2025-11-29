@@ -11,7 +11,9 @@ import type {
   CreateTransactionData,
   UpdateTransactionData,
   TransactionFilters,
+  TransactionType,
 } from "../domain/transaction.types";
+import { DEFAULT_TRANSACTION_TYPE } from "../domain/transaction.types";
 
 /**
  * Transaction repository interface
@@ -223,7 +225,7 @@ export const transactionRepository = {
           rateToNTD: data.rateToNTD ?? null,
           name: data.name || null,
           note: data.note || null,
-          type: (data.type || "EXPENSE") as "INCOME" | "EXPENSE",
+          type: (data.type || DEFAULT_TRANSACTION_TYPE) as TransactionType,
           tagId: data.tagId,
         } as any,
       });

@@ -14,6 +14,11 @@ import type { TransactionError } from "./transaction.errors";
 export type TransactionType = "INCOME" | "EXPENSE";
 
 /**
+ * Default transaction type
+ */
+export const DEFAULT_TRANSACTION_TYPE: TransactionType = "EXPENSE";
+
+/**
  * Transaction payer information
  */
 export interface TransactionPayer {
