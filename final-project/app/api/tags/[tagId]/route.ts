@@ -29,6 +29,7 @@ interface RouteContext {
  *         schema:
  *           type: string
  *         description: Tag ID
+ *         example: "food"
  *     responses:
  *       200:
  *         description: Tag details
@@ -97,6 +98,7 @@ export async function GET(_req: Request, context: RouteContext) {
  *         schema:
  *           type: string
  *         description: Tag ID
+ *         example: "food"
  *     requestBody:
  *       required: true
  *       content:
@@ -192,6 +194,7 @@ export async function PATCH(req: Request, context: RouteContext) {
  *         schema:
  *           type: string
  *         description: Tag ID
+ *         example: "food"
  *     responses:
  *       200:
  *         description: Tag deleted successfully

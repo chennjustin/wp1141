@@ -26,6 +26,7 @@ interface RouteContext {
  *         schema:
  *           type: string
  *         description: Wallet ID
+ *         example: "1"
  *     responses:
  *       200:
  *         description: Wallet details
@@ -94,6 +95,7 @@ export async function GET(_req: Request, context: RouteContext) {
  *         schema:
  *           type: string
  *         description: Wallet ID
+ *         example: "1"
  *     requestBody:
  *       required: true
  *       content:
@@ -194,6 +196,7 @@ export async function PATCH(req: Request, context: RouteContext) {
  *         schema:
  *           type: string
  *         description: Wallet ID
+ *         example: "1"
  *     responses:
  *       200:
  *         description: Wallet deleted successfully

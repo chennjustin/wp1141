@@ -24,6 +24,7 @@ import type { CreateTagData, TagFilters } from "@/modules/tag/domain/tag.types";
  *           enum: [system, user, all]
  *           default: all
  *         description: Filter tags by type - 'system' for system tags, 'user' for user-created tags, 'all' for all tags
+ *         example: "all"
  *     responses:
  *       200:
  *         description: List of tags
