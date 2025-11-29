@@ -28,8 +28,5 @@ export default async function Home({ searchParams }: HomeProps) {
     // If user has userID and no explicit callbackUrl, redirect to wallets home
     redirect("/wallets");
   }
-  
-  // If no session, middleware will redirect to /login
-  // This component won't render for unauthenticated users
   return null;
 }

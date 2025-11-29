@@ -5,6 +5,7 @@
  */
 
 import swaggerJsdoc from "swagger-jsdoc";
+import { config } from "@/config/env";
 
 const swaggerDefinition = {
   openapi: "3.0.0",
@@ -19,8 +20,8 @@ const swaggerDefinition = {
   },
   servers: [
     {
-      url: process.env.NEXTAUTH_URL || "http://localhost:3000",
-      description: process.env.NODE_ENV === "production" ? "Production server" : "Development server",
+      url: config.nextAuthUrl ?? "http://localhost:3000",
+      description: config.isProduction ? "Production server" : "Development server",
     },
   ],
   components: {

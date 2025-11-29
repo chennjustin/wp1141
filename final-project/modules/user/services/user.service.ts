@@ -13,7 +13,7 @@ import type {
   UpdateUserProfileData,
   ServiceResult,
 } from "../domain/user.types";
-import { validateUserId, sanitizeUserId } from "@/lib/utils/userId";
+import { validateUserId, sanitizeUserId } from "../utils/userId";
 import { MAX_NAME_LENGTH } from "@/config/constants";
 
 /**

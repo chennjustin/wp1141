@@ -15,7 +15,7 @@ const robotoMono = Roboto_Mono({
 
 export const metadata: Metadata = {
   title: "Coin Undergraduate",
-  description: "an app to manage your money",
+  description: "A modern coin undergraduate wallet and transaction management system built with Next.js",
 };
 
 export default function RootLayout({
