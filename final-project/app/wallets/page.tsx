@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useWallets } from "@/hooks/useWallet";
+import { useUserCarrier } from "@/hooks/useCarrier";
+import JsBarcode from "jsbarcode";
 
 /**
  * Wallet home page.
@@ -14,12 +16,14 @@ import { useWallets } from "@/hooks/useWallet";
 export default function WalletHomePage() {
   const router = useRouter();
   const { wallets } = useWallets();
+  const { carrier, loading: carrierLoading } = useUserCarrier();
 
   // For now we treat the first wallet as the active wallet on this page.
   const activeWallet = wallets[0] ?? null;
 
   const [showAmounts, setShowAmounts] = useState(true);
   const [brightCarrier, setBrightCarrier] = useState(true);
+  const barcodeRef = useRef<SVGSVGElement>(null);
 
   const today = new Date();
   const year = today.getFullYear();
@@ -30,10 +34,11 @@ export default function WalletHomePage() {
   const mockIncomeTotal = 10000;
   const mockExpenseTotal = 20000;
 
-  // Carrier code - placeholder, should be fetched from user's device carriers
-  const carrierCode = "/ABCDEF";
+  // Use actual carrier code if available, otherwise use placeholder for demo
+  const carrierCode = carrier?.carrierCode || "/ABCDEF";
+  const hasRealCarrier = !!carrier;
 
-  // Generate barcode pattern from carrier code
+  // Generate barcode pattern from carrier code (for placeholder when no carrier)
   // Barcode width:height ratio is 1:3.5, height is 64px (h-16), so width should be 224px
   const generateBarcodePattern = (code: string) => {
     const pattern: number[] = [];
@@ -77,6 +82,33 @@ export default function WalletHomePage() {
   const barcodePattern = generateBarcodePattern(carrierCode);
   const barcodeHeight = 64; // h-16 = 64px
   const barcodeWidth = barcodeHeight * 3.5; // 224px for 1:3.5 ratio
+
+  // Generate real barcode when carrier is available
+  useEffect(() => {
+    if (hasRealCarrier && barcodeRef.current && carrierCode) {
+      try {
+        // Clear previous barcode
+        barcodeRef.current.innerHTML = "";
+        
+        JsBarcode(barcodeRef.current, carrierCode, {
+          format: "CODE128",
+          height: barcodeHeight,
+          displayValue: false, // Don't show text below barcode (text is shown separately)
+          background: "transparent",
+          lineColor: brightCarrier ? "#000000" : "#FFFFFF",
+          width: 2, // Standard width for Code 128
+          margin: 10, // Adequate margin for scanning
+          valid: function(valid) {
+            if (!valid) {
+              console.error("Invalid barcode data:", carrierCode);
+            }
+          },
+        });
+      } catch (error) {
+        console.error("Error generating barcode:", error);
+      }
+    }
+  }, [hasRealCarrier, carrierCode, brightCarrier, barcodeHeight]);
 
   const mockTransactions = [
     { id: "1", title: "早餐", amount: -80, time: "08:30" },
@@ -168,19 +200,23 @@ export default function WalletHomePage() {
 
         {/* Barcode area */}
         <div className="mb-3 flex flex-col items-center gap-3">
-          {/* Barcode - generated from carrier code, 5:2 aspect ratio */}
-          <div className="flex h-16 items-center justify-center" style={{ width: `${barcodeWidth}px` }}>
-            <div className="flex items-center justify-center gap-0.5">
-              {barcodePattern.map((width, index) => (
-                <span
-                  key={index}
-                  className={`block h-16 ${
-                    brightCarrier ? "bg-black" : "bg-white"
-                  }`}
-                  style={{ width: `${width}px` }}
-                />
-              ))}
-            </div>
+          {/* Barcode - real barcode if carrier exists, otherwise placeholder */}
+          <div className="flex items-center justify-center" style={{ width: `${barcodeWidth}px`, minHeight: `${barcodeHeight}px` }}>
+            {hasRealCarrier && !carrierLoading ? (
+              <svg ref={barcodeRef} style={{ maxWidth: "100%", height: "auto" }} />
+            ) : (
+              <div className="flex items-center justify-center gap-0.5">
+                {barcodePattern.map((width, index) => (
+                  <span
+                    key={index}
+                    className={`block h-16 ${
+                      brightCarrier ? "bg-black" : "bg-white"
+                    }`}
+                    style={{ width: `${width}px` }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Carrier code and copy icon */}
@@ -252,7 +288,3 @@ export default function WalletHomePage() {
     </div>
   );
 }
-
-
-
-

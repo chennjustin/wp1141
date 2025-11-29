@@ -168,6 +168,65 @@ const swaggerDefinition = {
         },
         required: ["success"],
       },
+      DeviceCarrier: {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+            description: "Carrier ID",
+          },
+          userId: {
+            type: "string",
+            description: "User ID who owns this carrier",
+          },
+          carrierCode: {
+            type: "string",
+            description: "Carrier code (e.g., /ABCDEF)",
+            example: "/ABCDEF",
+          },
+          isDeleted: {
+            type: "boolean",
+            description: "Soft delete flag",
+          },
+          createdAt: {
+            type: "string",
+            format: "date-time",
+            description: "Creation timestamp",
+          },
+        },
+        required: ["id", "userId", "carrierCode", "isDeleted", "createdAt"],
+      },
+      CreateCarrierRequest: {
+        type: "object",
+        properties: {
+          carrierCode: {
+            type: "string",
+            description: "Carrier code",
+            example: "/ABCDEF",
+          },
+        },
+        required: ["carrierCode"],
+      },
+      UpdateCarrierRequest: {
+        type: "object",
+        properties: {
+          carrierCode: {
+            type: "string",
+            description: "Carrier code",
+            example: "/ABCDEF",
+          },
+        },
+      },
+      CarrierDeleteResponse: {
+        type: "object",
+        properties: {
+          success: {
+            type: "boolean",
+            example: true,
+          },
+        },
+        required: ["success"],
+      },
     },
   },
   security: [
