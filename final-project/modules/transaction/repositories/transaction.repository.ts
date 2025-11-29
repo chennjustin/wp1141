@@ -99,6 +99,11 @@ export const transactionRepository = {
       where.tagId = filters.tagId;
     }
 
+    // Type filter
+    if (filters.type !== undefined && filters.type !== null) {
+      where.type = filters.type;
+    }
+
     // User filter (for v2.0 - filter transactions where user is payer or share)
     if (filters.userId) {
       where.OR = [
@@ -218,8 +223,9 @@ export const transactionRepository = {
           rateToNTD: data.rateToNTD ?? null,
           name: data.name || null,
           note: data.note || null,
+          type: (data.type || "EXPENSE") as "INCOME" | "EXPENSE",
           tagId: data.tagId,
-        },
+        } as any,
       });
 
       // Create payers if provided
@@ -293,6 +299,9 @@ export const transactionRepository = {
       }
       if (data.note !== undefined) {
         updateData.note = data.note || null;
+      }
+      if (data.type !== undefined) {
+        updateData.type = data.type;
       }
       if (data.tagId !== undefined) {
         updateData.tagId = data.tagId;

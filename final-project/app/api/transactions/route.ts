@@ -46,6 +46,13 @@ import type {
  *           type: string
  *         description: Tag ID filter
  *       - in: query
+ *         name: type
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [INCOME, EXPENSE]
+ *         description: Transaction type filter (INCOME or EXPENSE)
+ *       - in: query
  *         name: userId
  *         required: false
  *         schema:
@@ -106,6 +113,15 @@ export async function GET(req: Request) {
     const tagId = searchParams.get("tagId");
     if (tagId !== null) {
       filters.tagId = tagId;
+    }
+
+    const type = searchParams.get("type");
+    if (type === "INCOME" || type === "EXPENSE") {
+      filters.type = type;
+    } else if (type !== null) {
+      return createErrorResponse(
+        new BadRequestError("Invalid type value. Must be 'INCOME' or 'EXPENSE'")
+      );
     }
 
     const userId = searchParams.get("userId");

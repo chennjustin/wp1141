@@ -9,6 +9,11 @@
 import type { TransactionError } from "./transaction.errors";
 
 /**
+ * Transaction type enum
+ */
+export type TransactionType = "INCOME" | "EXPENSE";
+
+/**
  * Transaction payer information
  */
 export interface TransactionPayer {
@@ -60,6 +65,7 @@ export interface Transaction {
   name: string | null;
   note: string | null;
   isDeleted: boolean;
+  type: TransactionType;
   tagId: string;
   tag: TransactionTag;
   createdAt: Date;
@@ -99,6 +105,7 @@ export interface CreateTransactionData {
   rateToNTD?: number | null;
   name?: string | null;
   note?: string | null;
+  type?: TransactionType;
   tagId: string;
   payers?: CreateTransactionPayerData[];
   shares?: CreateTransactionShareData[];
@@ -114,6 +121,7 @@ export interface UpdateTransactionData {
   rateToNTD?: number | null;
   name?: string | null;
   note?: string | null;
+  type?: TransactionType;
   tagId?: string;
   payers?: CreateTransactionPayerData[];
   shares?: CreateTransactionShareData[];
@@ -127,6 +135,7 @@ export interface TransactionFilters {
   startDate?: Date | string;
   endDate?: Date | string;
   tagId?: string | null;
+  type?: TransactionType | null;
   userId?: string; // Filter by specific user's transactions (for v2.0)
 }
 

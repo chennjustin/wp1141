@@ -215,6 +215,12 @@ const swaggerDefinition = {
             type: "boolean",
             description: "Soft delete flag",
           },
+          type: {
+            type: "string",
+            enum: ["INCOME", "EXPENSE"],
+            description: "Transaction type - INCOME for income, EXPENSE for expense",
+            default: "EXPENSE",
+          },
           tagId: {
             type: "string",
             nullable: true,
@@ -276,6 +282,7 @@ const swaggerDefinition = {
           "amount",
           "currency",
           "isDeleted",
+          "type",
           "createdAt",
           "updatedAt",
         ],
@@ -386,6 +393,12 @@ const swaggerDefinition = {
             description: "Transaction note",
             example: "Team lunch at restaurant",
           },
+          type: {
+            type: "string",
+            enum: ["INCOME", "EXPENSE"],
+            description: "Transaction type - INCOME for income, EXPENSE for expense (defaults to EXPENSE)",
+            example: "EXPENSE",
+          },
           tagId: {
             type: "string",
             description: "Tag ID (required, must exist in database)",
@@ -482,6 +495,12 @@ const swaggerDefinition = {
             nullable: true,
             description: "Transaction note",
             example: "Updated note",
+          },
+          type: {
+            type: "string",
+            enum: ["INCOME", "EXPENSE"],
+            description: "Transaction type - INCOME for income, EXPENSE for expense",
+            example: "EXPENSE",
           },
           tagId: {
             type: "string",

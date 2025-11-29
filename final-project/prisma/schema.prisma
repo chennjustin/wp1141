@@ -15,54 +15,53 @@ datasource db {
 // =========================================================
 
 model User {
-  id             String   @id @default(cuid())
-  userID         String?  @unique        
-  name           String
-  email          String?
-  emailVerified  DateTime?
-  image          String?
+  id            String    @id @default(cuid())
+  userID        String?   @unique
+  name          String
+  email         String?
+  emailVerified DateTime?
+  image         String?
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Soft delete flag for user accounts
-  isDeleted Boolean  @default(false)
+  isDeleted Boolean @default(false)
 
   // Remember user's last chosen wallet
   defaultWalletId String?
   defaultWallet   Wallet? @relation("DefaultWallet", fields: [defaultWalletId], references: [id])
 
   // NextAuth relations
-  accounts   Account[]
-  sessions   Session[]
+  accounts Account[]
+  sessions Session[]
 
-
-  walletUsers     WalletUser[]
-  createdTransactions Transaction[] @relation("UserCreatedTransactions")
-  transactionPayers  TransactionPayer[]
-  transactionShares  TransactionShare[]
-  notifications      Notification[]
-  tags               Tag[] @relation("UserCreatedTags")
-  subscriptions      Subscription[]
-  deviceCarriers     DeviceCarrier[]
+  walletUsers         WalletUser[]
+  createdTransactions Transaction[]      @relation("UserCreatedTransactions")
+  transactionPayers   TransactionPayer[]
+  transactionShares   TransactionShare[]
+  notifications       Notification[]
+  tags                Tag[]              @relation("UserCreatedTags")
+  subscriptions       Subscription[]
+  deviceCarriers      DeviceCarrier[]
 
   @@index([userID])
 }
 
 model Account {
-  id                String   @id @default(cuid())
-  userId            String
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String?  @db.Text
-  access_token      String?  @db.Text
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String?  @db.Text
+  id_token          String? @db.Text
   session_state     String?
 
   @@unique([provider, providerAccountId])
@@ -79,41 +78,40 @@ model Session {
   @@index([userId])
 }
 
-
 // =========================================================
 // WALLET STRUCTURE
 // =========================================================
 
 model Wallet {
-  id        String   @id @default(cuid())
-  name      String
-  defaultCurrency String @default("TWD")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  name            String
+  defaultCurrency String   @default("TWD")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   // Soft delete flag for wallets
-  isDeleted Boolean  @default(false)
+  isDeleted Boolean @default(false)
 
-  members        WalletUser[]
-  transactions   Transaction[]
-  subscriptions  Subscription[]
+  members       WalletUser[]
+  transactions  Transaction[]
+  subscriptions Subscription[]
 
   // reverse relation for default wallet
   defaultUsers User[] @relation("DefaultWallet")
 }
 
 model WalletUser {
-  id        String     @id @default(cuid())
+  id String @id @default(cuid())
 
-  walletId  String
-  userId    String
-  role      WalletRole @default(MEMBER)
+  walletId String
+  userId   String
+  role     WalletRole @default(MEMBER)
 
   // Soft delete flag for wallet membership records
-  isDeleted Boolean    @default(false)
+  isDeleted Boolean @default(false)
 
-  wallet    Wallet     @relation(fields: [walletId], references: [id])
-  user      User       @relation(fields: [userId], references: [id])
+  wallet Wallet @relation(fields: [walletId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
 
   @@unique([walletId, userId])
 }
@@ -124,107 +122,106 @@ enum WalletRole {
   VIEWER
 }
 
-
 // =========================================================
 // TAGS 
 // =========================================================
 
 model Tag {
-  id        String   @id @default(cuid())
-  name      String   @unique
+  id   String @id @default(cuid())
+  name String @unique
 
   // system user or normal user (NOT NULL)
   createdBy String
   createdAt DateTime @default(now())
 
-   // Soft delete flag for tags
-  isDeleted Boolean  @default(false)
+  // Soft delete flag for tags
+  isDeleted Boolean @default(false)
 
-  creator   User @relation("UserCreatedTags", fields: [createdBy], references: [id])
+  creator User @relation("UserCreatedTags", fields: [createdBy], references: [id])
 
   transactions Transaction[]
 }
-
 
 // =========================================================
 // TRANSACTIONS
 // =========================================================
 
 model Transaction {
-  id            String     @id @default(cuid())
-  walletId      String
-  createdById   String
+  id          String @id @default(cuid())
+  walletId    String
+  createdById String
 
-  date          DateTime
-  amount        Float
-  currency      String
-  rateToNTD     Float?
-  name          String? @db.Text
-  note          String? @db.Text
+  date      DateTime
+  amount    Float
+  currency  String
+  rateToNTD Float?
+  name      String?  @db.Text
+  note      String?  @db.Text
 
   // Soft delete flag for transactions
-  isDeleted     Boolean  @default(false)
+  isDeleted Boolean @default(false)
 
-  tagId         String
-  tag           Tag @relation(fields: [tagId], references: [id])
+  type TransactionType @default(EXPENSE)
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  tagId String
+  tag   Tag    @relation(fields: [tagId], references: [id])
 
-  wallet        Wallet    @relation(fields: [walletId], references: [id])
-  createdBy     User      @relation("UserCreatedTransactions", fields: [createdById], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  payers        TransactionPayer[]
-  shares        TransactionShare[]
+  wallet    Wallet @relation(fields: [walletId], references: [id])
+  createdBy User   @relation("UserCreatedTransactions", fields: [createdById], references: [id])
+
+  payers                TransactionPayer[]
+  shares                TransactionShare[]
   subscriptionHistories SubscriptionHistory[]
 }
 
 model TransactionPayer {
-  id            String      @id @default(cuid())
+  id            String @id @default(cuid())
   transactionId String
   payerId       String
   paidAmount    Float
 
-  transaction   Transaction @relation(fields: [transactionId], references: [id])
-  payer         User        @relation(fields: [payerId], references: [id])
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+  payer       User        @relation(fields: [payerId], references: [id])
 }
 
 model TransactionShare {
-  id            String      @id @default(cuid())
+  id            String @id @default(cuid())
   transactionId String
   userId        String
   shareAmount   Float
 
-  transaction   Transaction @relation(fields: [transactionId], references: [id])
-  user          User        @relation(fields: [userId], references: [id])
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+  user        User        @relation(fields: [userId], references: [id])
 }
-
 
 // =========================================================
 // SUBSCRIPTION + EXECUTION HISTORY
 // =========================================================
 
 model Subscription {
-  id            String    @id @default(cuid())
-  walletId      String
-  userId        String
+  id       String @id @default(cuid())
+  walletId String
+  userId   String
 
-  amount        Float
-  currency      String
-  label         String
-  nextBilling   DateTime
+  amount         Float
+  currency       String
+  label          String
+  nextBilling    DateTime
   intervalMonths Int      @default(1)
 
   // Soft delete flag for subscriptions
-  isDeleted     Boolean   @default(false)
+  isDeleted Boolean @default(false)
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  wallet        Wallet    @relation(fields: [walletId], references: [id])
-  user          User      @relation(fields: [userId], references: [id])
+  wallet Wallet @relation(fields: [walletId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
 
-  histories     SubscriptionHistory[]
+  histories SubscriptionHistory[]
 }
 
 model SubscriptionHistory {
@@ -232,11 +229,11 @@ model SubscriptionHistory {
   subscriptionId String
   transactionId  String?
   status         BillingStatus @default(SUCCESS)
-  message        String? @db.Text
-  runAt          DateTime @default(now())
+  message        String?       @db.Text
+  runAt          DateTime      @default(now())
 
-  subscription   Subscription @relation(fields: [subscriptionId], references: [id])
-  transaction    Transaction? @relation(fields: [transactionId], references: [id])
+  subscription Subscription @relation(fields: [subscriptionId], references: [id])
+  transaction  Transaction? @relation(fields: [transactionId], references: [id])
 }
 
 enum BillingStatus {
@@ -245,23 +242,27 @@ enum BillingStatus {
   SKIPPED
 }
 
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
 
 // =========================================================
 // NOTIFICATION
 // =========================================================
 
 model Notification {
-  id        String   @id @default(cuid())
+  id        String           @id @default(cuid())
   userId    String
   type      NotificationType
-  message   String  @db.Text
-  isRead    Boolean @default(false)
-  createdAt DateTime @default(now())
+  message   String           @db.Text
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
 
   // Soft delete flag for notifications
-  isDeleted Boolean  @default(false)
+  isDeleted Boolean @default(false)
 
-  user      User     @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 }
 
 enum NotificationType {
@@ -270,20 +271,19 @@ enum NotificationType {
   SHARED_WALLET_UPDATE
 }
 
-
 // =========================================================
 // DEVICE CARRIER (載具)
 // =========================================================
 
 model DeviceCarrier {
-  id          String   @id @default(cuid())
+  id          String @id @default(cuid())
   userId      String
   carrierCode String
 
   // Soft delete flag for device carriers
-  isDeleted   Boolean  @default(false)
+  isDeleted Boolean @default(false)
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 
-  user        User   @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 }
