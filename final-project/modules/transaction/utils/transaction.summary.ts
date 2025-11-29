@@ -5,7 +5,7 @@
  */
 
 import { DEFAULT_CURRENCY } from "@/config/constants";
-import type { Transaction } from "../domain/transaction.types";
+import type { Transaction, TransactionSummaryItem } from "../domain/transaction.types";
 
 /**
  * Convert amount to target currency
@@ -54,10 +54,18 @@ function convertToCurrency(
  */
 export function calculateMonthlySummary(
   transactions: Array<{
+    id: string;
     type: string;
+    date: Date;
     amount: number;
     currency: string;
     rateToNTD: number | null;
+    name: string | null;
+    note: string | null;
+    tag: {
+      id: string;
+      name: string;
+    };
   }>,
   targetCurrency: string = DEFAULT_CURRENCY,
   targetRateToNTD: number | null = null
@@ -66,11 +74,13 @@ export function calculateMonthlySummary(
   totalExpense: number;
   incomeCount: number;
   expenseCount: number;
+  incomes: TransactionSummaryItem[];
+  expenses: TransactionSummaryItem[];
 } {
   let totalIncome = 0;
   let totalExpense = 0;
-  let incomeCount = 0;
-  let expenseCount = 0;
+  const incomes: TransactionSummaryItem[] = [];
+  const expenses: TransactionSummaryItem[] = [];
 
   for (const transaction of transactions) {
     const convertedAmount = convertToCurrency(
@@ -81,20 +91,32 @@ export function calculateMonthlySummary(
       targetRateToNTD
     );
 
+    const summaryItem: TransactionSummaryItem = {
+      id: transaction.id,
+      date: transaction.date,
+      amount: convertedAmount,
+      currency: targetCurrency,
+      name: transaction.name,
+      note: transaction.note,
+      tag: transaction.tag,
+    };
+
     if (transaction.type === "INCOME") {
       totalIncome += convertedAmount;
-      incomeCount++;
+      incomes.push(summaryItem);
     } else if (transaction.type === "EXPENSE") {
       totalExpense += convertedAmount;
-      expenseCount++;
+      expenses.push(summaryItem);
     }
   }
 
   return {
     totalIncome,
     totalExpense,
-    incomeCount,
-    expenseCount,
+    incomeCount: incomes.length,
+    expenseCount: expenses.length,
+    incomes,
+    expenses,
   };
 }
 

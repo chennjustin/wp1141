@@ -395,7 +395,7 @@ export const transactionRepository = {
 
   /**
    * Get transactions for monthly summary
-   * Returns transactions within the specified month with basic fields for calculation
+   * Returns transactions within the specified month with all necessary fields
    */
   async findMonthlyTransactions(filters: MonthlySummaryFilters) {
     // Calculate start and end dates for the month
@@ -414,10 +414,22 @@ export const transactionRepository = {
       select: {
         id: true,
         type: true,
+        date: true,
         amount: true,
         currency: true,
         rateToNTD: true,
+        name: true,
+        note: true,
+        tag: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       } as any,
+      orderBy: {
+        date: "desc",
+      },
     });
   },
 };

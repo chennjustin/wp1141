@@ -155,6 +155,22 @@ export interface MonthlySummaryFilters {
 }
 
 /**
+ * Transaction summary item
+ */
+export interface TransactionSummaryItem {
+  id: string;
+  date: Date;
+  amount: number;
+  currency: string;
+  name: string | null;
+  note: string | null;
+  tag: {
+    id: string;
+    name: string;
+  };
+}
+
+/**
  * Monthly summary result
  */
 export interface MonthlySummary {
@@ -167,6 +183,8 @@ export interface MonthlySummary {
   currency: string; // The currency of the summary (NTD or targetCurrency)
   incomeCount: number; // Number of income transactions
   expenseCount: number; // Number of expense transactions
+  incomes: TransactionSummaryItem[]; // List of income transactions
+  expenses: TransactionSummaryItem[]; // List of expense transactions
 }
 
 /**

@@ -621,6 +621,50 @@ const swaggerDefinition = {
           },
         },
       },
+      TransactionSummaryItem: {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+            description: "Transaction ID",
+          },
+          date: {
+            type: "string",
+            format: "date-time",
+            description: "Transaction date",
+          },
+          amount: {
+            type: "number",
+            description: "Transaction amount in target currency",
+          },
+          currency: {
+            type: "string",
+            description: "Currency of the amount",
+          },
+          name: {
+            type: "string",
+            nullable: true,
+            description: "Transaction name",
+          },
+          note: {
+            type: "string",
+            nullable: true,
+            description: "Transaction note",
+          },
+          tag: {
+            type: "object",
+            properties: {
+              id: {
+                type: "string",
+              },
+              name: {
+                type: "string",
+              },
+            },
+          },
+        },
+        required: ["id", "date", "amount", "currency", "tag"],
+      },
       MonthlySummary: {
         type: "object",
         properties: {
@@ -668,6 +712,20 @@ const swaggerDefinition = {
             description: "Number of expense transactions",
             example: 10,
           },
+          incomes: {
+            type: "array",
+            description: "List of income transactions",
+            items: {
+              $ref: "#/components/schemas/TransactionSummaryItem",
+            },
+          },
+          expenses: {
+            type: "array",
+            description: "List of expense transactions",
+            items: {
+              $ref: "#/components/schemas/TransactionSummaryItem",
+            },
+          },
         },
         required: [
           "walletId",
@@ -679,6 +737,8 @@ const swaggerDefinition = {
           "currency",
           "incomeCount",
           "expenseCount",
+          "incomes",
+          "expenses",
         ],
       },
     },

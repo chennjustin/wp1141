@@ -372,6 +372,8 @@ export const transactionService = {
         currency: targetCurrency,
         incomeCount: summary.incomeCount,
         expenseCount: summary.expenseCount,
+        incomes: summary.incomes,
+        expenses: summary.expenses,
       };
 
       return {
