@@ -7,6 +7,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import { SYSTEM_USER_ID } from "@/config/constants";
 import type {
   CreateTransactionData,
   UpdateTransactionData,
@@ -29,8 +30,9 @@ export const transactionRepository = {
       isDeleted: false,
     };
 
-    // If userId is provided, ensure user has access to the wallet
-    if (userId) {
+    // System user can access all transactions
+    // If userId is provided and not system user, ensure user has access to the wallet
+    if (userId && userId !== SYSTEM_USER_ID) {
       where.wallet = {
         members: {
           some: {
@@ -371,8 +373,14 @@ export const transactionRepository = {
 
   /**
    * Check if user has access to wallet
+   * System user has access to all wallets
    */
   async hasAccess(walletId: string, userId: string) {
+    // System user can access all wallets
+    if (userId === SYSTEM_USER_ID) {
+      return true;
+    }
+
     const membership = await prisma.walletUser.findFirst({
       where: {
         walletId,
