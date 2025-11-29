@@ -542,6 +542,66 @@ const swaggerDefinition = {
           },
         },
       },
+      Tag: {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+            description: "Tag ID",
+          },
+          name: {
+            type: "string",
+            description: "Tag name",
+          },
+          createdBy: {
+            type: "string",
+            description: "User ID who created the tag",
+          },
+          createdAt: {
+            type: "string",
+            format: "date-time",
+            description: "Creation timestamp",
+          },
+          isDeleted: {
+            type: "boolean",
+            description: "Soft delete flag",
+          },
+          creator: {
+            type: "object",
+            nullable: true,
+            properties: {
+              id: {
+                type: "string",
+              },
+              name: {
+                type: "string",
+              },
+            },
+          },
+        },
+        required: ["id", "name", "createdBy", "createdAt", "isDeleted"],
+      },
+      CreateTagRequest: {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+            description: "Tag name (must be unique)",
+            example: "groceries",
+          },
+        },
+        required: ["name"],
+      },
+      UpdateTagRequest: {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+            description: "Tag name (must be unique)",
+            example: "updated-groceries",
+          },
+        },
+      },
     },
   },
   security: [

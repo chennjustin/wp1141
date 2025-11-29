@@ -41,3 +41,21 @@ export const MAX_USER_ID_LENGTH = 20;
 export const MIN_USER_ID_LENGTH = 3;
 export const MAX_NAME_LENGTH = 50;
 
+/**
+ * Tag-related constants
+ */
+export const SYSTEM_USER_ID = "system" as const;
+
+export const DEFAULT_SYSTEM_TAGS = [
+  "food",
+  "drinks",
+  "entertainment",
+  "transportation",
+  "shopping",
+  "bills",
+  "healthcare",
+  "education",
+  "travel",
+  "other",
+] as const;
+
