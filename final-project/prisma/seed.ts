@@ -75,11 +75,15 @@ async function main() {
 
   // Get system tags for use in transactions
   const systemTags = await Promise.all(
-    DEFAULT_SYSTEM_TAGS.slice(0, 3).map((tagName) =>
-      prisma.tag.findUnique({
+    DEFAULT_SYSTEM_TAGS.slice(0, 3).map(async (tagName) => {
+      const tag = await prisma.tag.findUnique({
         where: { name: tagName },
-      })
-    )
+      });
+      if (!tag) {
+        throw new Error(`System tag ${tagName} not found after creation`);
+      }
+      return tag;
+    })
   );
 
   // Create custom tags
@@ -172,8 +176,8 @@ async function main() {
       rateToNTD: null,
       name: "Lunch with team",
       note: "Team lunch at restaurant",
-      type: "EXPENSE",
-      tagId: systemTags[0].id, // food
+      type: "EXPENSE" as any,
+      tagId: systemTags[0]!.id, // food
       payers: {
         create: [
           {
@@ -207,8 +211,8 @@ async function main() {
       rateToNTD: 32.5,
       name: "Coffee",
       note: "Starbucks coffee",
-      type: "EXPENSE",
-      tagId: systemTags[1].id, // drinks
+      type: "EXPENSE" as any,
+      tagId: systemTags[1]!.id, // drinks
       payers: {
         create: [
           {
@@ -246,7 +250,7 @@ async function main() {
       rateToNTD: null,
       name: "Salary",
       note: "Monthly salary",
-      type: "INCOME",
+      type: "INCOME" as any,
       tagId: customTag1.id,
       payers: {
         create: [
@@ -277,8 +281,8 @@ async function main() {
       rateToNTD: null,
       name: "Movie tickets",
       note: "Cinema tickets for entertainment",
-      type: "EXPENSE",
-      tagId: systemTags[2].id, // entertainment
+      type: "EXPENSE" as any,
+      tagId: systemTags[2]!.id, // entertainment
       payers: {
         create: [
           {
