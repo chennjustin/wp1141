@@ -123,7 +123,7 @@ async function main() {
           },
         ],
       },
-    },
+    } as any,
   });
 
   const wallet2 = await prisma.wallet.create({
@@ -146,7 +146,7 @@ async function main() {
           },
         ],
       },
-    },
+    } as any,
   });
 
   const wallet3 = await prisma.wallet.create({
@@ -161,7 +161,7 @@ async function main() {
           },
         ],
       },
-    },
+    } as any,
   });
   console.log("✅ Wallets created");
 
@@ -176,7 +176,7 @@ async function main() {
       rateToNTD: null,
       name: "Lunch with team",
       note: "Team lunch at restaurant",
-      type: "EXPENSE" as any,
+      type: "EXPENSE",
       tagId: systemTags[0]!.id, // food
       payers: {
         create: [
@@ -198,7 +198,7 @@ async function main() {
           },
         ],
       },
-    },
+    } as any,
   });
 
   const transaction2 = await prisma.transaction.create({
@@ -237,7 +237,7 @@ async function main() {
           },
         ],
       },
-    },
+    } as any,
   });
 
   const transaction3 = await prisma.transaction.create({
@@ -268,7 +268,7 @@ async function main() {
           },
         ],
       },
-    },
+    } as any,
   });
 
   const transaction4 = await prisma.transaction.create({
@@ -299,7 +299,7 @@ async function main() {
           },
         ],
       },
-    },
+    } as any,
   });
 
   const transaction5 = await prisma.transaction.create({
@@ -338,7 +338,7 @@ async function main() {
           },
         ],
       },
-    },
+    } as any,
   });
   console.log("✅ Transactions created with payers and shares");
 
