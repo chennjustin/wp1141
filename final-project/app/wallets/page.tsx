@@ -34,14 +34,14 @@ export default function WalletHomePage() {
   const carrierCode = "/ABCDEF";
 
   // Generate barcode pattern from carrier code
-  // Barcode width:height ratio is 5:2, height is 64px (h-16), so width should be 160px
+  // Barcode width:height ratio is 1:3.5, height is 64px (h-16), so width should be 224px
   const generateBarcodePattern = (code: string) => {
     const pattern: number[] = [];
     const minWidth = 2;
     const maxWidth = 5;
     const gapWidth = 0.5; // gap between bars
-    const targetTotalWidth = 160; // 5:2 ratio with 64px height
-    const numBars = Math.floor(code.length * 2.5); // Generate enough bars to fill width
+    const targetTotalWidth = 224; // 1:3.5 ratio with 64px height (64 * 3.5 = 224)
+    const numBars = Math.floor(code.length * 3.5); // Generate enough bars to fill width
     
     let currentWidth = 0;
     
@@ -76,7 +76,7 @@ export default function WalletHomePage() {
 
   const barcodePattern = generateBarcodePattern(carrierCode);
   const barcodeHeight = 64; // h-16 = 64px
-  const barcodeWidth = (barcodeHeight * 5) / 2; // 160px for 5:2 ratio
+  const barcodeWidth = barcodeHeight * 3.5; // 224px for 1:3.5 ratio
 
   const mockTransactions = [
     { id: "1", title: "早餐", amount: -80, time: "08:30" },

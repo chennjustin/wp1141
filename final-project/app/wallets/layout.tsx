@@ -180,7 +180,7 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
               className="fixed inset-0 z-40 bg-black/40 md:absolute md:rounded-[3rem]"
               onClick={() => setIsMenuOpen(false)}
             />
-            <aside className="fixed inset-y-0 left-0 z-50 w-4/5 max-w-xs bg-[#E8E8E8] p-4 shadow-xl md:absolute md:inset-y-4 md:left-4 md:rounded-[3rem]">
+            <aside className="fixed inset-y-0 left-0 z-50 w-4/5 max-w-xs bg-[#E8E8E8] p-4 shadow-xl md:absolute md:inset-y-0 md:left-0 md:rounded-l-[3rem] md:rounded-r-none">
               <div className="mb-4 flex items-center justify-between">
                 <span className="text-sm font-semibold text-black">
                   主選單
