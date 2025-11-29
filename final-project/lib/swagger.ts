@@ -44,6 +44,7 @@ const swaggerDefinition = {
           error: {
             type: "string",
             description: "Error message",
+            example: "Unauthorized",
           },
         },
         required: ["error"],
@@ -54,29 +55,35 @@ const swaggerDefinition = {
           id: {
             type: "string",
             description: "Wallet ID",
+            example: "1",
           },
           name: {
             type: "string",
             description: "Wallet name",
+            example: "Personal Wallet",
           },
           defaultCurrency: {
             type: "string",
             description: "Default currency code (e.g., TWD)",
             default: "TWD",
+            example: "TWD",
           },
           createdAt: {
             type: "string",
             format: "date-time",
             description: "Creation timestamp",
+            example: "2024-11-01T00:00:00Z",
           },
           updatedAt: {
             type: "string",
             format: "date-time",
             description: "Last update timestamp",
+            example: "2024-11-01T00:00:00Z",
           },
           isDeleted: {
             type: "boolean",
             description: "Soft delete flag",
+            example: false,
           },
           members: {
             type: "array",
@@ -92,30 +99,37 @@ const swaggerDefinition = {
         properties: {
           id: {
             type: "string",
+            example: "1",
           },
           userId: {
             type: "string",
+            example: "2",
           },
           role: {
             type: "string",
             enum: ["OWNER", "MEMBER", "VIEWER"],
+            example: "OWNER",
           },
           user: {
             type: "object",
             properties: {
               id: {
                 type: "string",
+                example: "2",
               },
               name: {
                 type: "string",
+                example: "User One",
               },
               email: {
                 type: "string",
                 nullable: true,
+                example: "user1@example.com",
               },
               image: {
                 type: "string",
                 nullable: true,
+                example: null,
               },
             },
           },
@@ -174,57 +188,69 @@ const swaggerDefinition = {
           id: {
             type: "string",
             description: "Transaction ID",
+            example: "1",
           },
           walletId: {
             type: "string",
             description: "Wallet ID",
+            example: "1",
           },
           createdById: {
             type: "string",
             description: "User ID who created the transaction",
+            example: "2",
           },
           date: {
             type: "string",
             format: "date-time",
             description: "Transaction date",
+            example: "2024-11-15T10:00:00Z",
           },
           amount: {
             type: "number",
             description: "Transaction amount",
+            example: 5000,
           },
           currency: {
             type: "string",
             description: "Currency code (e.g., TWD, USD)",
+            example: "TWD",
           },
           rateToNTD: {
             type: "number",
             nullable: true,
             description: "Exchange rate to NTD",
+            example: null,
           },
           name: {
             type: "string",
             nullable: true,
             description: "Transaction name/description",
+            example: "Lunch with team",
           },
           note: {
             type: "string",
             nullable: true,
             description: "Transaction note",
+            example: "Team lunch at restaurant",
           },
           isDeleted: {
             type: "boolean",
             description: "Soft delete flag",
+            example: false,
           },
           type: {
             type: "string",
             enum: ["INCOME", "EXPENSE"],
             description: "Transaction type - INCOME for income, EXPENSE for expense",
             default: "EXPENSE",
+            example: "EXPENSE",
           },
           tagId: {
             type: "string",
             nullable: true,
             description: "Tag ID",
+            example: "food",
           },
           tag: {
             type: "object",
@@ -232,9 +258,11 @@ const swaggerDefinition = {
             properties: {
               id: {
                 type: "string",
+                example: "food",
               },
               name: {
                 type: "string",
+                example: "food",
               },
             },
           },
@@ -242,11 +270,13 @@ const swaggerDefinition = {
             type: "string",
             format: "date-time",
             description: "Creation timestamp",
+            example: "2024-11-15T10:00:00Z",
           },
           updatedAt: {
             type: "string",
             format: "date-time",
             description: "Last update timestamp",
+            example: "2024-11-15T10:00:00Z",
           },
           payers: {
             type: "array",
@@ -267,9 +297,11 @@ const swaggerDefinition = {
             properties: {
               id: {
                 type: "string",
+                example: "2",
               },
               name: {
                 type: "string",
+                example: "User One",
               },
             },
           },
@@ -292,28 +324,35 @@ const swaggerDefinition = {
         properties: {
           id: {
             type: "string",
+            example: "1",
           },
           transactionId: {
             type: "string",
+            example: "1",
           },
           payerId: {
             type: "string",
+            example: "2",
           },
           paidAmount: {
             type: "number",
+            example: 5000,
           },
           payer: {
             type: "object",
             properties: {
               id: {
                 type: "string",
+                example: "2",
               },
               name: {
                 type: "string",
+                example: "User One",
               },
               image: {
                 type: "string",
                 nullable: true,
+                example: null,
               },
             },
           },
@@ -324,28 +363,35 @@ const swaggerDefinition = {
         properties: {
           id: {
             type: "string",
+            example: "1",
           },
           transactionId: {
             type: "string",
+            example: "1",
           },
           userId: {
             type: "string",
+            example: "2",
           },
           shareAmount: {
             type: "number",
+            example: 5000,
           },
           user: {
             type: "object",
             properties: {
               id: {
                 type: "string",
+                example: "2",
               },
               name: {
                 type: "string",
+                example: "User One",
               },
               image: {
                 type: "string",
                 nullable: true,
+                example: null,
               },
             },
           },
@@ -563,23 +609,28 @@ const swaggerDefinition = {
           id: {
             type: "string",
             description: "Tag ID",
+            example: "food",
           },
           name: {
             type: "string",
             description: "Tag name",
+            example: "food",
           },
           createdBy: {
             type: "string",
             description: "User ID who created the tag",
+            example: "system",
           },
           createdAt: {
             type: "string",
             format: "date-time",
             description: "Creation timestamp",
+            example: "2024-11-01T00:00:00Z",
           },
           isDeleted: {
             type: "boolean",
             description: "Soft delete flag",
+            example: false,
           },
           creator: {
             type: "object",
@@ -587,9 +638,11 @@ const swaggerDefinition = {
             properties: {
               id: {
                 type: "string",
+                example: "system",
               },
               name: {
                 type: "string",
+                example: "System",
               },
             },
           },
@@ -623,38 +676,46 @@ const swaggerDefinition = {
           id: {
             type: "string",
             description: "Transaction ID",
+            example: "1",
           },
           date: {
             type: "string",
             format: "date-time",
             description: "Transaction date",
+            example: "2024-11-15T10:00:00Z",
           },
           amount: {
             type: "number",
             description: "Transaction amount in target currency",
+            example: 5000,
           },
           currency: {
             type: "string",
             description: "Currency of the amount",
+            example: "TWD",
           },
           name: {
             type: "string",
             nullable: true,
             description: "Transaction name",
+            example: "Lunch with team",
           },
           note: {
             type: "string",
             nullable: true,
             description: "Transaction note",
+            example: "Team lunch at restaurant",
           },
           tag: {
             type: "object",
             properties: {
               id: {
                 type: "string",
+                example: "food",
               },
               name: {
                 type: "string",
+                example: "food",
               },
             },
           },
@@ -667,6 +728,7 @@ const swaggerDefinition = {
           walletId: {
             type: "string",
             description: "Wallet ID",
+            example: "1",
           },
           year: {
             type: "integer",
@@ -714,6 +776,20 @@ const swaggerDefinition = {
             items: {
               $ref: "#/components/schemas/TransactionSummaryItem",
             },
+            example: [
+              {
+                id: "3",
+                date: "2024-11-25T09:00:00Z",
+                amount: 50000,
+                currency: "TWD",
+                name: "Salary",
+                note: "Monthly salary",
+                tag: {
+                  id: "custom-tag-1",
+                  name: "custom-tag-1",
+                },
+              },
+            ],
           },
           expenses: {
             type: "array",
@@ -721,6 +797,20 @@ const swaggerDefinition = {
             items: {
               $ref: "#/components/schemas/TransactionSummaryItem",
             },
+            example: [
+              {
+                id: "1",
+                date: "2024-11-15T10:00:00Z",
+                amount: 5000,
+                currency: "TWD",
+                name: "Lunch with team",
+                note: "Team lunch at restaurant",
+                tag: {
+                  id: "food",
+                  name: "food",
+                },
+              },
+            ],
           },
         },
         required: [
