@@ -7,7 +7,11 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { SYSTEM_USER_ID, DEFAULT_SYSTEM_TAGS } from "@/config/constants";
+import {
+  SYSTEM_USER_ID,
+  DEFAULT_SYSTEM_TAGS,
+  SYSTEM_TAG_IDS,
+} from "@/config/constants";
 import type { CreateTagData, UpdateTagData, TagFilters } from "../domain/tag.types";
 
 /**
@@ -173,42 +177,82 @@ export const tagRepository = {
   },
 
   /**
+   * Create a single system tag with fixed ID
+   */
+  async createSystemTag(name: (typeof DEFAULT_SYSTEM_TAGS)[number]) {
+    const tagId = SYSTEM_TAG_IDS[name];
+    if (!tagId) {
+      throw new Error(`No fixed ID defined for system tag: ${name}`);
+    }
+
+    // Check if tag already exists by ID or name
+    const existingTag = await prisma.tag.findFirst({
+      where: {
+        OR: [
+          { id: tagId },
+          {
+            name,
+            createdBy: SYSTEM_USER_ID,
+            isDeleted: false,
+          },
+        ],
+      },
+    });
+
+    if (existingTag) {
+      // If exists but ID doesn't match, update it to use the fixed ID
+      if (existingTag.id !== tagId) {
+        return prisma.tag.update({
+          where: { id: existingTag.id },
+          data: {
+            id: tagId,
+            name,
+            createdBy: SYSTEM_USER_ID,
+            isDeleted: false,
+          },
+          include: {
+            creator: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        });
+      }
+      return existingTag;
+    }
+
+    // Create new tag with fixed ID
+    return prisma.tag.create({
+      data: {
+        id: tagId,
+        name,
+        createdBy: SYSTEM_USER_ID,
+      },
+      include: {
+        creator: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+  },
+
+  /**
    * Ensure system tags exist
-   * Creates default system tags if they don't exist
+   * Creates default system tags if they don't exist, using fixed IDs
    */
   async ensureSystemTagsExist() {
     // Ensure system user exists first
     await ensureSystemUserExists();
 
-    // Check which system tags already exist
-    const existingTags = await prisma.tag.findMany({
-      where: {
-        name: {
-          in: [...DEFAULT_SYSTEM_TAGS],
-        },
-        createdBy: SYSTEM_USER_ID,
-        isDeleted: false,
-      },
-      select: {
-        name: true,
-      },
-    });
-
-    const existingNames = new Set(existingTags.map((tag) => tag.name));
-    const tagsToCreate = DEFAULT_SYSTEM_TAGS.filter(
-      (name) => !existingNames.has(name)
+    // Create all system tags using the function
+    await Promise.all(
+      DEFAULT_SYSTEM_TAGS.map((name) => this.createSystemTag(name))
     );
-
-    // Create missing system tags
-    if (tagsToCreate.length > 0) {
-      await prisma.tag.createMany({
-        data: tagsToCreate.map((name) => ({
-          name,
-          createdBy: SYSTEM_USER_ID,
-        })),
-        skipDuplicates: true, // Skip if name conflict occurs
-      });
-    }
   },
 };
 

@@ -24,46 +24,46 @@ import type {
  *         required: true
  *         schema:
  *           type: string
+ *           example: "1"
  *         description: Wallet ID
- *         example: "1"
  *       - in: query
  *         name: startDate
  *         required: false
  *         schema:
  *           type: string
  *           format: date-time
+ *           example: "2024-11-01T00:00:00Z"
  *         description: Start date filter (ISO 8601)
- *         example: "2024-11-01T00:00:00Z"
  *       - in: query
  *         name: endDate
  *         required: false
  *         schema:
  *           type: string
  *           format: date-time
+ *           example: "2024-11-30T23:59:59Z"
  *         description: End date filter (ISO 8601)
- *         example: "2024-11-30T23:59:59Z"
  *       - in: query
  *         name: tagId
  *         required: false
  *         schema:
  *           type: string
+ *           example: "food"
  *         description: Tag ID filter
- *         example: "food"
  *       - in: query
  *         name: type
  *         required: false
  *         schema:
  *           type: string
  *           enum: [INCOME, EXPENSE]
+ *           example: "EXPENSE"
  *         description: Transaction type filter (INCOME or EXPENSE)
- *         example: "EXPENSE"
  *       - in: query
  *         name: userId
  *         required: false
  *         schema:
  *           type: string
+ *           example: "2"
  *         description: User ID filter (for v2.0 - filter by payer/share)
- *         example: "2"
  *     responses:
  *       200:
  *         description: List of transactions
