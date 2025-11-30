@@ -47,7 +47,7 @@ import type {
  *         required: false
  *         schema:
  *           type: string
- *           example: "food"
+ *           example: "system-tag-food"
  *         description: Tag ID filter
  *       - in: query
  *         name: type

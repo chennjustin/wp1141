@@ -250,7 +250,7 @@ const swaggerDefinition = {
             type: "string",
             nullable: true,
             description: "Tag ID",
-            example: "food",
+            example: "system-tag-food",
           },
           tag: {
             type: "object",
@@ -258,7 +258,7 @@ const swaggerDefinition = {
             properties: {
               id: {
                 type: "string",
-                example: "food",
+                example: "system-tag-food",
               },
               name: {
                 type: "string",
@@ -448,7 +448,7 @@ const swaggerDefinition = {
           tagId: {
             type: "string",
             description: "Tag ID (required, must exist in database)",
-            example: "food",
+            example: "system-tag-food",
           },
           payers: {
             type: "array",
@@ -547,7 +547,7 @@ const swaggerDefinition = {
           tagId: {
             type: "string",
             description: "Tag ID (required, must exist in database)",
-            example: "drinks",
+            example: "system-tag-drinks",
           },
           payers: {
             type: "array",
@@ -609,7 +609,7 @@ const swaggerDefinition = {
           id: {
             type: "string",
             description: "Tag ID",
-            example: "food",
+            example: "system-tag-food",
           },
           name: {
             type: "string",
@@ -711,7 +711,7 @@ const swaggerDefinition = {
             properties: {
               id: {
                 type: "string",
-                example: "food",
+                example: "system-tag-food",
               },
               name: {
                 type: "string",
