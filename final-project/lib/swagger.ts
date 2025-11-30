@@ -806,7 +806,7 @@ const swaggerDefinition = {
                 name: "Lunch with team",
                 note: "Team lunch at restaurant",
                 tag: {
-                  id: "food",
+                  id: "system-tag-food",
                   name: "food",
                 },
               },
