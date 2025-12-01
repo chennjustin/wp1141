@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWallets } from "@/hooks/useWallet";
+import { useMonthlySummary } from "@/hooks/useMonthlySummary";
 
 /**
  * Wallet home page.
@@ -25,10 +26,21 @@ export default function WalletHomePage() {
   const year = today.getFullYear();
   const month = today.getMonth() + 1;
 
-  // Placeholder monthly totals and transactions. These should be replaced
-  // with real data once transaction APIs are available.
-  const mockIncomeTotal = 10000;
-  const mockExpenseTotal = 20000;
+  // Fetch monthly summary from API
+  const {
+    data: monthlySummary,
+    loading: summaryLoading,
+    error: summaryError,
+  } = useMonthlySummary({
+    walletId: activeWallet?.id ?? null,
+    year,
+    month,
+    enabled: !!activeWallet,
+  });
+
+  // Use API data if available, otherwise fallback to 0
+  const incomeTotal = monthlySummary?.totalIncome ?? 0;
+  const expenseTotal = monthlySummary?.totalExpense ?? 0;
 
   // Carrier code - placeholder, should be fetched from user's device carriers
   const carrierCode = "/ABCDEF";
@@ -122,17 +134,33 @@ export default function WalletHomePage() {
           <div className="flex flex-1 flex-col gap-1">
             <span className="text-xs text-black/70">收入</span>
             <span className="text-xl font-semibold text-black">
-              {showAmounts
-                ? mockIncomeTotal.toLocaleString()
-                : "*".repeat(mockIncomeTotal.toString().length)}
+              {summaryLoading ? (
+                <span className="text-sm text-black/50">載入中...</span>
+              ) : summaryError ? (
+                <span className="text-sm text-red-500" title={summaryError}>
+                  載入失敗
+                </span>
+              ) : showAmounts ? (
+                incomeTotal.toLocaleString()
+              ) : (
+                "*".repeat(incomeTotal.toString().length || 1)
+              )}
             </span>
           </div>
           <div className="flex flex-1 flex-col gap-1 items-end text-right">
             <span className="text-xs text-black/70">支出</span>
             <span className="text-xl font-semibold text-black">
-              {showAmounts
-                ? mockExpenseTotal.toLocaleString()
-                : "*".repeat(mockExpenseTotal.toString().length)}
+              {summaryLoading ? (
+                <span className="text-sm text-black/50">載入中...</span>
+              ) : summaryError ? (
+                <span className="text-sm text-red-500" title={summaryError}>
+                  載入失敗
+                </span>
+              ) : showAmounts ? (
+                expenseTotal.toLocaleString()
+              ) : (
+                "*".repeat(expenseTotal.toString().length || 1)
+              )}
             </span>
           </div>
         </div>
