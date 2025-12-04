@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Roboto_Mono } from "next/font/google";
 import "./globals.css";
-import { AppSessionProvider } from "@/components/auth/AppSessionProvider";
+import { AppSessionProvider } from "@/ui/components/auth/AppSessionProvider";
 
 const inter = Inter({
   variable: "--font-inter",
