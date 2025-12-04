@@ -27,10 +27,12 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
   const [isWalletSelectorOpen, setIsWalletSelectorOpen] = useState(false);
   const [currentWalletId, setCurrentWalletId] = useState<string | null>(null);
   const [pinnedWalletIds, setPinnedWalletIds] = useState<Set<string>>(new Set());
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
   
   // Track last updated wallet ID to avoid duplicate updates
   const lastUpdatedWalletIdRef = useRef<string | null>(null);
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const walletButtonRef = useRef<HTMLButtonElement | null>(null);
 
   // Fetch pinned wallets
   useEffect(() => {
@@ -51,6 +53,24 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
       fetchPinnedWallets();
     }
   }, [isAuthenticated]);
+
+  // Close wallet selector dropdown when route changes
+  useEffect(() => {
+    setIsWalletSelectorOpen(false);
+  }, [pathname]);
+
+  // Calculate dropdown position when it opens
+  useEffect(() => {
+    if (isWalletSelectorOpen && walletButtonRef.current) {
+      const buttonRect = walletButtonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: buttonRect.bottom + 8, // 8px margin (mt-2)
+        left: buttonRect.left + buttonRect.width / 2, // Center of button
+      });
+    } else {
+      setDropdownPosition(null);
+    }
+  }, [isWalletSelectorOpen]);
 
   // Initialize currentWalletId from URL pathname or session defaultWalletId
   useEffect(() => {
@@ -226,7 +246,10 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
   }
 
   const handleWalletChange = (walletId: string) => {
-    setCurrentWalletId(walletId);
+    // Navigate to the wallet's default page
+    router.push(`/wallets/${walletId}`);
+    // Note: setIsWalletSelectorOpen(false) will be called automatically
+    // by the pathname change effect, but we can also close it immediately
     setIsWalletSelectorOpen(false);
   };
 
@@ -266,6 +289,7 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
           {/* Center: wallet selector - oval button, absolutely centered */}
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
             <button
+              ref={walletButtonRef}
               type="button"
               className="relative inline-flex items-center justify-center rounded-full bg-white px-6 py-2 text-sm font-medium text-black hover:bg-gray-100 active:bg-white focus:bg-white focus:outline-none focus:ring-0"
               onClick={() => setIsWalletSelectorOpen(true)}
@@ -273,55 +297,6 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
             >
               <span className="max-w-[140px] truncate">{walletDisplayName}</span>
             </button>
-
-            {/* Wallet selector dropdown */}
-            {isWalletSelectorOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-40 bg-black/20"
-                  onClick={() => setIsWalletSelectorOpen(false)}
-                />
-                <div className="absolute top-full left-1/2 z-50 mt-2 -translate-x-1/2 rounded-lg bg-white shadow-lg min-w-[200px] max-h-[300px] overflow-y-auto border-0">
-                  <div className="py-2">
-                    {/* Show all pinned wallets (max 5) */}
-                    {wallets
-                      .filter((wallet) => pinnedWalletIds.has(wallet.id))
-                      .map((wallet) => (
-                        <button
-                          key={wallet.id}
-                          type="button"
-                          className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100"
-                          onClick={() => handleWalletChange(wallet.id)}
-                        >
-                          {wallet.name}
-                        </button>
-                      ))}
-                    <div className="border-t border-gray-200 my-1" />
-                    <button
-                      type="button"
-                      className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100"
-                      onClick={() => {
-                        setIsWalletSelectorOpen(false);
-                        router.push("/wallets/all");
-                      }}
-                    >
-                      所有錢包
-                    </button>
-                    <button
-                      type="button"
-                      className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100"
-                      onClick={() => {
-                        setIsWalletSelectorOpen(false);
-                        // TODO: Navigate to create wallet page
-                        router.push("/wallets/new");
-                      }}
-                    >
-                      + 新增錢包
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
           </div>
 
           {/* Right: user name or role text */}
@@ -329,6 +304,61 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
             <span className="font-semibold">{displayName}</span>
           </div>
         </header>
+
+        {/* Wallet selector dropdown - rendered outside header to avoid stacking context issues */}
+        {isWalletSelectorOpen && dropdownPosition && (
+          <>
+            <div
+              className="fixed inset-0 z-[9998] bg-black/20"
+              onClick={() => setIsWalletSelectorOpen(false)}
+            />
+            <div
+              className="fixed z-[9999] rounded-lg bg-white shadow-lg min-w-[200px] max-h-[300px] overflow-y-auto border-0"
+              style={{
+                top: `${dropdownPosition.top}px`,
+                left: `${dropdownPosition.left}px`,
+                transform: 'translateX(-50%)',
+              }}
+            >
+              <div className="py-2">
+                {/* Show all pinned wallets (max 5) */}
+                {wallets
+                  .filter((wallet) => pinnedWalletIds.has(wallet.id))
+                  .map((wallet) => (
+                    <button
+                      key={wallet.id}
+                      type="button"
+                      className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100"
+                      onClick={() => handleWalletChange(wallet.id)}
+                    >
+                      {wallet.name}
+                    </button>
+                  ))}
+                <div className="border-t border-gray-200 my-1" />
+                <button
+                  type="button"
+                  className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100"
+                  onClick={() => {
+                    setIsWalletSelectorOpen(false);
+                    router.push("/wallets/all");
+                  }}
+                >
+                  所有錢包
+                </button>
+                <button
+                  type="button"
+                  className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100"
+                  onClick={() => {
+                    setIsWalletSelectorOpen(false);
+                    router.push("/wallets/new");
+                  }}
+                >
+                  + 新增錢包
+                </button>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Side menu overlay */}
         {isMenuOpen && (
