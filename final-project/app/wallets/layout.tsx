@@ -120,71 +120,70 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
     pathname.includes("/transactions/new");
 
   return (
-    <div className="min-h-screen bg-[#D2D2D2] flex justify-center px-4 py-4">
-      {/* Mobile-sized container with fixed width, height auto-adjusts based on content */}
-      <div className="relative flex w-full max-w-sm min-h-[calc(100vh-2rem)] flex-col border-[3px] border-black bg-[#D2D2D2] rounded-3xl overflow-visible">
-        {/* Header：在新增交易頁面中不顯示 */}
-        {!isNewTransactionPage && (
-          <header className="relative mb-4 flex items-center justify-between bg-[#D2D2D2] px-4 py-3">
-            {/* Left: main menu toggle */}
+    <div className="min-h-screen bg-[#E8E8E8] flex justify-center px-4 py-4">
+      {/* Mobile-sized container with thick black border and rounded corners */}
+      <div className="relative flex min-h-[calc(100vh-2rem)] w-full max-w-sm flex-col border-[3px] border-black bg-[#E8E8E8] rounded-[3rem] overflow-clip">
+        {/* Header */}
+        <header className="relative mb-4 flex items-center justify-between bg-[#E8E8E8] px-4 py-3">
+          {/* Left: main menu toggle */}
+          <button
+            type="button"
+            className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/10"
+            onClick={() => setIsMenuOpen(true)}
+            aria-label="Open main menu"
+          >
+            <span className="flex flex-col gap-0.5">
+              <span className="h-0.5 w-4 rounded-full bg-black" />
+              <span className="h-0.5 w-4 rounded-full bg-black" />
+              <span className="h-0.5 w-4 rounded-full bg-black" />
+            </span>
+          </button>
+
+          {/* Center: wallet selector - oval button, absolutely centered */}
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
             <button
               type="button"
-              className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/10"
-              onClick={() => setIsMenuOpen(true)}
-              aria-label="Open main menu"
+              className="relative inline-flex items-center justify-center rounded-full bg-white px-6 py-2 text-sm font-medium text-black hover:bg-gray-100 active:bg-white focus:bg-white focus:outline-none focus:ring-0"
+              onClick={() => setIsWalletSelectorOpen(true)}
+              aria-label="Select wallet"
             >
-              <span className="flex flex-col gap-0.5">
-                <span className="h-0.5 w-4 rounded-full bg-black" />
-                <span className="h-0.5 w-4 rounded-full bg-black" />
-                <span className="h-0.5 w-4 rounded-full bg-black" />
-              </span>
+              <span className="max-w-[140px] truncate">{walletDisplayName}</span>
             </button>
 
-            {/* Center: wallet selector - oval button, absolutely centered */}
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-              <button
-                type="button"
-                className="relative inline-flex items-center justify-center rounded-full bg-white px-6 py-2 text-sm font-medium text-black hover:bg-gray-100"
-                onClick={() => setIsWalletSelectorOpen(true)}
-                aria-label="Select wallet"
-              >
-                <span className="max-w-[140px] truncate">{walletDisplayName}</span>
-              </button>
-
-              {/* Wallet selector dropdown */}
-              {isWalletSelectorOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-40 bg-black/20"
-                    onClick={() => setIsWalletSelectorOpen(false)}
-                  />
-                  <div className="absolute top-full left-1/2 z-50 mt-2 -translate-x-1/2 rounded-lg bg-white shadow-lg border border-gray-200 min-w-[200px] max-h-[300px] overflow-y-auto">
-                    <div className="py-2">
-                      {wallets.map((wallet) => (
-                        <button
-                          key={wallet.id}
-                          type="button"
-                          className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100"
-                          onClick={() => handleWalletChange(wallet.id)}
-                        >
-                          {wallet.name}
-                        </button>
-                      ))}
+            {/* Wallet selector dropdown */}
+            {isWalletSelectorOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40 bg-black/20"
+                  onClick={() => setIsWalletSelectorOpen(false)}
+                />
+                <div className="absolute top-full left-1/2 z-50 mt-2 -translate-x-1/2 rounded-lg bg-white shadow-lg min-w-[200px] max-h-[300px] overflow-y-auto border-0">
+                  <div className="py-2">
+                    {wallets.map((wallet) => (
                       <button
+                        key={wallet.id}
                         type="button"
-                        className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100 border-t border-gray-200"
-                        onClick={() => {
-                          setIsWalletSelectorOpen(false);
-                          setIsCreateWalletOpen(true);
-                        }}
+                        className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100"
+                        onClick={() => handleWalletChange(wallet.id)}
                       >
-                        + 新增錢包
+                        {wallet.name}
                       </button>
-                    </div>
+                    ))}
+                    <button
+                      type="button"
+                      className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100 border-t border-gray-200"
+                      onClick={() => {
+                        setIsWalletSelectorOpen(false);
+                        // TODO: Navigate to create wallet page
+                      }}
+                    >
+                      + 新增錢包
+                    </button>
                   </div>
-                </>
-              )}
-            </div>
+                </div>
+              </>
+            )}
+          </div>
 
             {/* Right: user name or role text */}
             <div className="flex flex-col items-end text-right text-xs leading-snug text-black">
@@ -197,10 +196,10 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
         {isMenuOpen && (
           <>
             <div
-              className="fixed inset-0 z-40 bg-black/40 md:absolute md:rounded-xl"
+              className="fixed inset-0 z-40 bg-black/40 md:absolute md:rounded-[3rem]"
               onClick={() => setIsMenuOpen(false)}
             />
-            <aside className="fixed inset-y-0 left-0 z-50 w-4/5 max-w-xs bg-[#D2D2D2] p-4 shadow-xl md:absolute md:inset-y-4 md:left-4 md:rounded-xl">
+            <aside className="fixed inset-y-0 left-0 z-50 w-4/5 max-w-xs bg-[#E8E8E8] p-4 shadow-xl md:absolute md:inset-y-0 md:left-0 md:rounded-l-[3rem] md:rounded-r-none">
               <div className="mb-4 flex items-center justify-between">
                 <span className="text-sm font-semibold text-black">
                   主選單

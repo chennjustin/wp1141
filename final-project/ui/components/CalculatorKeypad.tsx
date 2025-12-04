@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   canAppendChar,
   backspace as backspaceExpr,
@@ -33,7 +33,7 @@ export function CalculatorKeypad({
     onExpressionChange?.(newExpr);
   };
 
-  const handleAppend = (ch: string) => {
+  const handleAppend = (ch: string): void => {
     if (!canAppendChar(expression, ch)) return;
     updateExpression(expression + ch);
   };
@@ -207,5 +207,4 @@ export function CalculatorKeypad({
     </div>
   );
 }
-
 

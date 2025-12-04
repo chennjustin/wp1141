@@ -145,6 +145,49 @@ export interface TransactionFilters {
 }
 
 /**
+ * Monthly summary query parameters
+ */
+export interface MonthlySummaryFilters {
+  walletId: string;
+  year: number;
+  month: number; // 1-12
+  targetCurrency?: string; // Target currency for conversion (defaults to NTD)
+}
+
+/**
+ * Transaction summary item
+ */
+export interface TransactionSummaryItem {
+  id: string;
+  date: Date;
+  amount: number;
+  currency: string;
+  name: string | null;
+  note: string | null;
+  tag: {
+    id: string;
+    name: string;
+  };
+}
+
+/**
+ * Monthly summary result
+ */
+export interface MonthlySummary {
+  walletId: string;
+  year: number;
+  month: number;
+  totalIncome: number;
+  totalExpense: number;
+  netAmount: number; // totalIncome - totalExpense
+  currency: string; // The currency of the summary (NTD or targetCurrency)
+  incomeCount: number; // Number of income transactions
+  expenseCount: number; // Number of expense transactions
+  incomes: TransactionSummaryItem[]; // List of income transactions
+  expenses: TransactionSummaryItem[]; // List of expense transactions
+}
+
+/**
  * Service result wrapper
  * Supports both string errors (for backward compatibility) and AppError instances
  */

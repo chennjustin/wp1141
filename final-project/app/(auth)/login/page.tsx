@@ -1,4 +1,4 @@
-import { AuthProviders } from "@/components/auth/AuthProviders";
+import { AuthProviders } from "@/ui/components/auth/AuthProviders";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";

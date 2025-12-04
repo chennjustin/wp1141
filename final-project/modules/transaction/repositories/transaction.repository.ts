@@ -7,11 +7,13 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import { SYSTEM_USER_ID } from "@/config/constants";
 import type {
   CreateTransactionData,
   UpdateTransactionData,
   TransactionFilters,
   TransactionType,
+  MonthlySummaryFilters,
 } from "../domain/transaction.types";
 import { DEFAULT_TRANSACTION_TYPE } from "../domain/transaction.types";
 
@@ -28,8 +30,9 @@ export const transactionRepository = {
       isDeleted: false,
     };
 
-    // If userId is provided, ensure user has access to the wallet
-    if (userId) {
+    // System user can access all transactions
+    // If userId is provided and not system user, ensure user has access to the wallet
+    if (userId && userId !== SYSTEM_USER_ID) {
       where.wallet = {
         members: {
           some: {
@@ -370,8 +373,14 @@ export const transactionRepository = {
 
   /**
    * Check if user has access to wallet
+   * System user has access to all wallets
    */
   async hasAccess(walletId: string, userId: string) {
+    // System user can access all wallets
+    if (userId === SYSTEM_USER_ID) {
+      return true;
+    }
+
     const membership = await prisma.walletUser.findFirst({
       where: {
         walletId,
@@ -390,6 +399,62 @@ export const transactionRepository = {
       where: { id },
     });
     return transaction !== null && !transaction.isDeleted;
+  },
+
+  /**
+   * Get transactions for monthly summary
+   * Returns transactions within the specified month with all necessary fields
+   */
+  async findMonthlyTransactions(filters: MonthlySummaryFilters) {
+    // Calculate start and end dates for the month
+    const startDate = new Date(filters.year, filters.month - 1, 1);
+    const endDate = new Date(filters.year, filters.month, 0, 23, 59, 59, 999);
+
+    const result = await prisma.transaction.findMany({
+      where: {
+        walletId: filters.walletId,
+        isDeleted: false,
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      select: {
+        id: true,
+        type: true,
+        date: true,
+        amount: true,
+        currency: true,
+        rateToNTD: true,
+        name: true,
+        note: true,
+        tag: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        date: "desc",
+      },
+    });
+
+    // Transform to match the expected type for calculateMonthlySummary
+    return result.map((tx) => ({
+      id: tx.id,
+      type: tx.type,
+      date: tx.date,
+      amount: tx.amount,
+      currency: tx.currency,
+      rateToNTD: tx.rateToNTD,
+      name: tx.name,
+      note: tx.note,
+      tag: {
+        id: tx.tag.id,
+        name: tx.tag.name,
+      },
+    }));
   },
 };
 

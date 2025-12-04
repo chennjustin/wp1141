@@ -1,4 +1,4 @@
-import { UserIdForm } from "@/components/auth/UserIdForm";
+import { UserIdForm } from "@/ui/components/auth/UserIdForm";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";

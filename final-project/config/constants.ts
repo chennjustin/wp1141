@@ -59,3 +59,20 @@ export const DEFAULT_SYSTEM_TAGS = [
   "other",
 ] as const;
 
+/**
+ * System tag ID mapping
+ * Maps system tag names to their fixed IDs
+ */
+export const SYSTEM_TAG_IDS: Record<(typeof DEFAULT_SYSTEM_TAGS)[number], string> = {
+  food: "system-tag-food",
+  drinks: "system-tag-drinks",
+  entertainment: "system-tag-entertainment",
+  transportation: "system-tag-transportation",
+  shopping: "system-tag-shopping",
+  bills: "system-tag-bills",
+  healthcare: "system-tag-healthcare",
+  education: "system-tag-education",
+  travel: "system-tag-travel",
+  other: "system-tag-other",
+} as const;
+

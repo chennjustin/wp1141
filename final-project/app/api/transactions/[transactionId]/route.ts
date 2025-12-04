@@ -28,6 +28,7 @@ interface RouteContext {
  *         required: true
  *         schema:
  *           type: string
+ *           example: "transaction-1"
  *         description: Transaction ID
  *     responses:
  *       200:
@@ -96,6 +97,7 @@ export async function GET(_req: Request, context: RouteContext) {
  *         required: true
  *         schema:
  *           type: string
+ *           example: "transaction-1"
  *         description: Transaction ID
  *     requestBody:
  *       required: true
@@ -185,6 +187,7 @@ export async function PATCH(req: Request, context: RouteContext) {
  *         required: true
  *         schema:
  *           type: string
+ *           example: "transaction-1"
  *         description: Transaction ID
  *     responses:
  *       200:
