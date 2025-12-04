@@ -49,13 +49,47 @@ const swaggerDefinition = {
         },
         required: ["error"],
       },
+      CurrentUser: {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+            description: "User ID (internal database ID)",
+            example: "user-1",
+          },
+          userID: {
+            type: "string",
+            nullable: true,
+            description: "User ID (public identifier, may be null if not registered)",
+            example: "user1",
+          },
+          name: {
+            type: "string",
+            description: "User display name",
+            example: "User One",
+          },
+          email: {
+            type: "string",
+            nullable: true,
+            description: "User email address",
+            example: "user1@example.com",
+          },
+          image: {
+            type: "string",
+            nullable: true,
+            description: "User profile image URL",
+            example: null,
+          },
+        },
+        required: ["id", "name"],
+      },
       Wallet: {
         type: "object",
         properties: {
           id: {
             type: "string",
             description: "Wallet ID",
-            example: "1",
+            example: "wallet-1",
           },
           name: {
             type: "string",
@@ -99,11 +133,11 @@ const swaggerDefinition = {
         properties: {
           id: {
             type: "string",
-            example: "1",
+            example: "wallet-user-1",
           },
           userId: {
             type: "string",
-            example: "2",
+            example: "user-1",
           },
           role: {
             type: "string",
@@ -115,7 +149,7 @@ const swaggerDefinition = {
             properties: {
               id: {
                 type: "string",
-                example: "2",
+                example: "user-1",
               },
               name: {
                 type: "string",
@@ -188,17 +222,17 @@ const swaggerDefinition = {
           id: {
             type: "string",
             description: "Transaction ID",
-            example: "1",
+            example: "transaction-1",
           },
           walletId: {
             type: "string",
             description: "Wallet ID",
-            example: "1",
+            example: "wallet-1",
           },
           createdById: {
             type: "string",
             description: "User ID who created the transaction",
-            example: "2",
+            example: "user-1",
           },
           date: {
             type: "string",
@@ -297,7 +331,7 @@ const swaggerDefinition = {
             properties: {
               id: {
                 type: "string",
-                example: "2",
+                example: "user-1",
               },
               name: {
                 type: "string",
@@ -324,15 +358,15 @@ const swaggerDefinition = {
         properties: {
           id: {
             type: "string",
-            example: "1",
+            example: "payer-1",
           },
           transactionId: {
             type: "string",
-            example: "1",
+            example: "transaction-1",
           },
           payerId: {
             type: "string",
-            example: "2",
+            example: "user-1",
           },
           paidAmount: {
             type: "number",
@@ -343,7 +377,7 @@ const swaggerDefinition = {
             properties: {
               id: {
                 type: "string",
-                example: "2",
+                example: "user-1",
               },
               name: {
                 type: "string",
@@ -363,15 +397,15 @@ const swaggerDefinition = {
         properties: {
           id: {
             type: "string",
-            example: "1",
+            example: "share-1",
           },
           transactionId: {
             type: "string",
-            example: "1",
+            example: "transaction-1",
           },
           userId: {
             type: "string",
-            example: "2",
+            example: "user-1",
           },
           shareAmount: {
             type: "number",
@@ -382,7 +416,7 @@ const swaggerDefinition = {
             properties: {
               id: {
                 type: "string",
-                example: "2",
+                example: "user-1",
               },
               name: {
                 type: "string",
@@ -403,7 +437,7 @@ const swaggerDefinition = {
           walletId: {
             type: "string",
             description: "Wallet ID",
-            example: "1",
+            example: "wallet-1",
           },
           date: {
             type: "string",
@@ -458,7 +492,7 @@ const swaggerDefinition = {
               properties: {
                 payerId: {
                   type: "string",
-                  example: "2",
+                  example: "user-1",
                 },
                 paidAmount: {
                   type: "number",
@@ -469,7 +503,7 @@ const swaggerDefinition = {
             },
             example: [
               {
-                payerId: "2",
+                payerId: "user-1",
                 paidAmount: 5000,
               },
             ],
@@ -482,7 +516,7 @@ const swaggerDefinition = {
               properties: {
                 userId: {
                   type: "string",
-                  example: "2",
+                  example: "user-1",
                 },
                 shareAmount: {
                   type: "number",
@@ -493,7 +527,7 @@ const swaggerDefinition = {
             },
             example: [
               {
-                userId: "2",
+                userId: "user-1",
                 shareAmount: 5000,
               },
             ],
@@ -557,7 +591,7 @@ const swaggerDefinition = {
               properties: {
                 payerId: {
                   type: "string",
-                  example: "2",
+                  example: "user-1",
                 },
                 paidAmount: {
                   type: "number",
@@ -568,7 +602,7 @@ const swaggerDefinition = {
             },
             example: [
               {
-                payerId: "2",
+                payerId: "user-1",
                 paidAmount: 100,
               },
             ],
@@ -581,7 +615,7 @@ const swaggerDefinition = {
               properties: {
                 userId: {
                   type: "string",
-                  example: "2",
+                  example: "user-1",
                 },
                 shareAmount: {
                   type: "number",
@@ -592,11 +626,11 @@ const swaggerDefinition = {
             },
             example: [
               {
-                userId: "2",
+                userId: "user-1",
                 shareAmount: 50,
               },
               {
-                userId: "3",
+                userId: "user-2",
                 shareAmount: 50,
               },
             ],
@@ -676,7 +710,7 @@ const swaggerDefinition = {
           id: {
             type: "string",
             description: "Transaction ID",
-            example: "1",
+            example: "transaction-1",
           },
           date: {
             type: "string",
@@ -728,7 +762,7 @@ const swaggerDefinition = {
           walletId: {
             type: "string",
             description: "Wallet ID",
-            example: "1",
+            example: "wallet-1",
           },
           year: {
             type: "integer",
