@@ -909,8 +909,8 @@ const swaggerDefinition = {
           },
           carrierCode: {
             type: "string",
-            description: "Carrier code (e.g., /ABCDEF)",
-            example: "/ABCDEF",
+            description: "Carrier code (e.g., /ABCDEF1)",
+            example: "/ABCDEF1",
           },
           isDeleted: {
             type: "boolean",
@@ -930,7 +930,7 @@ const swaggerDefinition = {
           carrierCode: {
             type: "string",
             description: "Carrier code",
-            example: "/ABCDEF",
+            example: "/ABCDEF1",
           },
         },
         required: ["carrierCode"],
@@ -941,7 +941,7 @@ const swaggerDefinition = {
           carrierCode: {
             type: "string",
             description: "Carrier code",
-            example: "/ABCDEF",
+            example: "/ABCDEF1",
           },
         },
       },
