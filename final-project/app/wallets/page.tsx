@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useWallets } from "@/hooks/useWallet";
+import { useUserCarrier } from "@/hooks/useCarrier";
+import JsBarcode from "jsbarcode";
 import { useMonthlySummary } from "@/hooks/useMonthlySummary";
 import { useDailyTransactions } from "@/hooks/useDailyTransactions";
 
@@ -16,74 +18,77 @@ import { useDailyTransactions } from "@/hooks/useDailyTransactions";
 export default function WalletHomePage() {
   const router = useRouter();
   const { wallets } = useWallets();
+  const { carrier, loading: carrierLoading } = useUserCarrier();
 
   // For now we treat the first wallet as the active wallet on this page.
   const activeWallet = wallets[0] ?? null;
 
   const [showAmounts, setShowAmounts] = useState(true);
   const [brightCarrier, setBrightCarrier] = useState(true);
+  const barcodeRef = useRef<SVGSVGElement>(null);
 
   const today = new Date();
   const year = today.getFullYear();
   const month = today.getMonth() + 1;
 
-  // Fetch monthly summary from API
-  const {
-    data: monthlySummary,
-    loading: summaryLoading,
-    error: summaryError,
-  } = useMonthlySummary({
-    walletId: activeWallet?.id ?? null,
-    year,
-    month,
-    enabled: !!activeWallet,
-  });
-
-  // Use API data if available, otherwise fallback to 0
-  const incomeTotal = monthlySummary?.totalIncome ?? 0;
-  const expenseTotal = monthlySummary?.totalExpense ?? 0;
-
-  // Fetch daily transactions for today
-  const {
-    data: dailyTransactions,
-    loading: transactionsLoading,
-    error: transactionsError,
-  } = useDailyTransactions({
-    walletId: activeWallet?.id ?? null,
-    date: today,
-    enabled: !!activeWallet,
-  });
-
-  // Transform transactions for display
-  // Convert Transaction to UI format: { id, title, amount, time }
-  const displayTransactions = useMemo(() => {
-    return dailyTransactions.map((tx) => {
-      // Use transaction name or tag name as title
-      const title = tx.name || tx.tag.name || "未命名交易";
-      
-      // Calculate display amount based on transaction type
-      // INCOME transactions are positive, EXPENSE transactions are negative
-      const displayAmount = tx.type === "INCOME" ? tx.amount : -tx.amount;
-      
-      // Format time from transaction date (HH:mm format)
-      const transactionDate = new Date(tx.date);
-      const hours = transactionDate.getHours().toString().padStart(2, "0");
-      const minutes = transactionDate.getMinutes().toString().padStart(2, "0");
-      const time = `${hours}:${minutes}`;
-
-      return {
-        id: tx.id,
-        title,
-        amount: displayAmount,
-        time,
-      };
+  const carrierCode = carrier?.carrierCode || "/ABCDEF";
+  const hasRealCarrier = !!carrier;
+  
+    // Fetch monthly summary from API
+    const {
+      data: monthlySummary,
+      loading: summaryLoading,
+      error: summaryError,
+    } = useMonthlySummary({
+      walletId: activeWallet?.id ?? null,
+      year,
+      month,
+      enabled: !!activeWallet,
     });
-  }, [dailyTransactions]);
+  
+    // Use API data if available, otherwise fallback to 0
+    const incomeTotal = monthlySummary?.totalIncome ?? 0;
+    const expenseTotal = monthlySummary?.totalExpense ?? 0;
+  
+    // Fetch daily transactions for today
+    const {
+      data: dailyTransactions,
+      loading: transactionsLoading,
+      error: transactionsError,
+    } = useDailyTransactions({
+      walletId: activeWallet?.id ?? null,
+      date: today,
+      enabled: !!activeWallet,
+    });
+  
+    // Transform transactions for display
+    // Convert Transaction to UI format: { id, title, amount, time }
+    const displayTransactions = useMemo(() => {
+      return dailyTransactions.map((tx) => {
+        // Use transaction name or tag name as title
+        const title = tx.name || tx.tag.name || "未命名交易";
+  
+        // Calculate display amount based on transaction type
+        // INCOME transactions are positive, EXPENSE transactions are negative
+        const displayAmount = tx.type === "INCOME" ? tx.amount : -tx.amount;
+  
+        // Format time from transaction date (HH:mm format)
+        const transactionDate = new Date(tx.date);
+        const hours = transactionDate.getHours().toString().padStart(2, "0");
+        const minutes = transactionDate.getMinutes().toString().padStart(2, "0");
+        const time = `${hours}:${minutes}`;
+  
+        return {
+          id: tx.id,
+          title,
+          amount: displayAmount,
+          time,
+        };
+      });
+    }, [dailyTransactions]);
+  
 
-  // Carrier code - placeholder, should be fetched from user's device carriers
-  const carrierCode = "/ABCDEF";
-
-  // Generate barcode pattern from carrier code
+  // Generate barcode pattern from carrier code (for placeholder when no carrier)
   // Barcode width:height ratio is 1:3.5, height is 64px (h-16), so width should be 224px
   const generateBarcodePattern = (code: string) => {
     const pattern: number[] = [];
@@ -127,6 +132,39 @@ export default function WalletHomePage() {
   const barcodePattern = generateBarcodePattern(carrierCode);
   const barcodeHeight = 64; // h-16 = 64px
   const barcodeWidth = barcodeHeight * 3.5; // 224px for 1:3.5 ratio
+
+  // Generate real barcode when carrier is available
+  useEffect(() => {
+    if (hasRealCarrier && barcodeRef.current && carrierCode) {
+      try {
+        // Clear previous barcode
+        barcodeRef.current.innerHTML = "";
+        
+        JsBarcode(barcodeRef.current, carrierCode, {
+          format: "CODE39",
+          height: barcodeHeight,
+          displayValue: false, // Don't show text below barcode (text is shown separately)
+          background: "transparent",
+          lineColor: brightCarrier ? "#000000" : "#FFFFFF",
+          width: 2, // Standard width for Code 128
+          margin: 10, // Adequate margin for scanning
+          valid: function(valid) {
+            if (!valid) {
+              console.error("Invalid barcode data:", carrierCode);
+            }
+          },
+        });
+      } catch (error) {
+        console.error("Error generating barcode:", error);
+      }
+    }
+  }, [hasRealCarrier, carrierCode, brightCarrier, barcodeHeight]);
+
+  const mockTransactions = [
+    { id: "1", title: "早餐", amount: -80, time: "08:30" },
+    { id: "2", title: "午餐", amount: -120, time: "12:15" },
+    { id: "3", title: "薪水", amount: 30000, time: "09:00" },
+  ];
 
   const handleAddTransaction = () => {
     if (!activeWallet) return;
@@ -228,19 +266,23 @@ export default function WalletHomePage() {
 
         {/* Barcode area */}
         <div className="mb-3 flex flex-col items-center gap-3">
-          {/* Barcode - generated from carrier code, 5:2 aspect ratio */}
-          <div className="flex h-16 items-center justify-center" style={{ width: `${barcodeWidth}px` }}>
-            <div className="flex items-center justify-center gap-0.5">
-              {barcodePattern.map((width, index) => (
-                <span
-                  key={index}
-                  className={`block h-16 ${
-                    brightCarrier ? "bg-black" : "bg-white"
-                  }`}
-                  style={{ width: `${width}px` }}
-                />
-              ))}
-            </div>
+          {/* Barcode - real barcode if carrier exists, otherwise placeholder */}
+          <div className="flex items-center justify-center" style={{ width: `${barcodeWidth}px`, minHeight: `${barcodeHeight}px` }}>
+            {hasRealCarrier && !carrierLoading ? (
+              <svg ref={barcodeRef} style={{ maxWidth: "100%", height: "auto" }} />
+            ) : (
+              <div className="flex items-center justify-center gap-0.5">
+                {barcodePattern.map((width, index) => (
+                  <span
+                    key={index}
+                    className={`block h-16 ${
+                      brightCarrier ? "bg-black" : "bg-white"
+                    }`}
+                    style={{ width: `${width}px` }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Carrier code and copy icon */}
@@ -331,7 +373,3 @@ export default function WalletHomePage() {
     </div>
   );
 }
-
-
-
-

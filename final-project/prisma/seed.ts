@@ -172,6 +172,39 @@ async function main() {
   });
   console.log("✅ Wallets and wallet members created");
 
+  // Create device carriers for users
+  // Check if carriers already exist, if not create them
+  let carrier1 = await prisma.deviceCarrier.findFirst({
+    where: { userId: user1.id, isDeleted: false },
+  });
+  
+  if (!carrier1) {
+    carrier1 = await prisma.deviceCarrier.create({
+      data: {
+        id: "carrier-1",
+        userId: user1.id,
+        carrierCode: "/ABCDEF1",
+        isDeleted: false,
+      },
+    });
+  }
+
+  let carrier2 = await prisma.deviceCarrier.findFirst({
+    where: { userId: user2.id, isDeleted: false },
+  });
+  
+  if (!carrier2) {
+    carrier2 = await prisma.deviceCarrier.create({
+      data: {
+        id: "carrier-2",
+        userId: user2.id,
+        carrierCode: "/GHIJKL2",
+        isDeleted: false,
+      },
+    });
+  }
+  console.log("✅ Device carriers created");
+
   // Create transactions with fixed IDs
   const transaction1 = await prisma.transaction.upsert({
     where: { id: "transaction-1" },
@@ -406,6 +439,7 @@ async function main() {
   console.log("\n📊 Seed Summary:");
   console.log(`- Regular Users: ${user1.userID}, ${user2.userID}`);
   console.log(`- Wallets: ${wallet1.name}, ${wallet2.name}, ${wallet3.name}`);
+  console.log(`- Carriers: ${carrier1.carrierCode} (${user1.userID}), ${carrier2.carrierCode} (${user2.userID})`);
   console.log(`- Transactions: 5 transactions created`);
   console.log(`- Tags: ${tagCount} total tags (${DEFAULT_SYSTEM_TAGS.length} system tags + 2 custom tags)`);
   console.log("\n✅ Seed completed successfully!");
