@@ -41,9 +41,10 @@ export function handlePrismaForeignKeyError(error: any): ValidationError | Trans
  */
 export function handleTransactionError(
   error: any,
-  operation: "create" | "update" | "delete"
+  operation: "create" | "update" | "delete" | "get"
 ): InternalServerError {
-  console.error(`Error ${operation}ing transaction:`, error);
+  const operationVerb = operation === "get" ? "getting" : `${operation}ing`;
+  console.error(`Error ${operationVerb} transaction:`, error);
 
   // Try to handle Prisma foreign key errors first
   const prismaError = handlePrismaForeignKeyError(error);
@@ -51,6 +52,7 @@ export function handleTransactionError(
     return prismaError as any; // Type assertion needed due to return type mismatch
   }
 
-  return new InternalServerError(`Failed to ${operation} transaction`);
+  const operationMessage = operation === "get" ? "get" : operation;
+  return new InternalServerError(`Failed to ${operationMessage} transaction`);
 }
 

@@ -410,7 +410,7 @@ export const transactionRepository = {
     const startDate = new Date(filters.year, filters.month - 1, 1);
     const endDate = new Date(filters.year, filters.month, 0, 23, 59, 59, 999);
 
-    return prisma.transaction.findMany({
+    const result = await prisma.transaction.findMany({
       where: {
         walletId: filters.walletId,
         isDeleted: false,
@@ -434,11 +434,27 @@ export const transactionRepository = {
             name: true,
           },
         },
-      } as any,
+      },
       orderBy: {
         date: "desc",
       },
     });
+
+    // Transform to match the expected type for calculateMonthlySummary
+    return result.map((tx) => ({
+      id: tx.id,
+      type: tx.type,
+      date: tx.date,
+      amount: tx.amount,
+      currency: tx.currency,
+      rateToNTD: tx.rateToNTD,
+      name: tx.name,
+      note: tx.note,
+      tag: {
+        id: tx.tag.id,
+        name: tx.tag.name,
+      },
+    }));
   },
 };
 
