@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { listTagsAction } from "@/modules/tag/routes/list-tags";
 import { createTagAction } from "@/modules/tag/routes/create-tag";
-import { BadRequestError, InternalServerError } from "@/lib/errors";
+import { BadRequestError, InternalServerError, ForbiddenError, UnauthorizedError } from "@/lib/errors";
 import { handleServiceError, createErrorResponse } from "@/lib/api-response";
+import { requireAuth } from "@/modules/auth/permissions";
+import { SYSTEM_USER_ID } from "@/config/constants";
 import type { CreateTagData, TagFilters } from "@/modules/tag/domain/tag.types";
 
 /**
@@ -10,7 +12,7 @@ import type { CreateTagData, TagFilters } from "@/modules/tag/domain/tag.types";
  * /api/tags:
  *   get:
  *     summary: List tags
- *     description: List tags with optional filter (system/user/all). System tags are automatically initialized if they don't exist.
+ *     description: List tags with optional filter (system/user/all). System tags are automatically initialized if they don't exist. The 'all' filter is restricted to system user only.
  *     tags:
  *       - Tags
  *     security:
@@ -24,7 +26,7 @@ import type { CreateTagData, TagFilters } from "@/modules/tag/domain/tag.types";
  *           enum: [system, user, all]
  *           default: all
  *           example: "all"
- *         description: Filter tags by type - 'system' for system tags, 'user' for user-created tags, 'all' for all tags
+ *         description: Filter tags by type - 'system' for system tags, 'user' for user-created tags, 'all' for all tags (system user only)
  *     responses:
  *       200:
  *         description: List of tags
@@ -40,6 +42,12 @@ import type { CreateTagData, TagFilters } from "@/modules/tag/domain/tag.types";
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Forbidden - 'all' filter is restricted to system user only
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *       500:
  *         description: Internal server error
  *         content:
@@ -49,6 +57,12 @@ import type { CreateTagData, TagFilters } from "@/modules/tag/domain/tag.types";
  */
 export async function GET(req: Request) {
   try {
+    // Check authentication
+    const authResult = await requireAuth();
+    if (!authResult.authenticated || !authResult.userId) {
+      return createErrorResponse(new UnauthorizedError("Unauthorized"));
+    }
+
     const { searchParams } = new URL(req.url);
     const filterParam = searchParams.get("filter");
 
@@ -57,11 +71,25 @@ export async function GET(req: Request) {
 
     if (filterParam) {
       if (filterParam === "system" || filterParam === "user" || filterParam === "all") {
+        // Check if 'all' filter is restricted to system user only
+        if (filterParam === "all" && authResult.userId !== SYSTEM_USER_ID) {
+          return createErrorResponse(
+            new ForbiddenError("The 'all' filter is restricted to system user only")
+          );
+        }
         filters.filter = filterParam;
       } else {
         return createErrorResponse(
           new BadRequestError("Invalid filter value. Must be 'system', 'user', or 'all'")
         );
+      }
+    } else {
+      // Default to 'all' if no filter specified, but check if user is system user
+      if (authResult.userId !== SYSTEM_USER_ID) {
+        // For non-system users, default to 'user' filter instead
+        filters.filter = "user";
+      } else {
+        filters.filter = "all";
       }
     }
 
