@@ -703,4 +703,3 @@ describe("Wallets API route handlers (CRUD)", () => {
   });
 });
 
-

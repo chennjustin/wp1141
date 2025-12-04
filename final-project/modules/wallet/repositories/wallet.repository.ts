@@ -7,6 +7,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import { SYSTEM_USER_ID } from "@/config/constants";
 import type { CreateWalletData, UpdateWalletData } from "../domain/wallet.types";
 import { WalletUserStatus } from "../domain/wallet.types";
 
@@ -16,7 +17,7 @@ import { WalletUserStatus } from "../domain/wallet.types";
 export const walletRepository = {
   /**
    * Find wallet by ID with members
-   * If userId is provided, only returns if user has OWNER or ACCEPTED status
+   * System user can access all wallets
    */
   async findById(id: string, userId?: string) {
     const where: any = {
@@ -24,7 +25,8 @@ export const walletRepository = {
       isDeleted: false,
     };
 
-    if (userId) {
+    // System user can access all wallets
+    if (userId && userId !== SYSTEM_USER_ID) {
       where.members = {
         some: {
           userId,
@@ -56,22 +58,29 @@ export const walletRepository = {
 
   /**
    * Find wallets by user ID
+   * System user can see all wallets
    * Only returns wallets where user has OWNER or ACCEPTED status
    */
   async findByUserId(userId: string) {
-    return prisma.wallet.findMany({
-      where: {
-        isDeleted: false,
-        members: {
-          some: {
-            userId,
-            isDeleted: false,
+    const where: any = {
+      isDeleted: false,
+    };
+
+    // System user can see all wallets
+    if (userId !== SYSTEM_USER_ID) {
+      where.members = {
+        some: {
+          userId,
+          isDeleted: false,
             status: {
               in: ["OWNER", "ACCEPTED"],
             },
-          },
         },
-      },
+      };
+    }
+
+    return prisma.wallet.findMany({
+      where,
       include: {
         members: {
           where: { 
@@ -200,8 +209,14 @@ export const walletRepository = {
 
   /**
    * Check if user is wallet owner
+   * System user is considered owner of all wallets
    */
   async isOwner(walletId: string, userId: string) {
+    // System user is considered owner of all wallets
+    if (userId === SYSTEM_USER_ID) {
+      return true;
+    }
+
     const membership = await prisma.walletUser.findFirst({
       where: {
         walletId,
