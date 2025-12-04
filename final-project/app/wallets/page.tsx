@@ -141,7 +141,7 @@ export default function WalletHomePage() {
         barcodeRef.current.innerHTML = "";
         
         JsBarcode(barcodeRef.current, carrierCode, {
-          format: "CODE128",
+          format: "CODE39",
           height: barcodeHeight,
           displayValue: false, // Don't show text below barcode (text is shown separately)
           background: "transparent",
