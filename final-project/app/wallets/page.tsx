@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useWallets } from "@/hooks/useWallet";
 import { useMonthlySummary } from "@/hooks/useMonthlySummary";
+import { useDailyTransactions } from "@/hooks/useDailyTransactions";
 
 /**
  * Wallet home page.
@@ -41,6 +42,43 @@ export default function WalletHomePage() {
   // Use API data if available, otherwise fallback to 0
   const incomeTotal = monthlySummary?.totalIncome ?? 0;
   const expenseTotal = monthlySummary?.totalExpense ?? 0;
+
+  // Fetch daily transactions for today
+  const {
+    data: dailyTransactions,
+    loading: transactionsLoading,
+    error: transactionsError,
+  } = useDailyTransactions({
+    walletId: activeWallet?.id ?? null,
+    date: today,
+    enabled: !!activeWallet,
+  });
+
+  // Transform transactions for display
+  // Convert Transaction to UI format: { id, title, amount, time }
+  const displayTransactions = useMemo(() => {
+    return dailyTransactions.map((tx) => {
+      // Use transaction name or tag name as title
+      const title = tx.name || tx.tag.name || "未命名交易";
+      
+      // Calculate display amount based on transaction type
+      // INCOME transactions are positive, EXPENSE transactions are negative
+      const displayAmount = tx.type === "INCOME" ? tx.amount : -tx.amount;
+      
+      // Format time from transaction date (HH:mm format)
+      const transactionDate = new Date(tx.date);
+      const hours = transactionDate.getHours().toString().padStart(2, "0");
+      const minutes = transactionDate.getMinutes().toString().padStart(2, "0");
+      const time = `${hours}:${minutes}`;
+
+      return {
+        id: tx.id,
+        title,
+        amount: displayAmount,
+        time,
+      };
+    });
+  }, [dailyTransactions]);
 
   // Carrier code - placeholder, should be fetched from user's device carriers
   const carrierCode = "/ABCDEF";
@@ -89,12 +127,6 @@ export default function WalletHomePage() {
   const barcodePattern = generateBarcodePattern(carrierCode);
   const barcodeHeight = 64; // h-16 = 64px
   const barcodeWidth = barcodeHeight * 3.5; // 224px for 1:3.5 ratio
-
-  const mockTransactions = [
-    { id: "1", title: "早餐", amount: -80, time: "08:30" },
-    { id: "2", title: "午餐", amount: -120, time: "12:15" },
-    { id: "3", title: "薪水", amount: 30000, time: "09:00" },
-  ];
 
   const handleAddTransaction = () => {
     if (!activeWallet) return;
@@ -244,26 +276,45 @@ export default function WalletHomePage() {
       <section className="flex min-h-0 flex-1 flex-col rounded-xl bg-white p-4 text-sm">
         <h2 className="mb-2 text-sm font-medium text-black">當天款項</h2>
         <div className="mt-1 flex-1 overflow-y-auto">
-          <ul>
-            {mockTransactions.map((tx, index) => (
-              <li key={tx.id}>
-                <div className="flex items-center justify-between py-3">
-                  <span className="text-sm text-black">{tx.title}</span>
-                  <span
-                    className={`text-sm font-semibold text-black ${
-                      tx.amount >= 0 ? "" : ""
-                    }`}
-                  >
-                    {tx.amount >= 0 ? "+" : "-"}
-                    {Math.abs(tx.amount).toLocaleString()}
-                  </span>
-                </div>
-                {index < mockTransactions.length - 1 && (
-                  <div className="border-b border-[#E8E8E8]" />
-                )}
-              </li>
-            ))}
-          </ul>
+          {transactionsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <span className="text-sm text-black/50">載入中...</span>
+            </div>
+          ) : transactionsError ? (
+            <div className="flex items-center justify-center py-8">
+              <span className="text-sm text-red-500" title={transactionsError}>
+                載入失敗
+              </span>
+            </div>
+          ) : displayTransactions.length === 0 ? (
+            <div className="flex items-center justify-center py-8">
+              <span className="text-sm text-black/50">今天還沒有交易記錄</span>
+            </div>
+          ) : (
+            <ul>
+              {displayTransactions.map((tx, index) => (
+                <li key={tx.id}>
+                  <div className="flex items-center justify-between py-3">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm text-black">{tx.title}</span>
+                      <span className="text-xs text-black/50">{tx.time}</span>
+                    </div>
+                    <span
+                      className={`text-sm font-semibold text-black ${
+                        tx.amount >= 0 ? "" : ""
+                      }`}
+                    >
+                      {tx.amount >= 0 ? "+" : "-"}
+                      {Math.abs(tx.amount).toLocaleString()}
+                    </span>
+                  </div>
+                  {index < displayTransactions.length - 1 && (
+                    <div className="border-b border-[#E8E8E8]" />
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </section>
 
