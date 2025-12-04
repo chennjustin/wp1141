@@ -167,6 +167,11 @@ model Tag {
   // Soft delete flag for tags
   isDeleted Boolean @default(false)
 
+  // Icon identifier key for tag visualization
+  // Stores the icon key (e.g., "shopping-cart", "coffee")
+  // Rendered by frontend icon library
+  iconKey String @default("tag")
+
   creator User @relation("UserCreatedTags", fields: [createdBy], references: [id])
 
   transactions Transaction[]
