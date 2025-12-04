@@ -83,8 +83,17 @@ export const authOptions: NextAuthOptions = {
         const { getUserIDFromSession } = await import("@/modules/auth/session");
         const userID = await getUserIDFromSession(user.id);
 
-          // Add userID to session for registration check (may be null if not yet registered)
+        // Add userID to session for registration check (may be null if not yet registered)
         session.user.userID = userID;
+
+        // Fetch defaultWalletId from database
+        const dbUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { defaultWalletId: true },
+        });
+
+        // Add defaultWalletId to session
+        session.user.defaultWalletId = dbUser?.defaultWalletId ?? null;
 
         return session;
       } catch (error) {

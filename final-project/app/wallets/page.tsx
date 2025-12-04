@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useWallets } from "@/hooks/useWallet";
 import { useUserCarrier } from "@/hooks/useCarrier";
 import JsBarcode from "jsbarcode";
+import { useMonthlySummary } from "@/hooks/useMonthlySummary";
+import { useDailyTransactions } from "@/hooks/useDailyTransactions";
 
 /**
  * Wallet home page.
@@ -29,14 +31,8 @@ export default function WalletHomePage() {
   const year = today.getFullYear();
   const month = today.getMonth() + 1;
 
-  // Placeholder monthly totals and transactions. These should be replaced
-  // with real data once transaction APIs are available.
-  const mockIncomeTotal = 10000;
-  const mockExpenseTotal = 20000;
-
-  // Use actual carrier code if available, otherwise use placeholder for demo
-  const carrierCode = carrier?.carrierCode || "/ABCDEF";
-  const hasRealCarrier = !!carrier;
+  // Carrier code - placeholder, should be fetched from user's device carriers
+  const carrierCode = "/ABCDEF";
 
   // Generate barcode pattern from carrier code (for placeholder when no carrier)
   // Barcode width:height ratio is 1:3.5, height is 64px (h-16), so width should be 224px
@@ -154,17 +150,33 @@ export default function WalletHomePage() {
           <div className="flex flex-1 flex-col gap-1">
             <span className="text-xs text-black/70">收入</span>
             <span className="text-xl font-semibold text-black">
-              {showAmounts
-                ? mockIncomeTotal.toLocaleString()
-                : "*".repeat(mockIncomeTotal.toString().length)}
+              {summaryLoading ? (
+                <span className="text-sm text-black/50">載入中...</span>
+              ) : summaryError ? (
+                <span className="text-sm text-red-500" title={summaryError}>
+                  載入失敗
+                </span>
+              ) : showAmounts ? (
+                incomeTotal.toLocaleString()
+              ) : (
+                "*".repeat(incomeTotal.toString().length || 1)
+              )}
             </span>
           </div>
           <div className="flex flex-1 flex-col gap-1 items-end text-right">
             <span className="text-xs text-black/70">支出</span>
             <span className="text-xl font-semibold text-black">
-              {showAmounts
-                ? mockExpenseTotal.toLocaleString()
-                : "*".repeat(mockExpenseTotal.toString().length)}
+              {summaryLoading ? (
+                <span className="text-sm text-black/50">載入中...</span>
+              ) : summaryError ? (
+                <span className="text-sm text-red-500" title={summaryError}>
+                  載入失敗
+                </span>
+              ) : showAmounts ? (
+                expenseTotal.toLocaleString()
+              ) : (
+                "*".repeat(expenseTotal.toString().length || 1)
+              )}
             </span>
           </div>
         </div>
@@ -252,26 +264,45 @@ export default function WalletHomePage() {
       <section className="flex min-h-0 flex-1 flex-col rounded-xl bg-white p-4 text-sm">
         <h2 className="mb-2 text-sm font-medium text-black">當天款項</h2>
         <div className="mt-1 flex-1 overflow-y-auto">
-          <ul>
-            {mockTransactions.map((tx, index) => (
-              <li key={tx.id}>
-                <div className="flex items-center justify-between py-3">
-                  <span className="text-sm text-black">{tx.title}</span>
-                  <span
-                    className={`text-sm font-semibold text-black ${
-                      tx.amount >= 0 ? "" : ""
-                    }`}
-                  >
-                    {tx.amount >= 0 ? "+" : "-"}
-                    {Math.abs(tx.amount).toLocaleString()}
-                  </span>
-                </div>
-                {index < mockTransactions.length - 1 && (
-                  <div className="border-b border-[#E8E8E8]" />
-                )}
-              </li>
-            ))}
-          </ul>
+          {transactionsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <span className="text-sm text-black/50">載入中...</span>
+            </div>
+          ) : transactionsError ? (
+            <div className="flex items-center justify-center py-8">
+              <span className="text-sm text-red-500" title={transactionsError}>
+                載入失敗
+              </span>
+            </div>
+          ) : displayTransactions.length === 0 ? (
+            <div className="flex items-center justify-center py-8">
+              <span className="text-sm text-black/50">今天還沒有交易記錄</span>
+            </div>
+          ) : (
+            <ul>
+              {displayTransactions.map((tx, index) => (
+                <li key={tx.id}>
+                  <div className="flex items-center justify-between py-3">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm text-black">{tx.title}</span>
+                      <span className="text-xs text-black/50">{tx.time}</span>
+                    </div>
+                    <span
+                      className={`text-sm font-semibold text-black ${
+                        tx.amount >= 0 ? "" : ""
+                      }`}
+                    >
+                      {tx.amount >= 0 ? "+" : "-"}
+                      {Math.abs(tx.amount).toLocaleString()}
+                    </span>
+                  </div>
+                  {index < displayTransactions.length - 1 && (
+                    <div className="border-b border-[#E8E8E8]" />
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </section>
 

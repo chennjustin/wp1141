@@ -25,6 +25,7 @@ interface RouteContext {
  *         required: true
  *         schema:
  *           type: string
+ *           example: "wallet-1"
  *         description: Wallet ID
  *     responses:
  *       200:
@@ -93,6 +94,7 @@ export async function GET(_req: Request, context: RouteContext) {
  *         required: true
  *         schema:
  *           type: string
+ *           example: "wallet-1"
  *         description: Wallet ID
  *     requestBody:
  *       required: true
@@ -144,14 +146,20 @@ export async function PATCH(req: Request, context: RouteContext) {
     const {
       name,
       defaultCurrency,
+      description,
+      note,
     }: {
       name?: string;
       defaultCurrency?: string;
+      description?: string;
+      note?: string;
     } = body;
 
     const result = await updateWalletAction(walletId, {
       name,
       defaultCurrency,
+      description,
+      note,
     });
 
     if (!result.success) {
@@ -161,7 +169,8 @@ export async function PATCH(req: Request, context: RouteContext) {
           : result.error === "Only wallet owner can update this wallet"
           ? 403
           : result.error === "No fields provided to update" ||
-            result.error === "No valid fields provided to update"
+            result.error === "No valid fields provided to update" ||
+            result.error === "Note must not exceed 50 characters"
           ? 400
           : 500;
       return NextResponse.json({ error: result.error }, { status });
@@ -193,6 +202,7 @@ export async function PATCH(req: Request, context: RouteContext) {
  *         required: true
  *         schema:
  *           type: string
+ *           example: "wallet-1"
  *         description: Wallet ID
  *     responses:
  *       200:
