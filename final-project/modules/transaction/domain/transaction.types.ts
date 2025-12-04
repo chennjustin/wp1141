@@ -54,6 +54,7 @@ export interface TransactionShare {
 export interface TransactionTag {
   id: string;
   name: string;
+  iconKey: string;
 }
 
 /**
@@ -167,6 +168,7 @@ export interface TransactionSummaryItem {
   tag: {
     id: string;
     name: string;
+    iconKey: string;
   };
 }
 
