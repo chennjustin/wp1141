@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useUser } from "@/hooks/useUser";
 import { useWallets } from "@/hooks/useWallet";
+import { createWalletAction } from "@/modules/wallet/routes/create-wallet";
 import type { Wallet, WalletMember } from "@/modules/wallet/domain/wallet.types";
 import { WalletRole } from "@/modules/wallet/domain/wallet.types";
 
@@ -19,12 +20,13 @@ interface WalletLayoutProps {
 export default function WalletsLayout({ children }: WalletLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const { profile, isAuthenticated } = useUser();
-  const { wallets, loading: walletsLoading } = useWallets();
+  const { wallets, loading: walletsLoading, refetch: refetchWallets } = useWallets();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isWalletSelectorOpen, setIsWalletSelectorOpen] = useState(false);
+  const [isCreateWalletOpen, setIsCreateWalletOpen] = useState(false);
   const [currentWalletId, setCurrentWalletId] = useState<string | null>(null);
 
   const currentWallet: Wallet | null = useMemo(() => {
@@ -79,7 +81,18 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
     return userName || session?.user?.name || session?.user?.email || "User";
   }, [isPersonalWallet, currentRole, userName, session]);
 
-  if (!isAuthenticated) {
+  // Show loading state while checking authentication
+  if (sessionStatus === "loading") {
+    return (
+      <div className="min-h-screen bg-[#D2D2D2] flex items-center justify-center">
+        <div className="text-sm text-black/80">Loading...</div>
+      </div>
+    );
+  }
+
+  // Redirect to login if not authenticated
+  if (!isAuthenticated || sessionStatus === "unauthenticated") {
+    router.push("/login");
     return null;
   }
 
@@ -101,77 +114,84 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
       : currentWallet.name
     : "No wallet";
 
+  // 是否為「新增交易」頁面：/wallets/[walletId]/transactions/new
+  const isNewTransactionPage =
+    pathname?.startsWith("/wallets/") &&
+    pathname.includes("/transactions/new");
+
   return (
     <div className="min-h-screen bg-[#D2D2D2] flex justify-center px-4 py-4">
-      {/* Mobile-sized container with thick black border and rounded corners */}
-      <div className="relative flex min-h-[calc(100vh-2rem)] w-full max-w-sm flex-col border-[3px] border-black bg-[#D2D2D2] rounded-3xl overflow-visible">
-        {/* Header */}
-        <header className="relative mb-4 flex items-center justify-between bg-[#D2D2D2] px-4 py-3">
-          {/* Left: main menu toggle */}
-          <button
-            type="button"
-            className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/10"
-            onClick={() => setIsMenuOpen(true)}
-            aria-label="Open main menu"
-          >
-            <span className="flex flex-col gap-0.5">
-              <span className="h-0.5 w-4 rounded-full bg-black" />
-              <span className="h-0.5 w-4 rounded-full bg-black" />
-              <span className="h-0.5 w-4 rounded-full bg-black" />
-            </span>
-          </button>
-
-          {/* Center: wallet selector - oval button, absolutely centered */}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+      {/* Mobile-sized container with fixed width, height auto-adjusts based on content */}
+      <div className="relative flex w-full max-w-sm min-h-[calc(100vh-2rem)] flex-col border-[3px] border-black bg-[#D2D2D2] rounded-3xl overflow-visible">
+        {/* Header：在新增交易頁面中不顯示 */}
+        {!isNewTransactionPage && (
+          <header className="relative mb-4 flex items-center justify-between bg-[#D2D2D2] px-4 py-3">
+            {/* Left: main menu toggle */}
             <button
               type="button"
-              className="relative inline-flex items-center justify-center rounded-full bg-white px-6 py-2 text-sm font-medium text-black hover:bg-gray-100"
-              onClick={() => setIsWalletSelectorOpen(true)}
-              aria-label="Select wallet"
+              className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/10"
+              onClick={() => setIsMenuOpen(true)}
+              aria-label="Open main menu"
             >
-              <span className="max-w-[140px] truncate">{walletDisplayName}</span>
+              <span className="flex flex-col gap-0.5">
+                <span className="h-0.5 w-4 rounded-full bg-black" />
+                <span className="h-0.5 w-4 rounded-full bg-black" />
+                <span className="h-0.5 w-4 rounded-full bg-black" />
+              </span>
             </button>
 
-            {/* Wallet selector dropdown */}
-            {isWalletSelectorOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-40 bg-black/20"
-                  onClick={() => setIsWalletSelectorOpen(false)}
-                />
-                <div className="absolute top-full left-1/2 z-50 mt-2 -translate-x-1/2 rounded-lg bg-white shadow-lg border border-gray-200 min-w-[200px] max-h-[300px] overflow-y-auto">
-                  <div className="py-2">
-                    {wallets.map((wallet) => (
-                      <button
-                        key={wallet.id}
-                        type="button"
-                        className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100"
-                        onClick={() => handleWalletChange(wallet.id)}
-                      >
-                        {wallet.name}
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100 border-t border-gray-200"
-                      onClick={() => {
-                        setIsWalletSelectorOpen(false);
-                        // TODO: Navigate to create wallet page
-                      }}
-                    >
-                      + 新增錢包
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
+            {/* Center: wallet selector - oval button, absolutely centered */}
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+              <button
+                type="button"
+                className="relative inline-flex items-center justify-center rounded-full bg-white px-6 py-2 text-sm font-medium text-black hover:bg-gray-100"
+                onClick={() => setIsWalletSelectorOpen(true)}
+                aria-label="Select wallet"
+              >
+                <span className="max-w-[140px] truncate">{walletDisplayName}</span>
+              </button>
 
-          {/* Right: user name or role text */}
-          <div className="flex flex-col items-end text-right text-xs leading-snug text-black">
-            <span className="font-semibold">{displayName}</span>
-          </div>
-        </header>
+              {/* Wallet selector dropdown */}
+              {isWalletSelectorOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40 bg-black/20"
+                    onClick={() => setIsWalletSelectorOpen(false)}
+                  />
+                  <div className="absolute top-full left-1/2 z-50 mt-2 -translate-x-1/2 rounded-lg bg-white shadow-lg border border-gray-200 min-w-[200px] max-h-[300px] overflow-y-auto">
+                    <div className="py-2">
+                      {wallets.map((wallet) => (
+                        <button
+                          key={wallet.id}
+                          type="button"
+                          className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100"
+                          onClick={() => handleWalletChange(wallet.id)}
+                        >
+                          {wallet.name}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100 border-t border-gray-200"
+                        onClick={() => {
+                          setIsWalletSelectorOpen(false);
+                          setIsCreateWalletOpen(true);
+                        }}
+                      >
+                        + 新增錢包
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Right: user name or role text */}
+            <div className="flex flex-col items-end text-right text-xs leading-snug text-black">
+              <span className="font-semibold">{displayName}</span>
+            </div>
+          </header>
+        )}
 
         {/* Side menu overlay */}
         {isMenuOpen && (
@@ -259,21 +279,191 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
           </>
         )}
 
-        {/* Main content area */}
-        <main className="flex-1 pb-16 px-4">
+        {/* Main content area - flex container for scrollable content */}
+        <main className="flex min-h-0 flex-1 flex-col pb-16 px-4">
           {walletsLoading && (
             <div className="flex h-full items-center justify-center text-sm text-black/80">
               Loading wallets...
             </div>
           )}
-          {!walletsLoading && wallets.length === 0 && (
-            <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-black/80">
-              <p>目前還沒有錢包。</p>
-              <p>請先在後端建立或之後新增建立錢包的介面。</p>
+          {!walletsLoading && children}
+        </main>
+
+        {/* Create Wallet Modal */}
+        {isCreateWalletOpen && (
+          <CreateWalletModal
+            onClose={() => setIsCreateWalletOpen(false)}
+            onSuccess={async () => {
+              setIsCreateWalletOpen(false);
+              await refetchWallets();
+            }}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Create Wallet Modal Component
+ */
+function CreateWalletModal({
+  onClose,
+  onSuccess,
+}: {
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [walletName, setWalletName] = useState("");
+  const [defaultCurrency, setDefaultCurrency] = useState("TWD");
+  const [setAsDefault, setSetAsDefault] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const CURRENCIES = ["TWD", "USD", "EUR", "JPY", "CNY"];
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!walletName.trim()) {
+      setError("請輸入錢包名稱");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const result = await createWalletAction({
+        name: walletName.trim(),
+        defaultCurrency,
+        setAsDefault,
+      });
+
+      if (result.success) {
+        onSuccess();
+      } else {
+        setError(result.error || "創建錢包失敗");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "創建錢包失敗");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div
+        className="w-full max-w-sm rounded-3xl bg-[#D2D2D2] p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-black">新增錢包</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-black/10"
+            aria-label="關閉"
+          >
+            <svg
+              className="h-5 w-5 text-black"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Wallet Name */}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-black">
+              錢包名稱
+            </label>
+            <input
+              type="text"
+              value={walletName}
+              onChange={(e) => setWalletName(e.target.value)}
+              placeholder="輸入錢包名稱"
+              className="w-full rounded-xl bg-white px-4 py-3 text-black placeholder:text-gray-400"
+              required
+              autoFocus
+            />
+          </div>
+
+          {/* Default Currency */}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-black">
+              預設幣別
+            </label>
+            <select
+              value={defaultCurrency}
+              onChange={(e) => setDefaultCurrency(e.target.value)}
+              className="w-full rounded-xl bg-white px-4 py-3 text-black"
+            >
+              {CURRENCIES.map((curr) => (
+                <option key={curr} value={curr}>
+                  {curr}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Set as Default */}
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="setAsDefault"
+              checked={setAsDefault}
+              onChange={(e) => setSetAsDefault(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-black focus:ring-2 focus:ring-black"
+            />
+            <label htmlFor="setAsDefault" className="text-sm text-black">
+              設為預設錢包
+            </label>
+          </div>
+
+          {/* Error message */}
+          {error && (
+            <div className="rounded-xl bg-red-100 px-4 py-2 text-sm text-red-600">
+              {error}
             </div>
           )}
-          {!walletsLoading && wallets.length > 0 && children}
-        </main>
+
+          {/* Buttons */}
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 rounded-xl bg-white px-4 py-3 text-sm font-medium text-black hover:bg-gray-100"
+              disabled={loading}
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 rounded-xl bg-black px-4 py-3 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {loading ? "創建中..." : "創建"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

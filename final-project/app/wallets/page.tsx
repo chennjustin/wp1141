@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useWallets } from "@/hooks/useWallet";
 
@@ -13,10 +13,15 @@ import { useWallets } from "@/hooks/useWallet";
  */
 export default function WalletHomePage() {
   const router = useRouter();
-  const { wallets } = useWallets();
+  const { wallets, loading } = useWallets();
 
   // For now we treat the first wallet as the active wallet on this page.
-  const activeWallet = wallets[0] ?? null;
+  const activeWallet = wallets?.[0] ?? null;
+
+  // Debug log
+  useEffect(() => {
+    console.log("WalletHomePage - wallets:", wallets, "activeWallet:", activeWallet, "loading:", loading);
+  }, [wallets, activeWallet, loading]);
 
   const [showAmounts, setShowAmounts] = useState(true);
   const [brightCarrier, setBrightCarrier] = useState(true);
@@ -37,8 +42,18 @@ export default function WalletHomePage() {
   ];
 
   const handleAddTransaction = () => {
-    if (!activeWallet) return;
-    router.push(`/wallets/${activeWallet.id}/transactions/new`);
+    console.log("Add transaction clicked", { activeWallet, wallets, walletsLength: wallets?.length });
+    
+    // If no wallet, try to use the first wallet from layout context
+    // Or show a message to create wallet first
+    if (!activeWallet || wallets.length === 0) {
+      alert("請先選擇或創建一個錢包");
+      return;
+    }
+    
+    const url = `/wallets/${activeWallet.id}/transactions/new`;
+    console.log("Navigating to:", url);
+    router.push(url);
   };
 
   return (
@@ -199,7 +214,7 @@ export default function WalletHomePage() {
       {/* Floating add button */}
       <button
         type="button"
-        className="fixed bottom-8 left-1/2 z-20 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-[#D2D2D2] text-2xl text-black shadow-lg"
+        className="fixed bottom-8 left-1/2 z-20 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-[#D2D2D2] text-2xl text-black shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
         onClick={handleAddTransaction}
         aria-label="Add new transaction"
         disabled={!activeWallet}
