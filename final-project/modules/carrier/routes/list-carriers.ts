@@ -2,16 +2,19 @@
  * Server Action: List user's carriers
  * 
  * This action retrieves all carriers that belong to the current authenticated user.
+ * System user can retrieve all carriers from all users.
  */
 
 "use server";
 
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { SYSTEM_USER_ID } from "@/config/constants";
 import { carrierService } from "../services/carrier.service";
 
 /**
  * List all carriers for the current user
+ * System user can list all carriers from all users
  */
 export async function listCarriersAction() {
   try {
@@ -25,7 +28,14 @@ export async function listCarriersAction() {
       };
     }
 
-    const carriers = await carrierService.getUserCarriers(session.user.id);
+    const userId = session.user.id;
+    const isSystemUser = userId === SYSTEM_USER_ID;
+
+    // System user can list all carriers
+    const carriers = isSystemUser
+      ? await carrierService.getAllCarriers()
+      : await carrierService.getUserCarriers(userId);
+
     return {
       success: true,
       data: carriers,

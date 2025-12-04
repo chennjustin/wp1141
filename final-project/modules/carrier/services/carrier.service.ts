@@ -7,6 +7,7 @@
  */
 
 import { carrierRepository } from "../repositories/carrier.repository";
+import { SYSTEM_USER_ID } from "@/config/constants";
 import type {
   DeviceCarrier,
   CreateCarrierData,
@@ -59,6 +60,14 @@ export const carrierService = {
   },
 
   /**
+   * Get all carriers (only for system user)
+   */
+  async getAllCarriers(): Promise<DeviceCarrier[]> {
+    const carriers = await carrierRepository.findAll();
+    return carriers as DeviceCarrier[];
+  },
+
+  /**
    * Get user's default or first carrier
    */
   async getUserCarrier(userId: string): Promise<DeviceCarrier | null> {
@@ -73,12 +82,43 @@ export const carrierService = {
     carrierId: string,
     userId: string
   ): Promise<CarrierServiceResult<DeviceCarrier>> {
+    // First check if carrier exists
+    const exists = await carrierRepository.exists(carrierId);
+    if (!exists) {
+      return {
+        success: false,
+        error: "Carrier not found",
+      };
+    }
+
+    // Then check if carrier belongs to user
     const carrier = await carrierRepository.findById(carrierId, userId);
+    if (!carrier) {
+      return {
+        success: false,
+        error: "Access denied",
+      };
+    }
+
+    return {
+      success: true,
+      data: carrier as DeviceCarrier,
+    };
+  },
+
+  /**
+   * Get current user's carrier
+   * Returns null if user doesn't have a carrier
+   */
+  async getCurrentUserCarrier(
+    userId: string
+  ): Promise<CarrierServiceResult<DeviceCarrier>> {
+    const carrier = await carrierRepository.findUserCarrier(userId);
 
     if (!carrier) {
       return {
         success: false,
-        error: "Carrier not found or access denied",
+        error: "Carrier not found for this user",
       };
     }
 
@@ -90,10 +130,12 @@ export const carrierService = {
 
   /**
    * Create carrier for user
+   * System user can create carrier for any user and bypass duplicate check
    */
   async createCarrier(
     userId: string,
-    data: CreateCarrierData
+    data: CreateCarrierData,
+    targetUserId?: string
   ): Promise<CarrierServiceResult<DeviceCarrier>> {
     // Validate carrier code
     if (!data.carrierCode || typeof data.carrierCode !== "string") {
@@ -111,8 +153,23 @@ export const carrierService = {
       };
     }
 
+    // Determine target user ID (system user can specify, otherwise use current user)
+    const isSystemUser = userId === SYSTEM_USER_ID;
+    const finalTargetUserId = targetUserId || userId;
+
+    // Check if user already has a carrier (system user can bypass this check)
+    if (!isSystemUser) {
+      const existingCarrier = await carrierRepository.findUserCarrier(finalTargetUserId);
+      if (existingCarrier) {
+        return {
+          success: false,
+          error: "User already has a carrier",
+        };
+      }
+    }
+
     try {
-      const carrier = await carrierRepository.create(userId, {
+      const carrier = await carrierRepository.create(finalTargetUserId, {
         carrierCode: data.carrierCode.trim(),
       });
 
@@ -137,7 +194,16 @@ export const carrierService = {
     userId: string,
     data: UpdateCarrierData
   ): Promise<CarrierServiceResult<DeviceCarrier>> {
-    // Check authorization
+    // First check if carrier exists
+    const exists = await carrierRepository.exists(carrierId);
+    if (!exists) {
+      return {
+        success: false,
+        error: "Carrier not found",
+      };
+    }
+
+    // Then check authorization
     const belongsToUser = await carrierRepository.belongsToUser(carrierId, userId);
     if (!belongsToUser) {
       return {
@@ -194,28 +260,54 @@ export const carrierService = {
   },
 
   /**
-   * Delete carrier (only owner can delete)
+   * Update current user's carrier
+   * Since each user has only one carrier, this method updates the user's carrier directly
+   */
+  async updateCurrentUserCarrier(
+    userId: string,
+    data: UpdateCarrierData
+  ): Promise<CarrierServiceResult<DeviceCarrier>> {
+    // Get user's carrier
+    const userCarrier = await carrierRepository.findUserCarrier(userId);
+    if (!userCarrier) {
+      return {
+        success: false,
+        error: "Carrier not found for this user",
+      };
+    }
+
+    // Use the existing updateCarrier method
+    return this.updateCarrier(userCarrier.id, userId, data);
+  },
+
+  /**
+   * Delete carrier (only owner can delete, system user can delete any carrier)
    */
   async deleteCarrier(
     carrierId: string,
     userId: string
   ): Promise<CarrierServiceResult<void>> {
-    // Check authorization
-    const belongsToUser = await carrierRepository.belongsToUser(carrierId, userId);
-    if (!belongsToUser) {
-      return {
-        success: false,
-        error: "Only carrier owner can delete this carrier",
-      };
-    }
-
-    // Check carrier existence
+    // First check if carrier exists
     const exists = await carrierRepository.exists(carrierId);
     if (!exists) {
       return {
         success: false,
-        error: "Carrier not found or already deleted",
+        error: "Carrier not found",
       };
+    }
+
+    // System user can delete any carrier
+    const isSystemUser = userId === SYSTEM_USER_ID;
+    
+    if (!isSystemUser) {
+      // Then check authorization for non-system users
+      const belongsToUser = await carrierRepository.belongsToUser(carrierId, userId);
+      if (!belongsToUser) {
+        return {
+          success: false,
+          error: "Only carrier owner can delete this carrier",
+        };
+      }
     }
 
     try {
@@ -232,6 +324,26 @@ export const carrierService = {
         error: "Failed to delete carrier",
       };
     }
+  },
+
+  /**
+   * Delete current user's carrier
+   * Since each user has only one carrier, this method deletes the user's carrier directly
+   */
+  async deleteCurrentUserCarrier(
+    userId: string
+  ): Promise<CarrierServiceResult<void>> {
+    // Get user's carrier
+    const userCarrier = await carrierRepository.findUserCarrier(userId);
+    if (!userCarrier) {
+      return {
+        success: false,
+        error: "Carrier not found for this user",
+      };
+    }
+
+    // Use the existing deleteCarrier method
+    return this.deleteCarrier(userCarrier.id, userId);
   },
 };
 

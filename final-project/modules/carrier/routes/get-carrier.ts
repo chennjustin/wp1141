@@ -2,6 +2,7 @@
  * Server Action: Get carrier by ID
  * 
  * This action retrieves a single carrier by ID for the current authenticated user.
+ * If carrierId is not provided, returns the current user's carrier.
  */
 
 "use server";
@@ -11,9 +12,9 @@ import { authOptions } from "@/lib/auth";
 import { carrierService } from "../services/carrier.service";
 
 /**
- * Get carrier by ID
+ * Get carrier by ID or current user's carrier
  */
-export async function getCarrierAction(carrierId: string) {
+export async function getCarrierAction(carrierId?: string) {
   try {
     const session = await getServerSession(authOptions);
 
@@ -23,6 +24,11 @@ export async function getCarrierAction(carrierId: string) {
         error: "Unauthorized",
         data: null,
       };
+    }
+
+    // If carrierId is not provided, get current user's carrier
+    if (!carrierId) {
+      return await carrierService.getCurrentUserCarrier(session.user.id);
     }
 
     return await carrierService.getCarrierById(carrierId, session.user.id);

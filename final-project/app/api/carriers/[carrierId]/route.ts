@@ -25,6 +25,7 @@ interface RouteContext {
  *         required: true
  *         schema:
  *           type: string
+ *           example: "carrier-1"
  *         description: Carrier ID
  *     responses:
  *       200:
@@ -61,8 +62,11 @@ export async function GET(_req: Request, context: RouteContext) {
       const status =
         result.error === "Unauthorized"
           ? 401
-          : result.error === "Carrier not found or access denied"
+          : result.error === "Carrier not found" ||
+            result.error === "Carrier not found for this user"
           ? 404
+          : result.error === "Access denied"
+          ? 403
           : 500;
       return NextResponse.json({ error: result.error }, { status });
     }
@@ -93,6 +97,7 @@ export async function GET(_req: Request, context: RouteContext) {
  *         required: true
  *         schema:
  *           type: string
+ *           example: "carrier-1"
  *         description: Carrier ID
  *     requestBody:
  *       required: true
@@ -151,6 +156,9 @@ export async function PATCH(req: Request, context: RouteContext) {
       const status =
         result.error === "Unauthorized"
           ? 401
+          : result.error === "Carrier not found" ||
+            result.error === "Carrier not found for this user"
+          ? 404
           : result.error === "Only carrier owner can update this carrier"
           ? 403
           : result.error === "No fields provided to update" ||
@@ -176,7 +184,9 @@ export async function PATCH(req: Request, context: RouteContext) {
  * /api/carriers/{carrierId}:
  *   delete:
  *     summary: Delete carrier
- *     description: Soft delete a carrier. Only carrier owner can delete.
+ *     description: |
+ *       Soft delete a carrier. Only carrier owner can delete.
+ *       System user can delete any carrier.
  *     tags:
  *       - Carriers
  *     security:
@@ -187,6 +197,7 @@ export async function PATCH(req: Request, context: RouteContext) {
  *         required: true
  *         schema:
  *           type: string
+ *           example: "carrier-1"
  *         description: Carrier ID
  *     responses:
  *       200:
@@ -202,7 +213,7 @@ export async function PATCH(req: Request, context: RouteContext) {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  *       403:
- *         description: Forbidden - Only carrier owner can delete
+ *         description: Forbidden - Only carrier owner can delete (system user can delete any carrier)
  *         content:
  *           application/json:
  *             schema:
@@ -229,10 +240,11 @@ export async function DELETE(_req: Request, context: RouteContext) {
       const status =
         result.error === "Unauthorized"
           ? 401
+          : result.error === "Carrier not found" ||
+            result.error === "Carrier not found for this user"
+          ? 404
           : result.error === "Only carrier owner can delete this carrier"
           ? 403
-          : result.error === "Carrier not found or already deleted"
-          ? 404
           : 500;
       return NextResponse.json({ error: result.error }, { status });
     }

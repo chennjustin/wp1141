@@ -47,6 +47,20 @@ export const carrierRepository = {
   },
 
   /**
+   * Find all carriers (for system user)
+   */
+  async findAll() {
+    return prisma.deviceCarrier.findMany({
+      where: {
+        isDeleted: false,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+  },
+
+  /**
    * Find user's default or first carrier
    */
   async findUserCarrier(userId: string) {

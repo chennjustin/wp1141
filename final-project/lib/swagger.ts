@@ -941,7 +941,7 @@ const swaggerDefinition = {
           carrierCode: {
             type: "string",
             description: "Carrier code",
-            example: "/ABCDEF1",
+            example: "/ABCDEF2",
           },
         },
       },

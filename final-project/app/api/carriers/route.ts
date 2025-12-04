@@ -7,7 +7,9 @@ import { createCarrierAction } from "@/modules/carrier/routes/create-carrier";
  * /api/carriers:
  *   get:
  *     summary: List all carriers
- *     description: List all carriers that belong to the current authenticated user
+ *     description: |
+ *       List all carriers that belong to the current authenticated user.
+ *       System user can list all carriers from all users.
  *     tags:
  *       - Carriers
  *     security:
@@ -58,7 +60,10 @@ export async function GET() {
  * /api/carriers:
  *   post:
  *     summary: Create a new carrier
- *     description: Create a new carrier for the current authenticated user
+ *     description: |
+ *       Create a new carrier for the current authenticated user.
+ *       System user can create carrier for other users by specifying userId in the request body.
+ *       System user can also bypass the "user already has a carrier" restriction.
  *     tags:
  *       - Carriers
  *     security:
@@ -88,6 +93,12 @@ export async function GET() {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
+ *       409:
+ *         description: Conflict - User already has a carrier (system user can bypass this)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *       500:
  *         description: Internal server error
  *         content:
@@ -103,7 +114,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
 
-    const { carrierCode }: { carrierCode?: string } = body;
+    const { carrierCode, userId }: { carrierCode?: string; userId?: string } = body;
 
     if (!carrierCode || typeof carrierCode !== "string") {
       return NextResponse.json(
@@ -114,12 +125,15 @@ export async function POST(req: Request) {
 
     const result = await createCarrierAction({
       carrierCode,
+      userId,
     });
 
     if (!result.success) {
       const status =
         result.error === "Unauthorized"
           ? 401
+          : result.error === "User already has a carrier"
+          ? 409
           : result.error === "Carrier code is required" ||
             result.error?.includes("Invalid carrier code")
           ? 400

@@ -1,7 +1,8 @@
 /**
- * Server Action: Get user's default or first carrier
+ * Server Action: Get user's carrier
  * 
- * This action retrieves the user's default or first carrier.
+ * This action retrieves the current user's carrier.
+ * Returns error if user doesn't have a carrier.
  */
 
 "use server";
@@ -11,7 +12,8 @@ import { authOptions } from "@/lib/auth";
 import { carrierService } from "../services/carrier.service";
 
 /**
- * Get user's default or first carrier
+ * Get user's carrier
+ * Returns error if user doesn't have a carrier
  */
 export async function getUserCarrierAction() {
   try {
@@ -25,11 +27,7 @@ export async function getUserCarrierAction() {
       };
     }
 
-    const carrier = await carrierService.getUserCarrier(session.user.id);
-    return {
-      success: true,
-      data: carrier,
-    };
+    return await carrierService.getCurrentUserCarrier(session.user.id);
   } catch (error) {
     console.error("[getUserCarrierAction] Unexpected error", error);
     return {
