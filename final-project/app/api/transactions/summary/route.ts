@@ -20,7 +20,7 @@ import type { MonthlySummaryFilters } from "@/modules/transaction/domain/transac
  *         required: true
  *         schema:
  *           type: string
- *           example: "1"
+ *           example: "wallet-1"
  *         description: Wallet ID
  *       - in: query
  *         name: year

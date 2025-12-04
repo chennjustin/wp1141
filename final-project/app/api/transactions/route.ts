@@ -24,7 +24,7 @@ import type {
  *         required: true
  *         schema:
  *           type: string
- *           example: "1"
+ *           example: "wallet-1"
  *         description: Wallet ID
  *       - in: query
  *         name: startDate
@@ -62,7 +62,7 @@ import type {
  *         required: false
  *         schema:
  *           type: string
- *           example: "2"
+ *           example: "user-1"
  *         description: User ID filter (for v2.0 - filter by payer/share)
  *     responses:
  *       200:
