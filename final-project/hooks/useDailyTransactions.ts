@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import type { Transaction } from "@/modules/transaction/domain/transaction.types";
 
@@ -57,6 +57,14 @@ export function useDailyTransactions({
     dateKey: string; // ISO date string for the day (YYYY-MM-DD)
   } | null>(null);
 
+  // Memoize date key to avoid unnecessary re-renders when date object reference changes
+  // Convert date to ISO string and extract date part (YYYY-MM-DD) for stable comparison
+  // Use date's time value for comparison - this ensures we only recalculate when the actual date changes
+  const dateTimestamp = date.getTime();
+  const dateKey = useMemo(() => {
+    return date.toISOString().split("T")[0];
+  }, [dateTimestamp]);
+
   const fetchTransactions = useCallback(
     async (forceRefetch = false) => {
       // Don't fetch if not authenticated or walletId is missing
@@ -70,8 +78,7 @@ export function useDailyTransactions({
         return;
       }
 
-      // Calculate date key for comparison (YYYY-MM-DD format)
-      const dateKey = date.toISOString().split("T")[0];
+      // Use memoized dateKey for comparison
 
       // Skip fetch if we've already queried for the same walletId and date
       // unless forceRefetch is true
@@ -140,12 +147,11 @@ export function useDailyTransactions({
         setLoading(false);
       }
     },
-    [walletId, date, enabled, session, status]
+    [walletId, dateKey, enabled, session, status]
   );
 
   useEffect(() => {
     // Check if parameters have changed
-    const dateKey = date.toISOString().split("T")[0];
     const hasParamsChanged =
       !lastQueryRef.current ||
       lastQueryRef.current.walletId !== walletId ||
@@ -159,7 +165,7 @@ export function useDailyTransactions({
       lastQueryRef.current = null;
       fetchTransactions(false);
     }
-  }, [walletId, date, fetchTransactions]);
+  }, [walletId, dateKey, fetchTransactions]);
 
   // Refetch function that forces a new query even if parameters haven't changed
   const refetch = useCallback(() => {

@@ -24,7 +24,9 @@ export default function WalletDetailPage() {
   const [showAmounts, setShowAmounts] = useState(true);
   const [brightCarrier, setBrightCarrier] = useState(true);
 
-  const today = new Date();
+  // Memoize today's date to prevent creating new Date object on every render
+  // This prevents infinite re-render loops in useDailyTransactions
+  const today = useMemo(() => new Date(), []);
   const year = today.getFullYear();
   const month = today.getMonth() + 1;
 
