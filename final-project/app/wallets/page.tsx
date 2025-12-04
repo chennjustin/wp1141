@@ -31,8 +31,62 @@ export default function WalletHomePage() {
   const year = today.getFullYear();
   const month = today.getMonth() + 1;
 
-  // Carrier code - placeholder, should be fetched from user's device carriers
-  const carrierCode = "/ABCDEF";
+  const carrierCode = carrier?.carrierCode || "/ABCDEF";
+  const hasRealCarrier = !!carrier;
+  
+    // Fetch monthly summary from API
+    const {
+      data: monthlySummary,
+      loading: summaryLoading,
+      error: summaryError,
+    } = useMonthlySummary({
+      walletId: activeWallet?.id ?? null,
+      year,
+      month,
+      enabled: !!activeWallet,
+    });
+  
+    // Use API data if available, otherwise fallback to 0
+    const incomeTotal = monthlySummary?.totalIncome ?? 0;
+    const expenseTotal = monthlySummary?.totalExpense ?? 0;
+  
+    // Fetch daily transactions for today
+    const {
+      data: dailyTransactions,
+      loading: transactionsLoading,
+      error: transactionsError,
+    } = useDailyTransactions({
+      walletId: activeWallet?.id ?? null,
+      date: today,
+      enabled: !!activeWallet,
+    });
+  
+    // Transform transactions for display
+    // Convert Transaction to UI format: { id, title, amount, time }
+    const displayTransactions = useMemo(() => {
+      return dailyTransactions.map((tx) => {
+        // Use transaction name or tag name as title
+        const title = tx.name || tx.tag.name || "未命名交易";
+  
+        // Calculate display amount based on transaction type
+        // INCOME transactions are positive, EXPENSE transactions are negative
+        const displayAmount = tx.type === "INCOME" ? tx.amount : -tx.amount;
+  
+        // Format time from transaction date (HH:mm format)
+        const transactionDate = new Date(tx.date);
+        const hours = transactionDate.getHours().toString().padStart(2, "0");
+        const minutes = transactionDate.getMinutes().toString().padStart(2, "0");
+        const time = `${hours}:${minutes}`;
+  
+        return {
+          id: tx.id,
+          title,
+          amount: displayAmount,
+          time,
+        };
+      });
+    }, [dailyTransactions]);
+  
 
   // Generate barcode pattern from carrier code (for placeholder when no carrier)
   // Barcode width:height ratio is 1:3.5, height is 64px (h-16), so width should be 224px
