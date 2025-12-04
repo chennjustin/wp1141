@@ -26,10 +26,31 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isWalletSelectorOpen, setIsWalletSelectorOpen] = useState(false);
   const [currentWalletId, setCurrentWalletId] = useState<string | null>(null);
+  const [pinnedWalletIds, setPinnedWalletIds] = useState<Set<string>>(new Set());
   
   // Track last updated wallet ID to avoid duplicate updates
   const lastUpdatedWalletIdRef = useRef<string | null>(null);
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Fetch pinned wallets
+  useEffect(() => {
+    async function fetchPinnedWallets() {
+      try {
+        const response = await fetch("/api/users/default-wallet");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.pinnedWalletIds) {
+            setPinnedWalletIds(new Set(data.pinnedWalletIds));
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching pinned wallets:", error);
+      }
+    }
+    if (isAuthenticated) {
+      fetchPinnedWallets();
+    }
+  }, [isAuthenticated]);
 
   // Initialize currentWalletId from URL pathname or session defaultWalletId
   useEffect(() => {
@@ -262,22 +283,37 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
                 />
                 <div className="absolute top-full left-1/2 z-50 mt-2 -translate-x-1/2 rounded-lg bg-white shadow-lg min-w-[200px] max-h-[300px] overflow-y-auto border-0">
                   <div className="py-2">
-                    {wallets.map((wallet) => (
-                      <button
-                        key={wallet.id}
-                        type="button"
-                        className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100"
-                        onClick={() => handleWalletChange(wallet.id)}
-                      >
-                        {wallet.name}
-                      </button>
-                    ))}
+                    {/* Show all pinned wallets (max 5) */}
+                    {wallets
+                      .filter((wallet) => pinnedWalletIds.has(wallet.id))
+                      .map((wallet) => (
+                        <button
+                          key={wallet.id}
+                          type="button"
+                          className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100"
+                          onClick={() => handleWalletChange(wallet.id)}
+                        >
+                          {wallet.name}
+                        </button>
+                      ))}
+                    <div className="border-t border-gray-200 my-1" />
                     <button
                       type="button"
-                      className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100 border-t border-gray-200"
+                      className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100"
+                      onClick={() => {
+                        setIsWalletSelectorOpen(false);
+                        router.push("/wallets/all");
+                      }}
+                    >
+                      所有錢包
+                    </button>
+                    <button
+                      type="button"
+                      className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100"
                       onClick={() => {
                         setIsWalletSelectorOpen(false);
                         // TODO: Navigate to create wallet page
+                        router.push("/wallets/new");
                       }}
                     >
                       + 新增錢包
@@ -382,18 +418,18 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
 
         {/* Main content area */}
         <main className="flex-1 pb-16 px-4">
-          {walletsLoading && (
+          {walletsLoading && pathname !== "/wallets/new" && (
             <div className="flex h-full items-center justify-center text-sm text-black/80">
               Loading wallets...
             </div>
           )}
-          {!walletsLoading && wallets.length === 0 && (
+          {!walletsLoading && wallets.length === 0 && pathname !== "/wallets/new" && (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-black/80">
               <p>目前還沒有錢包。</p>
-              <p>請先在後端建立或之後新增建立錢包的介面。</p>
+              <p>請點選上方「新增錢包」來建立第一個錢包。</p>
             </div>
           )}
-          {!walletsLoading && wallets.length > 0 && children}
+          {(pathname === "/wallets/new" || !walletsLoading && wallets.length > 0) && children}
         </main>
       </div>
     </div>

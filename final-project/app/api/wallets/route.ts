@@ -106,18 +106,27 @@ export async function POST(req: Request) {
     const {
       name,
       defaultCurrency,
+      description,
       setAsDefault,
+      walletType,
+      invitedUserIds,
     }: {
       name?: string;
       defaultCurrency?: string;
+      description?: string;
       setAsDefault?: boolean;
+      walletType?: "PERSONAL" | "GROUP";
+      invitedUserIds?: string[];
     } = body;
 
     const result = await createWalletAction({
       name: name || "",
-          defaultCurrency,
+      defaultCurrency,
+      description,
       setAsDefault,
-      });
+      walletType,
+      invitedUserIds,
+    });
 
     if (!result.success) {
       const status =

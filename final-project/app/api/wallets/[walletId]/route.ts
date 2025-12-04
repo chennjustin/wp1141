@@ -144,14 +144,20 @@ export async function PATCH(req: Request, context: RouteContext) {
     const {
       name,
       defaultCurrency,
+      description,
+      note,
     }: {
       name?: string;
       defaultCurrency?: string;
+      description?: string;
+      note?: string;
     } = body;
 
     const result = await updateWalletAction(walletId, {
       name,
       defaultCurrency,
+      description,
+      note,
     });
 
     if (!result.success) {
@@ -161,7 +167,8 @@ export async function PATCH(req: Request, context: RouteContext) {
           : result.error === "Only wallet owner can update this wallet"
           ? 403
           : result.error === "No fields provided to update" ||
-            result.error === "No valid fields provided to update"
+            result.error === "No valid fields provided to update" ||
+            result.error === "Note must not exceed 50 characters"
           ? 400
           : 500;
       return NextResponse.json({ error: result.error }, { status });

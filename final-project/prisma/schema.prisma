@@ -37,6 +37,7 @@ model User {
   sessions Session[]
 
   walletUsers         WalletUser[]
+  pinnedWallets       UserPinnedWallet[]
   createdTransactions Transaction[]      @relation("UserCreatedTransactions")
   transactionPayers   TransactionPayer[]
   transactionShares   TransactionShare[]
@@ -86,6 +87,7 @@ model Wallet {
   id              String   @id @default(cuid())
   name            String
   defaultCurrency String   @default("TWD")
+  description     String?  @db.Text
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -93,6 +95,7 @@ model Wallet {
   isDeleted Boolean @default(false)
 
   members       WalletUser[]
+  pinnedByUsers UserPinnedWallet[]
   transactions  Transaction[]
   subscriptions Subscription[]
 
@@ -106,6 +109,7 @@ model WalletUser {
   walletId String
   userId   String
   role     WalletRole @default(MEMBER)
+  status   WalletUserStatus @default(OWNER)
 
   // Soft delete flag for wallet membership records
   isDeleted Boolean @default(false)
@@ -116,10 +120,35 @@ model WalletUser {
   @@unique([walletId, userId])
 }
 
+model UserPinnedWallet {
+  id String @id @default(cuid())
+
+  userId   String
+  walletId String
+  order    Int @default(0) // Order for displaying pinned wallets
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, walletId])
+  @@index([userId])
+  @@index([userId, order])
+}
+
 enum WalletRole {
   OWNER
   MEMBER
   VIEWER
+}
+
+enum WalletUserStatus {
+  OWNER
+  PENDING
+  ACCEPTED
+  REJECTED
 }
 
 // =========================================================
@@ -269,6 +298,7 @@ enum NotificationType {
   REPAYMENT
   SUBSCRIPTION_REMINDER
   SHARED_WALLET_UPDATE
+  WALLET_INVITATION
 }
 
 // =========================================================
