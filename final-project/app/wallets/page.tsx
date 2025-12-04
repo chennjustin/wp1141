@@ -5,6 +5,7 @@ import { MonthlySummarySection } from "@/ui/components/wallet/MonthlySummarySect
 import { CarrierSection } from "@/ui/components/wallet/CarrierSection";
 import { DailyTransactionsSection } from "@/ui/components/wallet/DailyTransactionsSection";
 import { FloatingAddButton } from "@/ui/components/wallet/FloatingAddButton";
+import { WalletHomeLoading } from "@/ui/components/wallet/WalletHomeLoading";
 
 /**
  * Wallet home page.
@@ -39,12 +40,20 @@ export default function WalletHomePage() {
     brightCarrier,
     setBrightCarrier,
     
+    // Loading state
+    isInitialLoading,
+    
     // Handlers
     handleAddTransaction,
     
     // Wallet data
     activeWallet,
   } = useWalletHome();
+
+  // Show loading state while initial data is being fetched
+  if (isInitialLoading) {
+    return <WalletHomeLoading />;
+  }
 
   return (
     <div className="flex h-full flex-col gap-4">

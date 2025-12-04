@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useWallets } from "@/hooks/useWallet";
 import { useUserCarrier } from "@/hooks/useCarrier";
@@ -29,7 +29,7 @@ export interface DisplayTransaction {
  */
 export function useWalletHome() {
   const router = useRouter();
-  const { wallets } = useWallets();
+  const { wallets, loading: walletsLoading } = useWallets();
   const { carrier, loading: carrierLoading } = useUserCarrier();
 
   // For now we treat the first wallet as the active wallet on this page
@@ -37,6 +37,11 @@ export function useWalletHome() {
 
   const [showAmounts, setShowAmounts] = useState(true);
   const [brightCarrier, setBrightCarrier] = useState(true);
+  
+  // Track loading state with minimum display time (0.3 seconds)
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const loadingStartTimeRef = useRef<number | null>(null);
+  const minLoadingTime = 300; // 0.3 seconds in milliseconds
 
   const today = useMemo(() => new Date(), []);
   const year = today.getFullYear();
@@ -103,9 +108,41 @@ export function useWalletHome() {
     router.push(`/wallets/${activeWallet.id}/transactions/new`);
   };
 
+  // Manage loading state with minimum display time
+  useEffect(() => {
+    if (walletsLoading) {
+      // Start loading
+      if (loadingStartTimeRef.current === null) {
+        loadingStartTimeRef.current = Date.now();
+        setIsInitialLoading(true);
+      }
+    } else {
+      // Loading finished, check if minimum time has passed
+      if (loadingStartTimeRef.current !== null) {
+        const elapsedTime = Date.now() - loadingStartTimeRef.current;
+        const remainingTime = Math.max(0, minLoadingTime - elapsedTime);
+        
+        if (remainingTime > 0) {
+          // Wait for remaining time before hiding loading
+          const timer = setTimeout(() => {
+            setIsInitialLoading(false);
+            loadingStartTimeRef.current = null;
+          }, remainingTime);
+          
+          return () => clearTimeout(timer);
+        } else {
+          // Minimum time already passed, hide loading immediately
+          setIsInitialLoading(false);
+          loadingStartTimeRef.current = null;
+        }
+      }
+    }
+  }, [walletsLoading, minLoadingTime]);
+
   return {
     // Wallet data
     activeWallet,
+    walletsLoading,
     
     // Carrier data
     carrier,
@@ -131,6 +168,9 @@ export function useWalletHome() {
     setShowAmounts,
     brightCarrier,
     setBrightCarrier,
+    
+    // Loading state
+    isInitialLoading,
     
     // Handlers
     handleAddTransaction,

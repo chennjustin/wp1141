@@ -448,18 +448,19 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
 
         {/* Main content area */}
         <main className="flex-1 pb-16 px-4">
-          {walletsLoading && pathname !== "/wallets/new" && (
+          {/* Don't show loading for /wallets page - it handles its own loading */}
+          {walletsLoading && pathname !== "/wallets/new" && pathname !== "/wallets" && (
             <div className="flex h-full items-center justify-center text-sm text-black/80">
               Loading wallets...
             </div>
           )}
-          {!walletsLoading && wallets.length === 0 && pathname !== "/wallets/new" && (
+          {!walletsLoading && wallets.length === 0 && pathname !== "/wallets/new" && pathname !== "/wallets" && (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-black/80">
               <p>目前還沒有錢包。</p>
               <p>請點選上方「新增錢包」來建立第一個錢包。</p>
             </div>
           )}
-          {(pathname === "/wallets/new" || !walletsLoading && wallets.length > 0) && children}
+          {(pathname === "/wallets/new" || pathname === "/wallets" || (!walletsLoading && wallets.length > 0)) && children}
         </main>
       </div>
     </div>
