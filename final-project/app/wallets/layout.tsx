@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useMemo, useState } from "react";
+import { ReactNode, useMemo, useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useUser } from "@/hooks/useUser";
@@ -26,6 +26,42 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isWalletSelectorOpen, setIsWalletSelectorOpen] = useState(false);
   const [currentWalletId, setCurrentWalletId] = useState<string | null>(null);
+  
+  // Track last updated wallet ID to avoid duplicate updates
+  const lastUpdatedWalletIdRef = useRef<string | null>(null);
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Initialize currentWalletId from URL pathname or session defaultWalletId
+  useEffect(() => {
+    if (wallets.length === 0 || walletsLoading) return;
+
+    // Extract walletId from pathname (e.g., /wallets/abc123 -> abc123)
+    const pathParts = pathname.split("/").filter(Boolean);
+    const walletIdFromPath = pathParts.length >= 2 && pathParts[0] === "wallets" 
+      ? pathParts[1] 
+      : null;
+
+    // Use walletId from URL if available and valid
+    if (walletIdFromPath && wallets.some(w => w.id === walletIdFromPath)) {
+      if (currentWalletId !== walletIdFromPath) {
+        setCurrentWalletId(walletIdFromPath);
+      }
+      return;
+    }
+
+    // Otherwise, use defaultWalletId from session if available
+    if (session?.user?.defaultWalletId && wallets.some(w => w.id === session.user.defaultWalletId)) {
+      if (currentWalletId !== session.user.defaultWalletId) {
+        setCurrentWalletId(session.user.defaultWalletId);
+      }
+      return;
+    }
+
+    // Fallback to first wallet
+    if (wallets.length > 0 && wallets[0].id !== currentWalletId) {
+      setCurrentWalletId(wallets[0].id);
+    }
+  }, [pathname, wallets, walletsLoading, session?.user?.defaultWalletId, currentWalletId]);
 
   const currentWallet: Wallet | null = useMemo(() => {
     if (!wallets || wallets.length === 0) {
@@ -37,6 +73,91 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
 
     return wallets[0];
   }, [wallets, currentWalletId]);
+
+  // Update defaultWalletId when currentWalletId changes
+  useEffect(() => {
+    // Get the actual wallet ID from currentWallet
+    const walletId = currentWallet?.id ?? null;
+    
+    // Skip if no wallet, no session, or wallet hasn't changed
+    if (!walletId || !session?.user?.id || walletId === lastUpdatedWalletIdRef.current) {
+      return;
+    }
+
+    // Clear existing timeout
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current);
+    }
+
+    // Debounce the update to avoid excessive API calls
+    updateTimeoutRef.current = setTimeout(async () => {
+      try {
+        const response = await fetch("/api/users/default-wallet", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ walletId }),
+        });
+
+        if (response.ok) {
+          lastUpdatedWalletIdRef.current = walletId;
+        } else {
+          console.error("Failed to update default wallet:", await response.text());
+        }
+      } catch (error) {
+        console.error("Error updating default wallet:", error);
+      }
+    }, 500); // 500ms debounce
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+    };
+  }, [currentWallet?.id, session?.user?.id]);
+
+  // Backup mechanism: update defaultWalletId on page unload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const walletId = currentWallet?.id;
+      if (!walletId || !session?.user?.id || walletId === lastUpdatedWalletIdRef.current) {
+        return;
+      }
+
+      // Use sendBeacon for reliable delivery during page unload
+      // Note: sendBeacon only supports POST, so we use POST method
+      const data = JSON.stringify({ walletId });
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(
+          "/api/users/default-wallet",
+          new Blob([data], { type: "application/json" })
+        );
+      } else {
+        // Fallback to fetch if sendBeacon is not available
+        fetch("/api/users/default-wallet", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: data,
+          keepalive: true,
+        }).catch(() => {
+          // Ignore errors during page unload
+        });
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") {
+        handleBeforeUnload();
+      }
+    });
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [currentWallet?.id, session?.user?.id]);
 
   const currentRole: WalletMember["role"] | null = useMemo(() => {
     if (!currentWallet || !profile) return null;
