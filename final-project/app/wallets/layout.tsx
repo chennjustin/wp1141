@@ -246,8 +246,17 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
   }
 
   const handleWalletChange = (walletId: string) => {
-    // Navigate to the wallet's default page
-    router.push(`/wallets/${walletId}`);
+    // Find the wallet to check if it's "My Wallet"
+    const wallet = wallets.find(w => w.id === walletId);
+    
+    // If it's "My Wallet" (我的錢包), navigate to root wallets page
+    // Otherwise, navigate to the wallet's detail page
+    if (wallet?.name === "我的錢包") {
+      router.push("/wallets");
+    } else {
+      router.push(`/wallets/${walletId}`);
+    }
+    
     // Note: setIsWalletSelectorOpen(false) will be called automatically
     // by the pathname change effect, but we can also close it immediately
     setIsWalletSelectorOpen(false);
