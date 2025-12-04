@@ -109,6 +109,7 @@ export const walletRepository = {
         name: data.name,
         defaultCurrency: data.defaultCurrency || "TWD",
         description: data.description || null,
+        note: data.note || null,
       },
     });
   },
@@ -199,6 +200,9 @@ export const walletRepository = {
     }
     if (data.description !== undefined) {
       updateData.description = data.description.trim() || null;
+    }
+    if (data.note !== undefined) {
+      updateData.note = data.note.trim() || null;
     }
 
     return prisma.wallet.update({

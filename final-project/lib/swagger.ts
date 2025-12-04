@@ -102,6 +102,19 @@ const swaggerDefinition = {
             default: "TWD",
             example: "TWD",
           },
+          description: {
+            type: "string",
+            nullable: true,
+            description: "Wallet description",
+            example: "My personal expense wallet",
+          },
+          note: {
+            type: "string",
+            nullable: true,
+            maxLength: 50,
+            description: "Short note for the wallet (max 50 characters)",
+            example: "Main wallet",
+          },
           createdAt: {
             type: "string",
             format: "date-time",
@@ -183,6 +196,17 @@ const swaggerDefinition = {
             example: "TWD",
             default: "TWD",
           },
+          description: {
+            type: "string",
+            description: "Wallet description",
+            example: "My personal expense wallet",
+          },
+          note: {
+            type: "string",
+            maxLength: 50,
+            description: "Short note for the wallet (max 50 characters)",
+            example: "Main wallet",
+          },
           setAsDefault: {
             type: "boolean",
             description: "Set as user's default wallet",
@@ -203,6 +227,17 @@ const swaggerDefinition = {
             type: "string",
             description: "Default currency code",
             example: "USD",
+          },
+          description: {
+            type: "string",
+            description: "Wallet description",
+            example: "Updated wallet description",
+          },
+          note: {
+            type: "string",
+            maxLength: 50,
+            description: "Short note for the wallet (max 50 characters)",
+            example: "Updated note",
           },
         },
       },

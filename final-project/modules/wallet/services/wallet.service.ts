@@ -72,8 +72,17 @@ export const walletService = {
     const trimmedName = data.name.trim();
     const defaultCurrency = data.defaultCurrency || DEFAULT_CURRENCY;
     const description = data.description?.trim() || null;
+    const note = data.note?.trim() || null;
     const walletType = data.walletType || "PERSONAL";
     const invitedUserIds = data.invitedUserIds || [];
+
+    // Validate note length if provided
+    if (note !== null && note.length > 50) {
+      return {
+        success: false,
+        error: "Note must not exceed 50 characters",
+      };
+    }
 
     // Validate wallet type
     if (walletType !== "PERSONAL" && walletType !== "GROUP") {
@@ -122,6 +131,7 @@ export const walletService = {
             name: trimmedName,
             defaultCurrency,
             description,
+            note,
           },
         });
 
@@ -242,7 +252,8 @@ export const walletService = {
     if (
       (data.name === undefined || data.name === null) &&
       (data.defaultCurrency === undefined || data.defaultCurrency === null) &&
-      (data.description === undefined || data.description === null)
+      (data.description === undefined || data.description === null) &&
+      (data.note === undefined || data.note === null)
     ) {
       return {
         success: false,
@@ -267,6 +278,18 @@ export const walletService = {
       updateData.description = typeof data.description === "string" 
         ? data.description.trim() || undefined 
         : undefined;
+    }
+
+    if (data.note !== undefined) {
+      const trimmedNote = typeof data.note === "string" ? data.note.trim() : "";
+      // Validate note length if provided
+      if (trimmedNote.length > 50) {
+        return {
+          success: false,
+          error: "Note must not exceed 50 characters",
+        };
+      }
+      updateData.note = trimmedNote || undefined;
     }
 
     if (Object.keys(updateData).length === 0) {

@@ -54,6 +54,7 @@ export interface Wallet {
   name: string;
   defaultCurrency: string;
   description?: string | null;
+  note?: string | null;
   createdAt: Date;
   updatedAt: Date;
   isDeleted: boolean;
@@ -72,6 +73,7 @@ export interface CreateWalletData {
   name: string;
   defaultCurrency?: string;
   description?: string;
+  note?: string;
   setAsDefault?: boolean;
   walletType?: WalletType;
   invitedUserIds?: string[];
@@ -84,6 +86,7 @@ export interface UpdateWalletData {
   name?: string;
   defaultCurrency?: string;
   description?: string;
+  note?: string;
 }
 
 /**
