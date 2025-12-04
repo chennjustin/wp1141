@@ -159,6 +159,7 @@ enum WalletUserStatus {
 model Tag {
   id   String @id @default(cuid())
   name String @unique
+  type TagType @default(EXPENSE)
 
   // system user or normal user (NOT NULL)
   createdBy String
@@ -175,6 +176,11 @@ model Tag {
   creator User @relation("UserCreatedTags", fields: [createdBy], references: [id])
 
   transactions Transaction[]
+}
+
+enum TagType {
+  EXPENSE
+  INCOME
 }
 
 // =========================================================

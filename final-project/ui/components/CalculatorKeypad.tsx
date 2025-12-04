@@ -60,7 +60,7 @@ export function CalculatorKeypad({
   };
 
   return (
-    <div className="mt-auto shrink-0 bg-[#D2D2D2] pb-0 pt-10">
+    <div className="mt-auto shrink-0 pb-0 pt-10">
       {/* Keypad: 5 columns */}
       <div className="grid grid-cols-5 gap-2 pb-1">
         {/* Row 1: 7, 8, 9, ÷, AC */}

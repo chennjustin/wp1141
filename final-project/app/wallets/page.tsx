@@ -4,7 +4,6 @@ import React, { useState, useRef, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useWallets } from "@/hooks/useWallet";
 import { useUserCarrier } from "@/hooks/useCarrier";
-import JsBarcode from "jsbarcode";
 import { useMonthlySummary } from "@/hooks/useMonthlySummary";
 import { useDailyTransactions } from "@/hooks/useDailyTransactions";
 
@@ -25,8 +24,8 @@ export default function WalletHomePage() {
 
   // Debug log
   useEffect(() => {
-    console.log("WalletHomePage - wallets:", wallets, "activeWallet:", activeWallet, "loading:", loading);
-  }, [wallets, activeWallet, loading]);
+    console.log("WalletHomePage - wallets:", wallets, "activeWallet:", activeWallet);
+  }, [wallets, activeWallet]);
 
   const [showAmounts, setShowAmounts] = useState(true);
   const [brightCarrier, setBrightCarrier] = useState(true);
@@ -141,27 +140,35 @@ export default function WalletHomePage() {
   // Generate real barcode when carrier is available
   useEffect(() => {
     if (hasRealCarrier && barcodeRef.current && carrierCode) {
-      try {
-        // Clear previous barcode
-        barcodeRef.current.innerHTML = "";
-        
-        JsBarcode(barcodeRef.current, carrierCode, {
-          format: "CODE39",
-          height: barcodeHeight,
-          displayValue: false, // Don't show text below barcode (text is shown separately)
-          background: "transparent",
-          lineColor: brightCarrier ? "#000000" : "#FFFFFF",
-          width: 2, // Standard width for Code 128
-          margin: 10, // Adequate margin for scanning
-          valid: function(valid) {
-            if (!valid) {
-              console.error("Invalid barcode data:", carrierCode);
-            }
-          },
-        });
-      } catch (error) {
-        console.error("Error generating barcode:", error);
-      }
+      // Dynamically import jsbarcode to avoid SSR issues
+      import("jsbarcode").then((JsBarcodeModule) => {
+        try {
+          // Clear previous barcode
+          if (barcodeRef.current) {
+            barcodeRef.current.innerHTML = "";
+            
+            const JsBarcode = JsBarcodeModule.default || JsBarcodeModule;
+            JsBarcode(barcodeRef.current, carrierCode, {
+              format: "CODE39",
+              height: barcodeHeight,
+              displayValue: false, // Don't show text below barcode (text is shown separately)
+              background: "transparent",
+              lineColor: brightCarrier ? "#000000" : "#FFFFFF",
+              width: 2, // Standard width for Code 128
+              margin: 10, // Adequate margin for scanning
+              valid: function(valid: boolean) {
+                if (!valid) {
+                  console.error("Invalid barcode data:", carrierCode);
+                }
+              },
+            });
+          }
+        } catch (error) {
+          console.error("Error generating barcode:", error);
+        }
+      }).catch((error) => {
+        console.error("Error loading jsbarcode:", error);
+      });
     }
   }, [hasRealCarrier, carrierCode, brightCarrier, barcodeHeight]);
 

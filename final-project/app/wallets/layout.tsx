@@ -318,6 +318,7 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
       <div className="relative flex min-h-[calc(100vh-2rem)] w-full max-w-sm flex-col border-[3px] border-black bg-[#E8E8E8] rounded-[3rem] overflow-clip">
         {/* Header */}
         {!isNewTransactionPage && (
+        <>
         <header className="relative mb-4 flex items-center justify-between bg-[#E8E8E8] px-4 py-3">
           {/* Left: main menu toggle */}
           <button
@@ -405,6 +406,8 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
               </div>
             </div>
           </>
+        )}
+        </>
         )}
 
         {/* Side menu overlay */}

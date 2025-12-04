@@ -7,6 +7,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import { NotificationType } from "@prisma/client";
 
 /**
  * Notification repository interface
@@ -17,7 +18,7 @@ export const notificationRepository = {
    */
   async create(
     userId: string,
-    type: "REPAYMENT" | "SUBSCRIPTION_REMINDER" | "SHARED_WALLET_UPDATE" | "WALLET_INVITATION",
+    type: NotificationType,
     message: string
   ) {
     return prisma.notification.create({
@@ -48,7 +49,7 @@ export const notificationRepository = {
     return prisma.notification.updateMany({
       where: {
         userId,
-        type: "WALLET_INVITATION",
+        type: NotificationType.WALLET_INVITATION,
         isRead: false,
         isDeleted: false,
         message: {

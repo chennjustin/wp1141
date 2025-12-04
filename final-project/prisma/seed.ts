@@ -12,7 +12,7 @@
  */
 
 import { PrismaClient } from "@prisma/client";
-import { SYSTEM_USER_ID, DEFAULT_SYSTEM_TAGS } from "../config/constants";
+import { SYSTEM_USER_ID, DEFAULT_SYSTEM_TAGS, DEFAULT_SYSTEM_INCOME_TAGS } from "../config/constants";
 import { tagRepository } from "../modules/tag/repositories/tag.repository";
 
 const prisma = new PrismaClient();
@@ -93,6 +93,29 @@ async function main() {
       createdBy: user1.id,
     },
   });
+
+  // Create custom income tags
+  const customIncomeTag1 = await prisma.tag.upsert({
+    where: { name: "custom-income-tag-1" },
+    update: {},
+    create: {
+      name: "custom-income-tag-1",
+      createdBy: user1.id,
+    },
+  });
+
+  const customIncomeTag2 = await prisma.tag.upsert({
+    where: { name: "custom-income-tag-2" },
+    update: {},
+    create: {
+      name: "custom-income-tag-2",
+      createdBy: user1.id,
+    },
+  });
+
+  // Update custom tags to have correct types
+  await prisma.$executeRaw`UPDATE "Tag" SET type = 'EXPENSE' WHERE name IN ('custom-tag-1', 'custom-tag-2')`;
+  await prisma.$executeRaw`UPDATE "Tag" SET type = 'INCOME' WHERE name IN ('custom-income-tag-1', 'custom-income-tag-2')`;
   console.log("✅ Custom tags created");
 
   // Create wallets with simple IDs
@@ -432,8 +455,12 @@ async function main() {
   console.log("✅ Transactions, payers, and shares created");
 
   // Count all tags
-  const tagCount = await prisma.tag.count({
-    where: { isDeleted: false },
+  const expenseTagCount = await prisma.tag.count({
+    where: { isDeleted: false, type: "EXPENSE" },
+  });
+
+  const incomeTagCount = await prisma.tag.count({
+    where: { isDeleted: false, type: "INCOME" },
   });
 
   console.log("\n📊 Seed Summary:");
@@ -441,7 +468,9 @@ async function main() {
   console.log(`- Wallets: ${wallet1.name}, ${wallet2.name}, ${wallet3.name}`);
   console.log(`- Carriers: ${carrier1.carrierCode} (${user1.userID}), ${carrier2.carrierCode} (${user2.userID})`);
   console.log(`- Transactions: 5 transactions created`);
-  console.log(`- Tags: ${tagCount} total tags (${DEFAULT_SYSTEM_TAGS.length} system tags + 2 custom tags)`);
+  console.log(`- Tags: ${expenseTagCount + incomeTagCount} total tags`);
+  console.log(`  - Expense tags: ${expenseTagCount} (${DEFAULT_SYSTEM_TAGS.length} system + custom)`);
+  console.log(`  - Income tags: ${incomeTagCount} (${DEFAULT_SYSTEM_INCOME_TAGS.length} system + custom)`);
   console.log("\n✅ Seed completed successfully!");
 }
 

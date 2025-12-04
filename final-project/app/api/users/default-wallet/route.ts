@@ -80,7 +80,7 @@ async function handleRequest(req: Request) {
         { 
           success: true, 
           walletId,
-          pinnedWalletIds: pinnedWallets.map(p => p.walletId),
+          pinnedWalletIds: pinnedWallets.map((p: { walletId: string }) => p.walletId),
         },
         { status: 200 }
       );
@@ -113,7 +113,7 @@ async function handleRequest(req: Request) {
       { 
         success: true, 
         walletId,
-        pinnedWalletIds: pinnedWallets.map(p => p.walletId),
+        pinnedWalletIds: pinnedWallets.map((p: { walletId: string }) => p.walletId),
       },
       { status: 200 }
     );
@@ -187,7 +187,7 @@ export async function DELETE(req: Request) {
       { 
         success: true, 
         walletId: null,
-        pinnedWalletIds: pinnedWallets.map(p => p.walletId),
+        pinnedWalletIds: pinnedWallets.map((p: { walletId: string }) => p.walletId),
       },
       { status: 200 }
     );
@@ -220,7 +220,7 @@ export async function GET() {
     return NextResponse.json(
       { 
         success: true,
-        pinnedWalletIds: pinnedWallets.map(p => p.walletId),
+        pinnedWalletIds: pinnedWallets.map((p: { walletId: string }) => p.walletId),
       },
       { status: 200 }
     );

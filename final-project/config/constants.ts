@@ -59,6 +59,13 @@ export const DEFAULT_SYSTEM_TAGS = [
   "other",
 ] as const;
 
+export const DEFAULT_SYSTEM_INCOME_TAGS = [
+  "salary",
+  "bonus",
+  "investment",
+  "gift"
+] as const;
+
 /**
  * System tag ID mapping
  * Maps system tag names to their fixed IDs
@@ -74,5 +81,12 @@ export const SYSTEM_TAG_IDS: Record<(typeof DEFAULT_SYSTEM_TAGS)[number], string
   education: "system-tag-education",
   travel: "system-tag-travel",
   other: "system-tag-other",
+} as const;
+
+export const SYSTEM_INCOME_TAG_IDS: Record<(typeof DEFAULT_SYSTEM_INCOME_TAGS)[number], string> = {
+  salary: "system-tag-salary",
+  bonus: "system-tag-bonus",
+  investment: "system-tag-investment",
+  gift: "system-tag-gift"
 } as const;
 

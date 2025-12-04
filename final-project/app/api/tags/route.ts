@@ -120,7 +120,7 @@ export async function GET(req: Request) {
  * /api/tags:
  *   post:
  *     summary: Create a new tag
- *     description: Create a new tag. Tag name must be unique. Users can only create their own tags.
+ *     description: Create a new tag. Tag name must be unique. Users can only create their own tags. Tag type can be EXPENSE or INCOME (defaults to EXPENSE).
  *     tags:
  *       - Tags
  *     security:

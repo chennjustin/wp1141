@@ -86,7 +86,7 @@ export async function GET(_req: Request, context: RouteContext) {
  * /api/tags/{tagId}:
  *   patch:
  *     summary: Update tag
- *     description: Update tag information. Only the user who created the tag can update it. System tags cannot be updated.
+ *     description: Update tag information. Only the user who created the tag can update it. System tags cannot be updated. Can update tag name and type (EXPENSE or INCOME).
  *     tags:
  *       - Tags
  *     security:

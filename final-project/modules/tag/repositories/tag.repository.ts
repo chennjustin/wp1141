@@ -11,6 +11,8 @@ import {
   SYSTEM_USER_ID,
   DEFAULT_SYSTEM_TAGS,
   SYSTEM_TAG_IDS,
+  DEFAULT_SYSTEM_INCOME_TAGS,
+  SYSTEM_INCOME_TAG_IDS,
 } from "@/config/constants";
 import type { CreateTagData, UpdateTagData, TagFilters } from "../domain/tag.types";
 
@@ -179,8 +181,12 @@ export const tagRepository = {
   /**
    * Create a single system tag with fixed ID
    */
-  async createSystemTag(name: (typeof DEFAULT_SYSTEM_TAGS)[number]) {
-    const tagId = SYSTEM_TAG_IDS[name];
+  async createSystemTag(
+    name: (typeof DEFAULT_SYSTEM_TAGS)[number] | (typeof DEFAULT_SYSTEM_INCOME_TAGS)[number],
+    type: "EXPENSE" | "INCOME" = "EXPENSE"
+  ) {
+    const tagId = SYSTEM_TAG_IDS[name as keyof typeof SYSTEM_TAG_IDS] || 
+                  SYSTEM_INCOME_TAG_IDS[name as keyof typeof SYSTEM_INCOME_TAG_IDS];
     if (!tagId) {
       throw new Error(`No fixed ID defined for system tag: ${name}`);
     }
@@ -207,9 +213,25 @@ export const tagRepository = {
           data: {
             id: tagId,
             name,
+            type: type as any,
             createdBy: SYSTEM_USER_ID,
             isDeleted: false,
+          } as any,
+          include: {
+            creator: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
+        });
+      }
+      // Update type if it doesn't match (check if type property exists)
+      if ((existingTag as any).type !== type) {
+        return prisma.tag.update({
+          where: { id: existingTag.id },
+          data: { type: type as any } as any,
           include: {
             creator: {
               select: {
@@ -228,8 +250,9 @@ export const tagRepository = {
       data: {
         id: tagId,
         name,
+        type: type as any,
         createdBy: SYSTEM_USER_ID,
-      },
+      } as any,
       include: {
         creator: {
           select: {
@@ -249,9 +272,14 @@ export const tagRepository = {
     // Ensure system user exists first
     await ensureSystemUserExists();
 
-    // Create all system tags using the function
+    // Create all expense system tags
     await Promise.all(
-      DEFAULT_SYSTEM_TAGS.map((name) => this.createSystemTag(name))
+      DEFAULT_SYSTEM_TAGS.map((name) => this.createSystemTag(name, "EXPENSE"))
+    );
+
+    // Create all income system tags
+    await Promise.all(
+      DEFAULT_SYSTEM_INCOME_TAGS.map((name) => this.createSystemTag(name, "INCOME"))
     );
   },
 };
