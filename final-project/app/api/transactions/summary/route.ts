@@ -20,6 +20,7 @@ import type { MonthlySummaryFilters } from "@/modules/transaction/domain/transac
  *         required: true
  *         schema:
  *           type: string
+ *           example: "wallet-1"
  *         description: Wallet ID
  *       - in: query
  *         name: year
@@ -28,6 +29,7 @@ import type { MonthlySummaryFilters } from "@/modules/transaction/domain/transac
  *           type: integer
  *           minimum: 2000
  *           maximum: 2100
+ *           example: 2024
  *         description: Year (e.g., 2024)
  *       - in: query
  *         name: month
@@ -36,6 +38,7 @@ import type { MonthlySummaryFilters } from "@/modules/transaction/domain/transac
  *           type: integer
  *           minimum: 1
  *           maximum: 12
+ *           example: 11
  *         description: Month (1-12)
  *       - in: query
  *         name: targetCurrency
@@ -43,6 +46,7 @@ import type { MonthlySummaryFilters } from "@/modules/transaction/domain/transac
  *         schema:
  *           type: string
  *           default: TWD
+ *           example: "TWD"
  *         description: Target currency for conversion (defaults to TWD/NTD)
  *     responses:
  *       200:

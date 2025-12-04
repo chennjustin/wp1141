@@ -34,10 +34,10 @@ async function main() {
 
   // Create regular users with simple IDs
   const user1 = await prisma.user.upsert({
-    where: { id: "2" },
+    where: { id: "user-1" },
     update: {},
     create: {
-      id: "2",
+      id: "user-1",
       userID: "user1",
       name: "User One",
       email: "user1@example.com",
@@ -46,10 +46,10 @@ async function main() {
   });
 
   const user2 = await prisma.user.upsert({
-    where: { id: "3" },
+    where: { id: "user-2" },
     update: {},
     create: {
-      id: "3",
+      id: "user-2",
       userID: "user2",
       name: "User Two",
       email: "user2@example.com",
@@ -97,67 +97,87 @@ async function main() {
 
   // Create wallets with simple IDs
   const wallet1 = await prisma.wallet.upsert({
-    where: { id: "1" },
+    where: { id: "wallet-1" },
     update: {},
     create: {
-      id: "1",
+      id: "wallet-1",
       name: "Personal Wallet",
       defaultCurrency: "TWD",
-      members: {
-        create: [
-          {
-            userId: user1.id,
-            role: "OWNER",
-          },
-        ],
-      },
-    } as any,
+    },
   });
 
   const wallet2 = await prisma.wallet.upsert({
-    where: { id: "2" },
+    where: { id: "wallet-2" },
     update: {},
     create: {
-      id: "2",
+      id: "wallet-2",
       name: "Shared Wallet",
       defaultCurrency: "USD",
-      members: {
-        create: [
-          {
-            userId: user1.id,
-            role: "OWNER",
-          },
-          {
-            userId: user2.id,
-            role: "MEMBER",
-          },
-        ],
-      },
-    } as any,
+    },
   });
 
   const wallet3 = await prisma.wallet.upsert({
-    where: { id: "3" },
+    where: { id: "wallet-3" },
     update: {},
     create: {
-      id: "3",
+      id: "wallet-3",
       name: "Business Wallet",
       defaultCurrency: "TWD",
-      members: {
-        create: [
-          {
-            userId: user2.id,
-            role: "OWNER",
-          },
-        ],
-      },
-    } as any,
+    },
   });
-  console.log("✅ Wallets created");
 
-  // Create transactions with payers and shares
-  const transaction1 = await prisma.transaction.create({
-    data: {
+  // Create wallet members with fixed IDs
+  await prisma.walletUser.upsert({
+    where: { id: "wallet-user-1" },
+    update: {},
+    create: {
+      id: "wallet-user-1",
+      walletId: wallet1.id,
+      userId: user1.id,
+      role: "OWNER",
+    },
+  });
+
+  await prisma.walletUser.upsert({
+    where: { id: "wallet-user-2" },
+    update: {},
+    create: {
+      id: "wallet-user-2",
+      walletId: wallet2.id,
+      userId: user1.id,
+      role: "OWNER",
+    },
+  });
+
+  await prisma.walletUser.upsert({
+    where: { id: "wallet-user-3" },
+    update: {},
+    create: {
+      id: "wallet-user-3",
+      walletId: wallet2.id,
+      userId: user2.id,
+      role: "MEMBER",
+    },
+  });
+
+  await prisma.walletUser.upsert({
+    where: { id: "wallet-user-4" },
+    update: {},
+    create: {
+      id: "wallet-user-4",
+      walletId: wallet3.id,
+      userId: user2.id,
+      role: "OWNER",
+    },
+  });
+  console.log("✅ Wallets and wallet members created");
+
+  // Create transactions with fixed IDs
+  const transaction1 = await prisma.transaction.upsert({
+    where: { id: "transaction-1" },
+    update: {},
+    create: {
+      id: "transaction-1",
       walletId: wallet1.id,
       createdById: user1.id,
       date: new Date("2024-11-15T10:00:00Z"),
@@ -168,27 +188,14 @@ async function main() {
       note: "Team lunch at restaurant",
       type: "EXPENSE",
       tagId: systemTags[0]!.id, // food
-      payers: {
-        create: [
-          {
-            payerId: user1.id,
-            paidAmount: 5000,
-          },
-        ],
-      },
-      shares: {
-        create: [
-          {
-            userId: user1.id,
-            shareAmount: 5000,
-          },
-        ],
-      },
     } as any,
   });
 
-  const transaction2 = await prisma.transaction.create({
-    data: {
+  const transaction2 = await prisma.transaction.upsert({
+    where: { id: "transaction-2" },
+    update: {},
+    create: {
+      id: "transaction-2",
       walletId: wallet2.id,
       createdById: user1.id,
       date: new Date("2024-11-20T14:30:00Z"),
@@ -199,31 +206,14 @@ async function main() {
       note: "Starbucks coffee",
       type: "EXPENSE" as any,
       tagId: systemTags[1]!.id, // drinks
-      payers: {
-        create: [
-          {
-            payerId: user1.id,
-            paidAmount: 100,
-          },
-        ],
-      },
-      shares: {
-        create: [
-          {
-            userId: user1.id,
-            shareAmount: 50,
-          },
-          {
-            userId: user2.id,
-            shareAmount: 50,
-          },
-        ],
-      },
     } as any,
   });
 
-  const transaction3 = await prisma.transaction.create({
-    data: {
+  const transaction3 = await prisma.transaction.upsert({
+    where: { id: "transaction-3" },
+    update: {},
+    create: {
+      id: "transaction-3",
       walletId: wallet1.id,
       createdById: user1.id,
       date: new Date("2024-11-25T09:00:00Z"),
@@ -234,27 +224,14 @@ async function main() {
       note: "Monthly salary",
       type: "INCOME" as any,
       tagId: customTag1.id,
-      payers: {
-        create: [
-          {
-            payerId: user1.id,
-            paidAmount: 50000,
-          },
-        ],
-      },
-      shares: {
-        create: [
-          {
-            userId: user1.id,
-            shareAmount: 50000,
-          },
-        ],
-      },
     } as any,
   });
 
-  const transaction4 = await prisma.transaction.create({
-    data: {
+  const transaction4 = await prisma.transaction.upsert({
+    where: { id: "transaction-4" },
+    update: {},
+    create: {
+      id: "transaction-4",
       walletId: wallet3.id,
       createdById: user2.id,
       date: new Date("2024-11-28T16:00:00Z"),
@@ -265,27 +242,14 @@ async function main() {
       note: "Cinema tickets for entertainment",
       type: "EXPENSE" as any,
       tagId: systemTags[2]!.id, // entertainment
-      payers: {
-        create: [
-          {
-            payerId: user2.id,
-            paidAmount: 2000,
-          },
-        ],
-      },
-      shares: {
-        create: [
-          {
-            userId: user2.id,
-            shareAmount: 2000,
-          },
-        ],
-      },
     } as any,
   });
 
-  const transaction5 = await prisma.transaction.create({
-    data: {
+  const transaction5 = await prisma.transaction.upsert({
+    where: { id: "transaction-5" },
+    update: {},
+    create: {
+      id: "transaction-5",
       walletId: wallet2.id,
       createdById: user2.id,
       date: new Date("2024-11-30T12:00:00Z"),
@@ -296,29 +260,143 @@ async function main() {
       note: "Group dinner",
       type: "EXPENSE",
       tagId: customTag2.id,
-      payers: {
-        create: [
-          {
-            payerId: user2.id,
-            paidAmount: 150,
-          },
-        ],
-      },
-      shares: {
-        create: [
-          {
-            userId: user1.id,
-            shareAmount: 50,
-          },
-          {
-            userId: user2.id,
-            shareAmount: 100,
-          },
-        ],
-      },
     } as any,
   });
-  console.log("✅ Transactions created with payers and shares");
+
+  // Create transaction payers with fixed IDs
+  await prisma.transactionPayer.upsert({
+    where: { id: "payer-1" },
+    update: {},
+    create: {
+      id: "payer-1",
+      transactionId: transaction1.id,
+      payerId: user1.id,
+      paidAmount: 5000,
+    },
+  });
+
+  await prisma.transactionPayer.upsert({
+    where: { id: "payer-2" },
+    update: {},
+    create: {
+      id: "payer-2",
+      transactionId: transaction2.id,
+      payerId: user1.id,
+      paidAmount: 100,
+    },
+  });
+
+  await prisma.transactionPayer.upsert({
+    where: { id: "payer-3" },
+    update: {},
+    create: {
+      id: "payer-3",
+      transactionId: transaction3.id,
+      payerId: user1.id,
+      paidAmount: 50000,
+    },
+  });
+
+  await prisma.transactionPayer.upsert({
+    where: { id: "payer-4" },
+    update: {},
+    create: {
+      id: "payer-4",
+      transactionId: transaction4.id,
+      payerId: user2.id,
+      paidAmount: 2000,
+    },
+  });
+
+  await prisma.transactionPayer.upsert({
+    where: { id: "payer-5" },
+    update: {},
+    create: {
+      id: "payer-5",
+      transactionId: transaction5.id,
+      payerId: user2.id,
+      paidAmount: 150,
+    },
+  });
+
+  // Create transaction shares with fixed IDs
+  await prisma.transactionShare.upsert({
+    where: { id: "share-1" },
+    update: {},
+    create: {
+      id: "share-1",
+      transactionId: transaction1.id,
+      userId: user1.id,
+      shareAmount: 5000,
+    },
+  });
+
+  await prisma.transactionShare.upsert({
+    where: { id: "share-2" },
+    update: {},
+    create: {
+      id: "share-2",
+      transactionId: transaction2.id,
+      userId: user1.id,
+      shareAmount: 50,
+    },
+  });
+
+  await prisma.transactionShare.upsert({
+    where: { id: "share-3" },
+    update: {},
+    create: {
+      id: "share-3",
+      transactionId: transaction2.id,
+      userId: user2.id,
+      shareAmount: 50,
+    },
+  });
+
+  await prisma.transactionShare.upsert({
+    where: { id: "share-4" },
+    update: {},
+    create: {
+      id: "share-4",
+      transactionId: transaction3.id,
+      userId: user1.id,
+      shareAmount: 50000,
+    },
+  });
+
+  await prisma.transactionShare.upsert({
+    where: { id: "share-5" },
+    update: {},
+    create: {
+      id: "share-5",
+      transactionId: transaction4.id,
+      userId: user2.id,
+      shareAmount: 2000,
+    },
+  });
+
+  await prisma.transactionShare.upsert({
+    where: { id: "share-6" },
+    update: {},
+    create: {
+      id: "share-6",
+      transactionId: transaction5.id,
+      userId: user1.id,
+      shareAmount: 50,
+    },
+  });
+
+  await prisma.transactionShare.upsert({
+    where: { id: "share-7" },
+    update: {},
+    create: {
+      id: "share-7",
+      transactionId: transaction5.id,
+      userId: user2.id,
+      shareAmount: 100,
+    },
+  });
+  console.log("✅ Transactions, payers, and shares created");
 
   // Count all tags
   const tagCount = await prisma.tag.count({
