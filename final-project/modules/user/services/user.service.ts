@@ -15,6 +15,7 @@ import type {
 } from "../domain/user.types";
 import { validateUserId, sanitizeUserId } from "../utils/userId";
 import { MAX_NAME_LENGTH } from "@/config/constants";
+import { walletService } from "@/modules/wallet/services/wallet.service";
 
 /**
  * User service interface
@@ -78,6 +79,23 @@ export const userService = {
       const user = await userRepository.updateById(currentUserId, {
         userID: sanitized,
       });
+
+      // Automatically create "我的錢包" (My Wallet) for new users
+      // Check if user already has any wallets
+      const existingWallets = await walletService.getUserWallets(currentUserId);
+      
+      // Only create if user has no wallets
+      if (existingWallets.length === 0) {
+        const walletResult = await walletService.createWallet(currentUserId, {
+          name: "我的錢包",
+          setAsDefault: true, // Set as default wallet
+        });
+
+        if (!walletResult.success) {
+          console.error("Failed to create default wallet for new user:", walletResult.error);
+          // Don't fail registration if wallet creation fails, just log the error
+        }
+      }
 
       return { success: true, data: user };
     } catch (error) {

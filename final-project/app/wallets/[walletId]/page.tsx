@@ -1,36 +1,45 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useWallets } from "@/hooks/useWallet";
+import { useState, useMemo } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { useWallet } from "@/hooks/useWallet";
 import { useMonthlySummary } from "@/hooks/useMonthlySummary";
 import { useDailyTransactions } from "@/hooks/useDailyTransactions";
+import { useUser } from "@/hooks/useUser";
+import { WalletRole } from "@/modules/wallet/domain/wallet.types";
 
 /**
- * Wallet home page.
- *
- * This page renders the main wallet overview according to the mobile-first
- * wireframe: monthly summary, carrier section, and daily transactions list
- * with a floating action button to add a new transaction.
+ * Wallet detail page
+ * 
+ * This page displays a specific wallet's overview including monthly summary,
+ * carrier section (for personal wallets only), and daily transactions list.
  */
-export default function WalletHomePage() {
+export default function WalletDetailPage() {
   const router = useRouter();
-  const { wallets, loading } = useWallets();
-
-  // For now we treat the first wallet as the active wallet on this page.
-  const activeWallet = wallets?.[0] ?? null;
-
-  // Debug log
-  useEffect(() => {
-    console.log("WalletHomePage - wallets:", wallets, "activeWallet:", activeWallet, "loading:", loading);
-  }, [wallets, activeWallet, loading]);
+  const params = useParams();
+  const walletId = params?.walletId as string | null;
+  const { wallet, loading: walletLoading } = useWallet(walletId);
+  const { profile } = useUser();
 
   const [showAmounts, setShowAmounts] = useState(true);
   const [brightCarrier, setBrightCarrier] = useState(true);
 
-  const today = new Date();
+  // Memoize today's date to prevent creating new Date object on every render
+  // This prevents infinite re-render loops in useDailyTransactions
+  const today = useMemo(() => new Date(), []);
   const year = today.getFullYear();
   const month = today.getMonth() + 1;
+
+  // Check if this is a personal wallet
+  const isPersonalWallet = useMemo(() => {
+    if (!wallet || !profile) return false;
+    return (
+      wallet.name === "我的錢包" ||
+      (wallet.members.length === 1 &&
+        wallet.members[0].userId === profile.id &&
+        wallet.members[0].role === WalletRole.OWNER)
+    );
+  }, [wallet, profile]);
 
   // Fetch monthly summary from API
   const {
@@ -38,10 +47,10 @@ export default function WalletHomePage() {
     loading: summaryLoading,
     error: summaryError,
   } = useMonthlySummary({
-    walletId: activeWallet?.id ?? null,
+    walletId: wallet?.id ?? null,
     year,
     month,
-    enabled: !!activeWallet,
+    enabled: !!wallet,
   });
 
   // Use API data if available, otherwise fallback to 0
@@ -54,23 +63,16 @@ export default function WalletHomePage() {
     loading: transactionsLoading,
     error: transactionsError,
   } = useDailyTransactions({
-    walletId: activeWallet?.id ?? null,
+    walletId: wallet?.id ?? null,
     date: today,
-    enabled: !!activeWallet,
+    enabled: !!wallet,
   });
 
   // Transform transactions for display
-  // Convert Transaction to UI format: { id, title, amount, time }
   const displayTransactions = useMemo(() => {
     return dailyTransactions.map((tx) => {
-      // Use transaction name or tag name as title
       const title = tx.name || tx.tag.name || "未命名交易";
-      
-      // Calculate display amount based on transaction type
-      // INCOME transactions are positive, EXPENSE transactions are negative
       const displayAmount = tx.type === "INCOME" ? tx.amount : -tx.amount;
-      
-      // Format time from transaction date (HH:mm format)
       const transactionDate = new Date(tx.date);
       const hours = transactionDate.getHours().toString().padStart(2, "0");
       const minutes = transactionDate.getMinutes().toString().padStart(2, "0");
@@ -89,35 +91,29 @@ export default function WalletHomePage() {
   const carrierCode = "/ABCDEF";
 
   // Generate barcode pattern from carrier code
-  // Barcode width:height ratio is 1:3.5, height is 64px (h-16), so width should be 224px
   const generateBarcodePattern = (code: string) => {
     const pattern: number[] = [];
     const minWidth = 2;
     const maxWidth = 5;
-    const gapWidth = 0.5; // gap between bars
-    const targetTotalWidth = 224; // 1:3.5 ratio with 64px height (64 * 3.5 = 224)
-    const numBars = Math.floor(code.length * 3.5); // Generate enough bars to fill width
+    const gapWidth = 0.5;
+    const targetTotalWidth = 224;
+    const numBars = Math.floor(code.length * 3.5);
     
     let currentWidth = 0;
     
-    // Generate pattern based on code characters
     for (let i = 0; i < numBars && currentWidth < targetTotalWidth; i++) {
       const charIndex = i % code.length;
       const char = code[charIndex];
       const charCode = char.charCodeAt(0);
-      // Generate width between min and max based on character code
       const width = minWidth + ((charCode + i) % (maxWidth - minWidth + 1));
       const roundedWidth = Math.round(width * 10) / 10;
       
-      // Calculate total width including gap (except for last bar)
       const widthWithGap = currentWidth + roundedWidth + (i < numBars - 1 ? gapWidth : 0);
       
-      // Ensure we don't exceed target width
       if (widthWithGap <= targetTotalWidth) {
         pattern.push(roundedWidth);
         currentWidth += roundedWidth + (i < numBars - 1 ? gapWidth : 0);
       } else {
-        // Add remaining width if there's space
         const remaining = targetTotalWidth - currentWidth;
         if (remaining > minWidth) {
           pattern.push(remaining);
@@ -130,23 +126,29 @@ export default function WalletHomePage() {
   };
 
   const barcodePattern = generateBarcodePattern(carrierCode);
-  const barcodeHeight = 64; // h-16 = 64px
-  const barcodeWidth = barcodeHeight * 3.5; // 224px for 1:3.5 ratio
+  const barcodeHeight = 64;
+  const barcodeWidth = barcodeHeight * 3.5;
 
   const handleAddTransaction = () => {
-    console.log("Add transaction clicked", { activeWallet, wallets, walletsLength: wallets?.length });
-    
-    // If no wallet, try to use the first wallet from layout context
-    // Or show a message to create wallet first
-    if (!activeWallet || wallets.length === 0) {
-      alert("請先選擇或創建一個錢包");
-      return;
-    }
-    
-    const url = `/wallets/${activeWallet.id}/transactions/new`;
-    console.log("Navigating to:", url);
-    router.push(url);
+    if (!wallet) return;
+    router.push(`/wallets/${wallet.id}/transactions/new`);
   };
+
+  if (walletLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <span className="text-sm text-black/50">載入中...</span>
+      </div>
+    );
+  }
+
+  if (!wallet) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <span className="text-sm text-red-500">錢包不存在或無權限存取</span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full flex-col gap-4">
@@ -213,79 +215,80 @@ export default function WalletHomePage() {
         </div>
       </section>
 
-      {/* Carrier section */}
-      <section
-        className={`rounded-xl p-4 text-sm transition-colors ${
-          brightCarrier ? "bg-white text-black" : "bg-black text-white"
-        }`}
-      >
-        <div className="mb-3 flex items-center justify-between">
-          <span className="text-sm font-medium">載具</span>
-          <button
-            type="button"
-            className="flex items-center gap-2 text-xs"
-            onClick={() => setBrightCarrier((prev) => !prev)}
-          >
-            <span>亮度調整</span>
-            <span
-              className={`flex h-4 w-8 items-center rounded-full p-0.5 transition-colors ${
-                brightCarrier ? "bg-gray-300" : "bg-gray-600"
-              }`}
-            >
-              <span
-                className={`h-3 w-3 rounded-full bg-white transition-transform ${
-                  brightCarrier ? "translate-x-3.5" : "translate-x-0"
-                }`}
-              />
-            </span>
-          </button>
-        </div>
-
-        {/* Barcode area */}
-        <div className="mb-3 flex flex-col items-center gap-3">
-          {/* Barcode - generated from carrier code, 5:2 aspect ratio */}
-          <div className="flex h-16 items-center justify-center" style={{ width: `${barcodeWidth}px` }}>
-            <div className="flex items-center justify-center gap-0.5">
-              {barcodePattern.map((width, index) => (
-                <span
-                  key={index}
-                  className={`block h-16 ${
-                    brightCarrier ? "bg-black" : "bg-white"
-                  }`}
-                  style={{ width: `${width}px` }}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Carrier code and copy icon */}
-          <div className="flex items-center gap-2">
+      {/* Carrier section - only for personal wallets */}
+      {isPersonalWallet && (
+        <section
+          className={`rounded-xl p-4 text-sm transition-colors ${
+            brightCarrier ? "bg-white text-black" : "bg-black text-white"
+          }`}
+        >
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-sm font-medium">載具</span>
             <button
               type="button"
-              className={`inline-flex h-4 w-4 items-center justify-center rounded border hover:opacity-70 ${
-                brightCarrier ? "border-black" : "border-white"
-              }`}
-              onClick={() => {
-                if (navigator?.clipboard?.writeText) {
-                  navigator.clipboard.writeText(carrierCode).catch(() => {
-                    // Swallow clipboard errors silently for now.
-                  });
-                }
-              }}
-              aria-label="Copy carrier code"
+              className="flex items-center gap-2 text-xs"
+              onClick={() => setBrightCarrier((prev) => !prev)}
             >
+              <span>亮度調整</span>
               <span
-                className={`h-2 w-2 border ${
+                className={`flex h-4 w-8 items-center rounded-full p-0.5 transition-colors ${
+                  brightCarrier ? "bg-gray-300" : "bg-gray-600"
+                }`}
+              >
+                <span
+                  className={`h-3 w-3 rounded-full bg-white transition-transform ${
+                    brightCarrier ? "translate-x-3.5" : "translate-x-0"
+                  }`}
+                />
+              </span>
+            </button>
+          </div>
+
+          {/* Barcode area */}
+          <div className="mb-3 flex flex-col items-center gap-3">
+            <div className="flex h-16 items-center justify-center" style={{ width: `${barcodeWidth}px` }}>
+              <div className="flex items-center justify-center gap-0.5">
+                {barcodePattern.map((width, index) => (
+                  <span
+                    key={index}
+                    className={`block h-16 ${
+                      brightCarrier ? "bg-black" : "bg-white"
+                    }`}
+                    style={{ width: `${width}px` }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Carrier code and copy icon */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className={`inline-flex h-4 w-4 items-center justify-center rounded border hover:opacity-70 ${
                   brightCarrier ? "border-black" : "border-white"
                 }`}
-              />
-            </button>
-            <span className={`text-sm font-mono ${
-              brightCarrier ? "text-black" : "text-white"
-            }`}>{carrierCode}</span>
+                onClick={() => {
+                  if (navigator?.clipboard?.writeText) {
+                    navigator.clipboard.writeText(carrierCode).catch(() => {
+                      // Swallow clipboard errors silently for now.
+                    });
+                  }
+                }}
+                aria-label="Copy carrier code"
+              >
+                <span
+                  className={`h-2 w-2 border ${
+                    brightCarrier ? "border-black" : "border-white"
+                  }`}
+                />
+              </button>
+              <span className={`text-sm font-mono ${
+                brightCarrier ? "text-black" : "text-white"
+              }`}>{carrierCode}</span>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Daily transactions section */}
       <section className="flex min-h-0 flex-1 flex-col rounded-xl bg-white p-4 text-sm">
@@ -339,14 +342,11 @@ export default function WalletHomePage() {
         className="fixed bottom-8 left-1/2 z-20 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-[#E8E8E8] text-2xl text-black shadow-lg"
         onClick={handleAddTransaction}
         aria-label="Add new transaction"
-        disabled={!activeWallet}
+        disabled={!wallet}
       >
         +
       </button>
     </div>
   );
 }
-
-
-
 

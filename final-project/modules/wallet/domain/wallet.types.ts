@@ -16,12 +16,28 @@ export enum WalletRole {
 }
 
 /**
+ * Wallet user status enum
+ * 
+ * OWNER: Wallet creator (always has OWNER role)
+ * PENDING: User has been invited but hasn't responded yet
+ * ACCEPTED: User has accepted the invitation
+ * REJECTED: User has rejected the invitation
+ */
+export enum WalletUserStatus {
+  OWNER = "OWNER",
+  PENDING = "PENDING",
+  ACCEPTED = "ACCEPTED",
+  REJECTED = "REJECTED",
+}
+
+/**
  * Wallet member information
  */
 export interface WalletMember {
   id: string;
   userId: string;
   role: WalletRole;
+  status: WalletUserStatus;
   user: {
     id: string;
     name: string;
@@ -37,6 +53,8 @@ export interface Wallet {
   id: string;
   name: string;
   defaultCurrency: string;
+  description?: string | null;
+  note?: string | null;
   createdAt: Date;
   updatedAt: Date;
   isDeleted: boolean;
@@ -44,12 +62,21 @@ export interface Wallet {
 }
 
 /**
+ * Wallet type for creation
+ */
+export type WalletType = "PERSONAL" | "GROUP";
+
+/**
  * Create wallet data
  */
 export interface CreateWalletData {
   name: string;
   defaultCurrency?: string;
+  description?: string;
+  note?: string;
   setAsDefault?: boolean;
+  walletType?: WalletType;
+  invitedUserIds?: string[];
 }
 
 /**
@@ -58,6 +85,8 @@ export interface CreateWalletData {
 export interface UpdateWalletData {
   name?: string;
   defaultCurrency?: string;
+  description?: string;
+  note?: string;
 }
 
 /**

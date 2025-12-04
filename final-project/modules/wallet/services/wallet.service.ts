@@ -7,12 +7,15 @@
  */
 
 import { walletRepository } from "../repositories/wallet.repository";
+import { notificationRepository } from "@/modules/notification/repositories/notification.repository";
+import { userRepository } from "@/modules/user/repositories/user.repository";
 import type {
   Wallet,
   CreateWalletData,
   UpdateWalletData,
   WalletServiceResult,
 } from "../domain/wallet.types";
+import { WalletUserStatus } from "../domain/wallet.types";
 import { DEFAULT_CURRENCY } from "@/config/constants";
 import { prisma } from "@/lib/prisma";
 
@@ -52,6 +55,7 @@ export const walletService = {
 
   /**
    * Create wallet for user
+   * Supports both PERSONAL and GROUP wallet types
    */
   async createWallet(
     userId: string,
@@ -67,8 +71,58 @@ export const walletService = {
 
     const trimmedName = data.name.trim();
     const defaultCurrency = data.defaultCurrency || DEFAULT_CURRENCY;
+    const description = data.description?.trim() || null;
+    const note = data.note?.trim() || null;
+    const walletType = data.walletType || "PERSONAL";
+    const invitedUserIds = data.invitedUserIds || [];
+
+    // Validate note length if provided
+    if (note !== null && note.length > 50) {
+      return {
+        success: false,
+        error: "Note must not exceed 50 characters",
+      };
+    }
+
+    // Validate wallet type
+    if (walletType !== "PERSONAL" && walletType !== "GROUP") {
+      return {
+        success: false,
+        error: "Invalid wallet type. Must be PERSONAL or GROUP",
+      };
+    }
+
+    // For GROUP wallets, validate invited users
+    if (walletType === "GROUP" && invitedUserIds.length > 0) {
+      // Verify all invited users exist
+      for (const invitedUserId of invitedUserIds) {
+        const user = await userRepository.findById(invitedUserId);
+        if (!user || user.isDeleted) {
+          return {
+            success: false,
+            error: `User ${invitedUserId} not found`,
+          };
+        }
+        // Don't allow inviting yourself
+        if (invitedUserId === userId) {
+          return {
+            success: false,
+            error: "Cannot invite yourself to a wallet",
+          };
+        }
+      }
+    }
 
     try {
+      // Get creator user info for notification messages
+      const creatorUser = await userRepository.findById(userId);
+      if (!creatorUser) {
+        return {
+          success: false,
+          error: "Creator user not found",
+        };
+      }
+
       // Create wallet and membership in a transaction
       const wallet = await prisma.$transaction(async (tx) => {
         // Create the wallet record
@@ -76,17 +130,80 @@ export const walletService = {
           data: {
             name: trimmedName,
             defaultCurrency,
+            description,
+            note,
           },
         });
 
-        // Attach the creator as OWNER in WalletUser
+        // Attach the creator as OWNER in WalletUser with OWNER status
         await tx.walletUser.create({
           data: {
             walletId: createdWallet.id,
             userId,
             role: "OWNER",
+            status: WalletUserStatus.OWNER,
           },
         });
+
+        // For GROUP wallets, invite users if provided
+        if (walletType === "GROUP" && invitedUserIds.length > 0) {
+          for (const invitedUserId of invitedUserIds) {
+            // Check if user is already in the wallet
+            const existingMembership = await tx.walletUser.findUnique({
+              where: {
+                walletId_userId: {
+                  walletId: createdWallet.id,
+                  userId: invitedUserId,
+                },
+              },
+            });
+
+            if (existingMembership) {
+              // If already exists and not deleted, skip
+              if (!existingMembership.isDeleted) {
+                continue;
+              }
+              // If soft deleted, update it
+              await tx.walletUser.update({
+                where: {
+                  walletId_userId: {
+                    walletId: createdWallet.id,
+                    userId: invitedUserId,
+                  },
+                },
+                data: {
+                  role: "MEMBER",
+                  status: WalletUserStatus.PENDING,
+                  isDeleted: false,
+                },
+              });
+            } else {
+              // Create new membership with PENDING status
+              await tx.walletUser.create({
+                data: {
+                  walletId: createdWallet.id,
+                  userId: invitedUserId,
+                  role: "MEMBER",
+                  status: WalletUserStatus.PENDING,
+                },
+              });
+            }
+
+            // Create notification for invited user
+            const invitedUser = await tx.user.findUnique({
+              where: { id: invitedUserId },
+              select: { name: true },
+            });
+
+            await tx.notification.create({
+              data: {
+                userId: invitedUserId,
+                type: "WALLET_INVITATION",
+                message: `${creatorUser.name} 邀請您加入錢包「${trimmedName}」`,
+              },
+            });
+          }
+        }
 
         // Optionally set this wallet as the user's default wallet
         if (data.setAsDefault) {
@@ -134,7 +251,9 @@ export const walletService = {
     // Validate update data
     if (
       (data.name === undefined || data.name === null) &&
-      (data.defaultCurrency === undefined || data.defaultCurrency === null)
+      (data.defaultCurrency === undefined || data.defaultCurrency === null) &&
+      (data.description === undefined || data.description === null) &&
+      (data.note === undefined || data.note === null)
     ) {
       return {
         success: false,
@@ -153,6 +272,24 @@ export const walletService = {
       data.defaultCurrency.trim().length > 0
     ) {
       updateData.defaultCurrency = data.defaultCurrency.trim();
+    }
+
+    if (data.description !== undefined) {
+      updateData.description = typeof data.description === "string" 
+        ? data.description.trim() || undefined 
+        : undefined;
+    }
+
+    if (data.note !== undefined) {
+      const trimmedNote = typeof data.note === "string" ? data.note.trim() : "";
+      // Validate note length if provided
+      if (trimmedNote.length > 50) {
+        return {
+          success: false,
+          error: "Note must not exceed 50 characters",
+        };
+      }
+      updateData.note = trimmedNote || undefined;
     }
 
     if (Object.keys(updateData).length === 0) {
@@ -227,6 +364,254 @@ export const walletService = {
       return {
         success: false,
         error: "Failed to delete wallet",
+      };
+    }
+  },
+
+  /**
+   * Invite users to an existing wallet
+   * Only wallet owner can invite users
+   */
+  async inviteUsersToWallet(
+    walletId: string,
+    userId: string,
+    invitedUserIds: string[]
+  ): Promise<WalletServiceResult<Wallet>> {
+    // Check authorization - only owner can invite
+    const isOwner = await walletRepository.isOwner(walletId, userId);
+    if (!isOwner) {
+      return {
+        success: false,
+        error: "Only wallet owner can invite users",
+      };
+    }
+
+    // Check wallet exists
+    const wallet = await walletRepository.findById(walletId);
+    if (!wallet) {
+      return {
+        success: false,
+        error: "Wallet not found",
+      };
+    }
+
+    // Validate invited users
+    if (!Array.isArray(invitedUserIds) || invitedUserIds.length === 0) {
+      return {
+        success: false,
+        error: "At least one user ID is required",
+      };
+    }
+
+    // Get inviter user info
+    const inviterUser = await userRepository.findById(userId);
+    if (!inviterUser) {
+      return {
+        success: false,
+        error: "Inviter user not found",
+      };
+    }
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        for (const invitedUserId of invitedUserIds) {
+          // Verify user exists
+          const invitedUser = await tx.user.findUnique({
+            where: { id: invitedUserId },
+          });
+
+          if (!invitedUser || invitedUser.isDeleted) {
+            throw new Error(`User ${invitedUserId} not found`);
+          }
+
+          // Don't allow inviting yourself
+          if (invitedUserId === userId) {
+            throw new Error("Cannot invite yourself to a wallet");
+          }
+
+          // Check if user is already in the wallet
+          const existingMembership = await tx.walletUser.findUnique({
+            where: {
+              walletId_userId: {
+                walletId,
+                userId: invitedUserId,
+              },
+            },
+          });
+
+          if (existingMembership) {
+            // If already exists and status is ACCEPTED, skip
+            if (!existingMembership.isDeleted && existingMembership.status === WalletUserStatus.ACCEPTED) {
+              continue;
+            }
+            // If PENDING or REJECTED, update to PENDING
+            if (!existingMembership.isDeleted) {
+              await tx.walletUser.update({
+                where: {
+                  walletId_userId: {
+                    walletId,
+                    userId: invitedUserId,
+                  },
+                },
+                data: {
+                  role: "MEMBER",
+                  status: WalletUserStatus.PENDING,
+                  isDeleted: false,
+                },
+              });
+            } else {
+              // If soft deleted, restore and set to PENDING
+              await tx.walletUser.update({
+                where: {
+                  walletId_userId: {
+                    walletId,
+                    userId: invitedUserId,
+                  },
+                },
+                data: {
+                  role: "MEMBER",
+                  status: WalletUserStatus.PENDING,
+                  isDeleted: false,
+                },
+              });
+            }
+          } else {
+            // Create new membership with PENDING status
+            await tx.walletUser.create({
+              data: {
+                walletId,
+                userId: invitedUserId,
+                role: "MEMBER",
+                status: WalletUserStatus.PENDING,
+              },
+            });
+          }
+
+          // Create notification for invited user
+          await tx.notification.create({
+            data: {
+              userId: invitedUserId,
+              type: "WALLET_INVITATION",
+              message: `${inviterUser.name} 邀請您加入錢包「${wallet.name}」`,
+            },
+          });
+        }
+      });
+
+      // Fetch updated wallet with members
+      const updatedWallet = await walletRepository.findById(walletId);
+      return {
+        success: true,
+        data: updatedWallet as Wallet,
+      };
+    } catch (error) {
+      console.error("Error inviting users to wallet:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to invite users to wallet",
+      };
+    }
+  },
+
+  /**
+   * Accept wallet invitation
+   * Only the invited user can accept their own invitation
+   */
+  async acceptWalletInvitation(
+    walletId: string,
+    userId: string
+  ): Promise<WalletServiceResult<Wallet>> {
+    // Check membership exists and is PENDING
+    const membership = await walletRepository.findMembershipByWalletAndUser(walletId, userId);
+    if (!membership) {
+      return {
+        success: false,
+        error: "Wallet invitation not found",
+      };
+    }
+
+    if (membership.isDeleted) {
+      return {
+        success: false,
+        error: "Wallet invitation has been deleted",
+      };
+    }
+
+    if (membership.status !== WalletUserStatus.PENDING) {
+      return {
+        success: false,
+        error: `Cannot accept invitation with status ${membership.status}`,
+      };
+    }
+
+    try {
+      // Update membership status to ACCEPTED
+      await walletRepository.updateMembershipStatus(walletId, userId, WalletUserStatus.ACCEPTED);
+
+      // Mark related notifications as read
+      await notificationRepository.markWalletInvitationAsRead(userId, walletId);
+
+      // Fetch updated wallet
+      const updatedWallet = await walletRepository.findById(walletId, userId);
+      return {
+        success: true,
+        data: updatedWallet as Wallet,
+      };
+    } catch (error) {
+      console.error("Error accepting wallet invitation:", error);
+      return {
+        success: false,
+        error: "Failed to accept wallet invitation",
+      };
+    }
+  },
+
+  /**
+   * Reject wallet invitation
+   * Only the invited user can reject their own invitation
+   */
+  async rejectWalletInvitation(
+    walletId: string,
+    userId: string
+  ): Promise<WalletServiceResult<void>> {
+    // Check membership exists and is PENDING
+    const membership = await walletRepository.findMembershipByWalletAndUser(walletId, userId);
+    if (!membership) {
+      return {
+        success: false,
+        error: "Wallet invitation not found",
+      };
+    }
+
+    if (membership.isDeleted) {
+      return {
+        success: false,
+        error: "Wallet invitation has been deleted",
+      };
+    }
+
+    if (membership.status !== WalletUserStatus.PENDING) {
+      return {
+        success: false,
+        error: `Cannot reject invitation with status ${membership.status}`,
+      };
+    }
+
+    try {
+      // Update membership status to REJECTED
+      await walletRepository.updateMembershipStatus(walletId, userId, WalletUserStatus.REJECTED);
+
+      // Mark related notifications as read
+      await notificationRepository.markWalletInvitationAsRead(userId, walletId);
+
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error("Error rejecting wallet invitation:", error);
+      return {
+        success: false,
+        error: "Failed to reject wallet invitation",
       };
     }
   },

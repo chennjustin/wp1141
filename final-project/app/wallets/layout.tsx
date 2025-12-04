@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useMemo, useState } from "react";
+import { ReactNode, useMemo, useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useUser } from "@/hooks/useUser";
@@ -28,6 +28,83 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
   const [isWalletSelectorOpen, setIsWalletSelectorOpen] = useState(false);
   const [isCreateWalletOpen, setIsCreateWalletOpen] = useState(false);
   const [currentWalletId, setCurrentWalletId] = useState<string | null>(null);
+  const [pinnedWalletIds, setPinnedWalletIds] = useState<Set<string>>(new Set());
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
+  
+  // Track last updated wallet ID to avoid duplicate updates
+  const lastUpdatedWalletIdRef = useRef<string | null>(null);
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const walletButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  // Fetch pinned wallets
+  useEffect(() => {
+    async function fetchPinnedWallets() {
+      try {
+        const response = await fetch("/api/users/default-wallet");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.pinnedWalletIds) {
+            setPinnedWalletIds(new Set(data.pinnedWalletIds));
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching pinned wallets:", error);
+      }
+    }
+    if (isAuthenticated) {
+      fetchPinnedWallets();
+    }
+  }, [isAuthenticated]);
+
+  // Close wallet selector dropdown when route changes
+  useEffect(() => {
+    setIsWalletSelectorOpen(false);
+  }, [pathname]);
+
+  // Calculate dropdown position when it opens
+  useEffect(() => {
+    if (isWalletSelectorOpen && walletButtonRef.current) {
+      const buttonRect = walletButtonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: buttonRect.bottom + 8, // 8px margin (mt-2)
+        left: buttonRect.left + buttonRect.width / 2, // Center of button
+      });
+    } else {
+      setDropdownPosition(null);
+    }
+  }, [isWalletSelectorOpen]);
+
+  // Initialize currentWalletId from URL pathname or session defaultWalletId
+  useEffect(() => {
+    if (wallets.length === 0 || walletsLoading) return;
+
+    // Extract walletId from pathname (e.g., /wallets/abc123 -> abc123)
+    const pathParts = pathname.split("/").filter(Boolean);
+    const walletIdFromPath = pathParts.length >= 2 && pathParts[0] === "wallets" 
+      ? pathParts[1] 
+      : null;
+
+    // Use walletId from URL if available and valid
+    if (walletIdFromPath && wallets.some(w => w.id === walletIdFromPath)) {
+      if (currentWalletId !== walletIdFromPath) {
+        setCurrentWalletId(walletIdFromPath);
+      }
+      return;
+    }
+
+    // Otherwise, use defaultWalletId from session if available
+    if (session?.user?.defaultWalletId && wallets.some(w => w.id === session.user.defaultWalletId)) {
+      if (currentWalletId !== session.user.defaultWalletId) {
+        setCurrentWalletId(session.user.defaultWalletId);
+      }
+      return;
+    }
+
+    // Fallback to first wallet
+    if (wallets.length > 0 && wallets[0].id !== currentWalletId) {
+      setCurrentWalletId(wallets[0].id);
+    }
+  }, [pathname, wallets, walletsLoading, session?.user?.defaultWalletId, currentWalletId]);
 
   const currentWallet: Wallet | null = useMemo(() => {
     if (!wallets || wallets.length === 0) {
@@ -39,6 +116,91 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
 
     return wallets[0];
   }, [wallets, currentWalletId]);
+
+  // Update defaultWalletId when currentWalletId changes
+  useEffect(() => {
+    // Get the actual wallet ID from currentWallet
+    const walletId = currentWallet?.id ?? null;
+    
+    // Skip if no wallet, no session, or wallet hasn't changed
+    if (!walletId || !session?.user?.id || walletId === lastUpdatedWalletIdRef.current) {
+      return;
+    }
+
+    // Clear existing timeout
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current);
+    }
+
+    // Debounce the update to avoid excessive API calls
+    updateTimeoutRef.current = setTimeout(async () => {
+      try {
+        const response = await fetch("/api/users/default-wallet", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ walletId }),
+        });
+
+        if (response.ok) {
+          lastUpdatedWalletIdRef.current = walletId;
+        } else {
+          console.error("Failed to update default wallet:", await response.text());
+        }
+      } catch (error) {
+        console.error("Error updating default wallet:", error);
+      }
+    }, 500); // 500ms debounce
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+    };
+  }, [currentWallet?.id, session?.user?.id]);
+
+  // Backup mechanism: update defaultWalletId on page unload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const walletId = currentWallet?.id;
+      if (!walletId || !session?.user?.id || walletId === lastUpdatedWalletIdRef.current) {
+        return;
+      }
+
+      // Use sendBeacon for reliable delivery during page unload
+      // Note: sendBeacon only supports POST, so we use POST method
+      const data = JSON.stringify({ walletId });
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(
+          "/api/users/default-wallet",
+          new Blob([data], { type: "application/json" })
+        );
+      } else {
+        // Fallback to fetch if sendBeacon is not available
+        fetch("/api/users/default-wallet", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: data,
+          keepalive: true,
+        }).catch(() => {
+          // Ignore errors during page unload
+        });
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") {
+        handleBeforeUnload();
+      }
+    });
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [currentWallet?.id, session?.user?.id]);
 
   const currentRole: WalletMember["role"] | null = useMemo(() => {
     if (!currentWallet || !profile) return null;
@@ -97,7 +259,10 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
   }
 
   const handleWalletChange = (walletId: string) => {
-    setCurrentWalletId(walletId);
+    // Navigate to the wallet's default page
+    router.push(`/wallets/${walletId}`);
+    // Note: setIsWalletSelectorOpen(false) will be called automatically
+    // by the pathname change effect, but we can also close it immediately
     setIsWalletSelectorOpen(false);
   };
 
@@ -143,6 +308,7 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
           {/* Center: wallet selector - oval button, absolutely centered */}
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
             <button
+              ref={walletButtonRef}
               type="button"
               className="relative inline-flex items-center justify-center rounded-full bg-white px-6 py-2 text-sm font-medium text-black hover:bg-gray-100 active:bg-white focus:bg-white focus:outline-none focus:ring-0"
               onClick={() => setIsWalletSelectorOpen(true)}
@@ -150,47 +316,67 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
             >
               <span className="max-w-[140px] truncate">{walletDisplayName}</span>
             </button>
-
-            {/* Wallet selector dropdown */}
-            {isWalletSelectorOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-40 bg-black/20"
-                  onClick={() => setIsWalletSelectorOpen(false)}
-                />
-                <div className="absolute top-full left-1/2 z-50 mt-2 -translate-x-1/2 rounded-lg bg-white shadow-lg min-w-[200px] max-h-[300px] overflow-y-auto border-0">
-                  <div className="py-2">
-                    {wallets.map((wallet) => (
-                      <button
-                        key={wallet.id}
-                        type="button"
-                        className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100"
-                        onClick={() => handleWalletChange(wallet.id)}
-                      >
-                        {wallet.name}
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100 border-t border-gray-200"
-                      onClick={() => {
-                        setIsWalletSelectorOpen(false);
-                        // TODO: Navigate to create wallet page
-                      }}
-                    >
-                      + 新增錢包
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
           </div>
 
-            {/* Right: user name or role text */}
-            <div className="flex flex-col items-end text-right text-xs leading-snug text-black">
-              <span className="font-semibold">{displayName}</span>
+          {/* Right: user name or role text */}
+          <div className="flex flex-col items-end text-right text-xs leading-snug text-black">
+            <span className="font-semibold">{displayName}</span>
+          </div>
+        </header>
+
+        {/* Wallet selector dropdown - rendered outside header to avoid stacking context issues */}
+        {isWalletSelectorOpen && dropdownPosition && (
+          <>
+            <div
+              className="fixed inset-0 z-[9998] bg-black/20"
+              onClick={() => setIsWalletSelectorOpen(false)}
+            />
+            <div
+              className="fixed z-[9999] rounded-lg bg-white shadow-lg min-w-[200px] max-h-[300px] overflow-y-auto border-0"
+              style={{
+                top: `${dropdownPosition.top}px`,
+                left: `${dropdownPosition.left}px`,
+                transform: 'translateX(-50%)',
+              }}
+            >
+              <div className="py-2">
+                {/* Show all pinned wallets (max 5) */}
+                {wallets
+                  .filter((wallet) => pinnedWalletIds.has(wallet.id))
+                  .map((wallet) => (
+                    <button
+                      key={wallet.id}
+                      type="button"
+                      className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100"
+                      onClick={() => handleWalletChange(wallet.id)}
+                    >
+                      {wallet.name}
+                    </button>
+                  ))}
+                <div className="border-t border-gray-200 my-1" />
+                <button
+                  type="button"
+                  className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100"
+                  onClick={() => {
+                    setIsWalletSelectorOpen(false);
+                    router.push("/wallets/all");
+                  }}
+                >
+                  所有錢包
+                </button>
+                <button
+                  type="button"
+                  className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100"
+                  onClick={() => {
+                    setIsWalletSelectorOpen(false);
+                    router.push("/wallets/new");
+                  }}
+                >
+                  + 新增錢包
+                </button>
+              </div>
             </div>
-          </header>
+          </>
         )}
 
         {/* Side menu overlay */}
@@ -279,191 +465,21 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
           </>
         )}
 
-        {/* Main content area - flex container for scrollable content */}
-        <main className="flex min-h-0 flex-1 flex-col pb-16 px-4">
-          {walletsLoading && (
+        {/* Main content area */}
+        <main className="flex-1 pb-16 px-4">
+          {walletsLoading && pathname !== "/wallets/new" && (
             <div className="flex h-full items-center justify-center text-sm text-black/80">
               Loading wallets...
             </div>
           )}
-          {!walletsLoading && children}
-        </main>
-
-        {/* Create Wallet Modal */}
-        {isCreateWalletOpen && (
-          <CreateWalletModal
-            onClose={() => setIsCreateWalletOpen(false)}
-            onSuccess={async () => {
-              setIsCreateWalletOpen(false);
-              await refetchWallets();
-            }}
-          />
-        )}
-      </div>
-    </div>
-  );
-}
-
-/**
- * Create Wallet Modal Component
- */
-function CreateWalletModal({
-  onClose,
-  onSuccess,
-}: {
-  onClose: () => void;
-  onSuccess: () => void;
-}) {
-  const [walletName, setWalletName] = useState("");
-  const [defaultCurrency, setDefaultCurrency] = useState("TWD");
-  const [setAsDefault, setSetAsDefault] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const CURRENCIES = ["TWD", "USD", "EUR", "JPY", "CNY"];
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    if (!walletName.trim()) {
-      setError("請輸入錢包名稱");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const result = await createWalletAction({
-        name: walletName.trim(),
-        defaultCurrency,
-        setAsDefault,
-      });
-
-      if (result.success) {
-        onSuccess();
-      } else {
-        setError(result.error || "創建錢包失敗");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "創建錢包失敗");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onClose();
-        }
-      }}
-    >
-      <div
-        className="w-full max-w-sm rounded-3xl bg-[#D2D2D2] p-6 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-black">新增錢包</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-black/10"
-            aria-label="關閉"
-          >
-            <svg
-              className="h-5 w-5 text-black"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Wallet Name */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-black">
-              錢包名稱
-            </label>
-            <input
-              type="text"
-              value={walletName}
-              onChange={(e) => setWalletName(e.target.value)}
-              placeholder="輸入錢包名稱"
-              className="w-full rounded-xl bg-white px-4 py-3 text-black placeholder:text-gray-400"
-              required
-              autoFocus
-            />
-          </div>
-
-          {/* Default Currency */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-black">
-              預設幣別
-            </label>
-            <select
-              value={defaultCurrency}
-              onChange={(e) => setDefaultCurrency(e.target.value)}
-              className="w-full rounded-xl bg-white px-4 py-3 text-black"
-            >
-              {CURRENCIES.map((curr) => (
-                <option key={curr} value={curr}>
-                  {curr}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Set as Default */}
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="setAsDefault"
-              checked={setAsDefault}
-              onChange={(e) => setSetAsDefault(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-black focus:ring-2 focus:ring-black"
-            />
-            <label htmlFor="setAsDefault" className="text-sm text-black">
-              設為預設錢包
-            </label>
-          </div>
-
-          {/* Error message */}
-          {error && (
-            <div className="rounded-xl bg-red-100 px-4 py-2 text-sm text-red-600">
-              {error}
+          {!walletsLoading && wallets.length === 0 && pathname !== "/wallets/new" && (
+            <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-black/80">
+              <p>目前還沒有錢包。</p>
+              <p>請點選上方「新增錢包」來建立第一個錢包。</p>
             </div>
           )}
-
-          {/* Buttons */}
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 rounded-xl bg-white px-4 py-3 text-sm font-medium text-black hover:bg-gray-100"
-              disabled={loading}
-            >
-              取消
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 rounded-xl bg-black px-4 py-3 text-sm font-medium text-white disabled:opacity-50"
-            >
-              {loading ? "創建中..." : "創建"}
-            </button>
-          </div>
-        </form>
+          {(pathname === "/wallets/new" || !walletsLoading && wallets.length > 0) && children}
+        </main>
       </div>
     </div>
   );

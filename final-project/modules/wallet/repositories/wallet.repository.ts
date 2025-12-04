@@ -9,6 +9,7 @@
 import { prisma } from "@/lib/prisma";
 import { SYSTEM_USER_ID } from "@/config/constants";
 import type { CreateWalletData, UpdateWalletData } from "../domain/wallet.types";
+import { WalletUserStatus } from "../domain/wallet.types";
 
 /**
  * Wallet repository interface
@@ -30,6 +31,9 @@ export const walletRepository = {
         some: {
           userId,
           isDeleted: false,
+          status: {
+            in: ["OWNER", "ACCEPTED"],
+          },
         },
       };
     }
@@ -38,7 +42,12 @@ export const walletRepository = {
       where,
       include: {
         members: {
-          where: { isDeleted: false },
+          where: { 
+            isDeleted: false,
+            status: {
+              in: ["OWNER", "ACCEPTED"],
+            },
+          },
           include: {
             user: true,
           },
@@ -50,6 +59,7 @@ export const walletRepository = {
   /**
    * Find wallets by user ID
    * System user can see all wallets
+   * Only returns wallets where user has OWNER or ACCEPTED status
    */
   async findByUserId(userId: string) {
     const where: any = {
@@ -62,6 +72,9 @@ export const walletRepository = {
         some: {
           userId,
           isDeleted: false,
+            status: {
+              in: ["OWNER", "ACCEPTED"],
+            },
         },
       };
     }
@@ -70,7 +83,12 @@ export const walletRepository = {
       where,
       include: {
         members: {
-          where: { isDeleted: false },
+          where: { 
+            isDeleted: false,
+            status: {
+              in: ["OWNER", "ACCEPTED"],
+            },
+          },
           include: {
             user: true,
           },
@@ -90,6 +108,8 @@ export const walletRepository = {
       data: {
         name: data.name,
         defaultCurrency: data.defaultCurrency || "TWD",
+        description: data.description || null,
+        note: data.note || null,
       },
     });
   },
@@ -100,13 +120,69 @@ export const walletRepository = {
   async createMembership(
     walletId: string,
     userId: string,
-    role: "OWNER" | "MEMBER" | "VIEWER" = "OWNER"
+    role: "OWNER" | "MEMBER" | "VIEWER" = "OWNER",
+    status: WalletUserStatus = WalletUserStatus.OWNER
   ) {
     return prisma.walletUser.create({
       data: {
         walletId,
         userId,
         role,
+        status,
+      },
+    });
+  },
+
+  /**
+   * Create wallet membership with status
+   */
+  async createMembershipWithStatus(
+    walletId: string,
+    userId: string,
+    role: "OWNER" | "MEMBER" | "VIEWER",
+    status: WalletUserStatus
+  ) {
+    return prisma.walletUser.create({
+      data: {
+        walletId,
+        userId,
+        role,
+        status,
+      },
+    });
+  },
+
+  /**
+   * Find membership by wallet and user
+   */
+  async findMembershipByWalletAndUser(walletId: string, userId: string) {
+    return prisma.walletUser.findUnique({
+      where: {
+        walletId_userId: {
+          walletId,
+          userId,
+        },
+      },
+    });
+  },
+
+  /**
+   * Update membership status
+   */
+  async updateMembershipStatus(
+    walletId: string,
+    userId: string,
+    status: WalletUserStatus
+  ) {
+    return prisma.walletUser.update({
+      where: {
+        walletId_userId: {
+          walletId,
+          userId,
+        },
+      },
+      data: {
+        status,
       },
     });
   },
@@ -121,6 +197,12 @@ export const walletRepository = {
     }
     if (data.defaultCurrency !== undefined) {
       updateData.defaultCurrency = data.defaultCurrency.trim();
+    }
+    if (data.description !== undefined) {
+      updateData.description = data.description.trim() || null;
+    }
+    if (data.note !== undefined) {
+      updateData.note = data.note.trim() || null;
     }
 
     return prisma.wallet.update({
@@ -220,6 +302,129 @@ export const walletRepository = {
       where: { id: userId },
       data: { defaultWalletId: walletId },
     });
+  },
+
+  /**
+   * Clear user's default wallet
+   */
+  async clearDefaultWallet(userId: string) {
+    return prisma.user.update({
+      where: { id: userId },
+      data: { defaultWalletId: null },
+    });
+  },
+
+  /**
+   * Get user's pinned wallets
+   */
+  async getPinnedWallets(userId: string) {
+    return prisma.userPinnedWallet.findMany({
+      where: { userId },
+      include: {
+        wallet: {
+          include: {
+            members: {
+              where: {
+                isDeleted: false,
+                status: {
+                  in: ["OWNER", "ACCEPTED"],
+                },
+              },
+              include: {
+                user: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        order: "asc",
+      },
+    });
+  },
+
+  /**
+   * Count user's pinned wallets
+   */
+  async countPinnedWallets(userId: string) {
+    return prisma.userPinnedWallet.count({
+      where: { userId },
+    });
+  },
+
+  /**
+   * Pin a wallet for user
+   * Returns true if successful, false if limit reached
+   */
+  async pinWallet(userId: string, walletId: string): Promise<boolean> {
+    // Check if already pinned
+    const existing = await prisma.userPinnedWallet.findUnique({
+      where: {
+        userId_walletId: {
+          userId,
+          walletId,
+        },
+      },
+    });
+
+    if (existing) {
+      return true; // Already pinned
+    }
+
+    // Check limit (max 5)
+    const count = await this.countPinnedWallets(userId);
+    if (count >= 5) {
+      return false; // Limit reached
+    }
+
+    // Get max order
+    const maxOrder = await prisma.userPinnedWallet.findFirst({
+      where: { userId },
+      orderBy: { order: "desc" },
+      select: { order: true },
+    });
+
+    const newOrder = (maxOrder?.order ?? -1) + 1;
+
+    // Create pinned wallet
+    await prisma.userPinnedWallet.create({
+      data: {
+        userId,
+        walletId,
+        order: newOrder,
+      },
+    });
+
+    return true;
+  },
+
+  /**
+   * Unpin a wallet for user
+   */
+  async unpinWallet(userId: string, walletId: string) {
+    return prisma.userPinnedWallet.delete({
+      where: {
+        userId_walletId: {
+          userId,
+          walletId,
+        },
+      },
+    });
+  },
+
+  /**
+   * Check if wallet is pinned by user
+   */
+  async isWalletPinned(userId: string, walletId: string): Promise<boolean> {
+    const pinned = await prisma.userPinnedWallet.findUnique({
+      where: {
+        userId_walletId: {
+          userId,
+          walletId,
+        },
+      },
+    });
+    return !!pinned;
   },
 };
 
