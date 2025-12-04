@@ -78,16 +78,35 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
   useEffect(() => {
     if (wallets.length === 0 || walletsLoading) return;
 
+    // Special paths that are not wallet IDs
+    const specialPaths = ["new", "all", "history", "notifications", "settings", "subscriptions"];
+    
     // Extract walletId from pathname (e.g., /wallets/abc123 -> abc123)
     const pathParts = pathname.split("/").filter(Boolean);
-    const walletIdFromPath = pathParts.length >= 2 && pathParts[0] === "wallets" 
+    const secondPart = pathParts.length >= 2 && pathParts[0] === "wallets" 
       ? pathParts[1] 
       : null;
 
-    // Use walletId from URL if available and valid
-    if (walletIdFromPath && wallets.some(w => w.id === walletIdFromPath)) {
-      if (currentWalletId !== walletIdFromPath) {
-        setCurrentWalletId(walletIdFromPath);
+    // Check if second part is a special path or a valid wallet ID
+    if (secondPart && !specialPaths.includes(secondPart)) {
+      // Check if it's a valid wallet ID
+      if (wallets.some(w => w.id === secondPart)) {
+        if (currentWalletId !== secondPart) {
+          setCurrentWalletId(secondPart);
+        }
+        return;
+      }
+    }
+
+    // If path is /wallets (root), find "我的錢包" (My Wallet)
+    if (pathname === "/wallets") {
+      const myWallet = wallets.find(w => 
+        w.name === "我的錢包" ||
+        (w.members.length === 1 &&
+         w.members.some(m => m.userId === profile?.id && m.role === WalletRole.OWNER))
+      );
+      if (myWallet && currentWalletId !== myWallet.id) {
+        setCurrentWalletId(myWallet.id);
       }
       return;
     }
@@ -104,7 +123,7 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
     if (wallets.length > 0 && wallets[0].id !== currentWalletId) {
       setCurrentWalletId(wallets[0].id);
     }
-  }, [pathname, wallets, walletsLoading, session?.user?.defaultWalletId, currentWalletId]);
+  }, [pathname, wallets, walletsLoading, session?.user?.defaultWalletId, currentWalletId, profile?.id]);
 
   const currentWallet: Wallet | null = useMemo(() => {
     if (!wallets || wallets.length === 0) {
@@ -259,8 +278,17 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
   }
 
   const handleWalletChange = (walletId: string) => {
-    // Navigate to the wallet's default page
-    router.push(`/wallets/${walletId}`);
+    // Find the wallet to check if it's "My Wallet"
+    const wallet = wallets.find(w => w.id === walletId);
+    
+    // If it's "My Wallet" (我的錢包), navigate to root wallets page
+    // Otherwise, navigate to the wallet's detail page
+    if (wallet?.name === "我的錢包") {
+      router.push("/wallets");
+    } else {
+      router.push(`/wallets/${walletId}`);
+    }
+    
     // Note: setIsWalletSelectorOpen(false) will be called automatically
     // by the pathname change effect, but we can also close it immediately
     setIsWalletSelectorOpen(false);
@@ -380,90 +408,92 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
         )}
 
         {/* Side menu overlay */}
-        {isMenuOpen && (
-          <>
-            <div
-              className="fixed inset-0 z-40 bg-black/40 md:absolute md:rounded-[3rem]"
-              onClick={() => setIsMenuOpen(false)}
-            />
-            <aside className="fixed inset-y-0 left-0 z-50 w-4/5 max-w-xs bg-[#E8E8E8] p-4 shadow-xl md:absolute md:inset-y-0 md:left-0 md:rounded-l-[3rem] md:rounded-r-none">
-              <div className="mb-4 flex items-center justify-between">
-                <span className="text-sm font-semibold text-black">
-                  主選單
-                </span>
-                <button
-                  type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-black/5"
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    router.push("/wallets");
-                  }}
-                  aria-label="Go to wallet home"
-                >
-                  {/* House icon */}
-                  <svg
-                    className="h-5 w-5 text-black"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-                    />
-                  </svg>
-                </button>
-              </div>
+        <div
+          className={`fixed inset-0 z-40 bg-black/40 md:absolute md:rounded-[3rem] transition-opacity duration-300 ${
+            isMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
+          onClick={() => setIsMenuOpen(false)}
+        />
+        <aside
+          className={`fixed inset-y-0 left-0 z-50 w-4/5 max-w-xs bg-[#E8E8E8] p-4 shadow-xl md:absolute md:inset-y-0 md:left-0 md:rounded-l-[3rem] md:rounded-r-none transition-transform duration-300 ease-out ${
+            isMenuOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <div className="mb-4 flex items-center justify-between">
+            <span className="text-sm font-semibold text-black">
+              主選單
+            </span>
+            <button
+              type="button"
+              className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-black/5"
+              onClick={() => {
+                setIsMenuOpen(false);
+                router.push("/wallets");
+              }}
+              aria-label="Go to wallet home"
+            >
+              {/* House icon */}
+              <svg
+                className="h-5 w-5 text-black"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                />
+              </svg>
+            </button>
+          </div>
 
-              {/* User block */}
-              <div className="mb-6 flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-sm font-semibold text-black">
-                  {userName ? userName.charAt(0).toUpperCase() : "U"}
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium text-black">
-                    {userName || "User"}
-                  </span>
-                </div>
-              </div>
+          {/* User block */}
+          <div className="mb-6 flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-sm font-semibold text-black">
+              {userName ? userName.charAt(0).toUpperCase() : "U"}
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-medium text-black">
+                {userName || "User"}
+              </span>
+            </div>
+          </div>
 
-              {/* Menu buttons */}
-              <nav className="flex flex-col gap-3 text-sm text-black">
-                <button
-                  type="button"
-                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-left hover:bg-gray-50"
-                  onClick={() => handleNavigate("/wallets/notifications")}
-                >
-                  通知
-                </button>
-                <button
-                  type="button"
-                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-left hover:bg-gray-50"
-                  onClick={() => handleNavigate("/wallets/history")}
-                >
-                  收支明細
-                </button>
-                <button
-                  type="button"
-                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-left hover:bg-gray-50"
-                  onClick={() => handleNavigate("/wallets/subscriptions")}
-                >
-                  訂閱清單
-                </button>
-                <button
-                  type="button"
-                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-left hover:bg-gray-50"
-                  onClick={() => handleNavigate("/wallets/settings")}
-                >
-                  設定
-                </button>
-              </nav>
-            </aside>
-          </>
-        )}
+          {/* Menu buttons */}
+          <nav className="flex flex-col gap-3 text-sm text-black">
+            <button
+              type="button"
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-left hover:bg-gray-50"
+              onClick={() => handleNavigate("/wallets/notifications")}
+            >
+              通知
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-left hover:bg-gray-50"
+              onClick={() => handleNavigate("/wallets/history")}
+            >
+              收支明細
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-left hover:bg-gray-50"
+              onClick={() => handleNavigate("/wallets/subscriptions")}
+            >
+              訂閱清單
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-left hover:bg-gray-50"
+              onClick={() => handleNavigate("/wallets/settings")}
+            >
+              設定
+            </button>
+          </nav>
+        </aside>
 
         {/* Main content area */}
         <main className="flex-1 pb-16 px-4">
