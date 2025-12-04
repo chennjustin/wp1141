@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { createTransactionAction } from "@/modules/transaction/routes/create-transaction";
 import { listTagsAction } from "@/modules/tag/routes/list-tags";
 import type { TransactionType } from "@/modules/transaction/domain/transaction.types";
+import { CalculatorKeypad } from "@/components/CalculatorKeypad";
 
 interface Tag {
   id: string;
@@ -36,11 +37,7 @@ export default function NewTransactionPage() {
   const [currency, setCurrency] = useState<string>("TWD");
   const [amount, setAmount] = useState<string>("");
   const [note, setNote] = useState<string>("");
-  const [calculatorDisplay, setCalculatorDisplay] = useState<string>("0");
-  const [calculatorExpression, setCalculatorExpression] = useState<string>(""); // 完整運算式顯示
-  const [calculatorPreviousValue, setCalculatorPreviousValue] = useState<number | null>(null);
-  const [calculatorOperation, setCalculatorOperation] = useState<string | null>(null);
-  const [calculatorCurrentInput, setCalculatorCurrentInput] = useState<string>("0"); // 當前輸入的數字
+  const [calculatorExpression, setCalculatorExpression] = useState<string>(""); // 計算機運算式，用於顯示在金額欄位
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,139 +73,6 @@ export default function NewTransactionPage() {
     return `${year}/${month}/${day}`;
   };
 
-  // 由運算式字串中抓出最後一個數字（給運算用）
-  const extractLastNumber = (expr: string): string => {
-    const match = expr.match(/([0-9]*\.?[0-9]*)\s*$/);
-    const num = match?.[1] ?? "";
-    return num || "0";
-  };
-
-  // Calculator logic
-  const handleCalculatorInput = (value: string) => {
-    if (value === "AC") {
-      setCalculatorDisplay("0");
-      setCalculatorExpression("");
-      setCalculatorCurrentInput("0");
-      setCalculatorPreviousValue(null);
-      setCalculatorOperation(null);
-    } else if (value === "←") {
-      // 刪除顯示字串最後一個字元
-      setCalculatorDisplay((prev) => {
-        if (prev.length <= 1) return "0";
-        const next = prev.slice(0, -1);
-        setCalculatorExpression(next === "0" ? "" : next);
-        setCalculatorCurrentInput(extractLastNumber(next));
-        return next || "0";
-      });
-    } else if (value === "OK") {
-      // 如果有運算式，先計算結果
-      if (calculatorOperation && calculatorPreviousValue !== null) {
-        const current = parseFloat(calculatorCurrentInput);
-        if (!isNaN(current)) {
-          let result = 0;
-          switch (calculatorOperation) {
-            case "+":
-              result = calculatorPreviousValue + current;
-              break;
-            case "-":
-              result = calculatorPreviousValue - current;
-              break;
-            case "×":
-              result = calculatorPreviousValue * current;
-              break;
-            case "÷":
-              result = current !== 0 ? calculatorPreviousValue / current : 0;
-              break;
-          }
-          setAmount(result.toFixed(2));
-          setCalculatorDisplay("0");
-          setCalculatorExpression("");
-          setCalculatorCurrentInput("0");
-          setCalculatorPreviousValue(null);
-          setCalculatorOperation(null);
-        }
-      } else {
-        // 沒有運算，直接使用當前輸入
-        const numValue = parseFloat(calculatorCurrentInput);
-        if (!isNaN(numValue) && numValue > 0) {
-          setAmount(numValue.toFixed(2));
-          setCalculatorDisplay("0");
-          setCalculatorExpression("");
-          setCalculatorCurrentInput("0");
-          setCalculatorPreviousValue(null);
-          setCalculatorOperation(null);
-        }
-      }
-    } else {
-      // 輸入數字或小數點
-      setCalculatorCurrentInput((prev) => {
-        let newValue = "";
-        if (prev === "0" && value !== ".") {
-          newValue = value;
-        } else if (value === "." && prev.includes(".")) {
-          newValue = prev;
-        } else {
-          newValue = prev + value;
-        }
-        // 更新顯示（含運算符號）
-        if (calculatorExpression) {
-          setCalculatorDisplay(calculatorExpression + newValue);
-        } else {
-          setCalculatorDisplay(newValue);
-        }
-        return newValue;
-      });
-    }
-  };
-
-  const handleCalculatorOperation = (op: string) => {
-    const current = parseFloat(calculatorCurrentInput);
-    if (isNaN(current)) return;
-
-    if (calculatorPreviousValue === null) {
-      // First operation - store current value and operation
-      setCalculatorPreviousValue(current);
-      setCalculatorOperation(op);
-      // 顯示運算式：例如 "100 +"
-      const expression = `${current} ${op}`;
-      setCalculatorExpression(expression);
-      setCalculatorDisplay(expression);
-      setCalculatorCurrentInput("0");
-    } else if (calculatorOperation) {
-      // 已經有運算，先計算結果，然後繼續新的運算
-      let result = 0;
-      switch (calculatorOperation) {
-        case "+":
-          result = calculatorPreviousValue + current;
-          break;
-        case "-":
-          result = calculatorPreviousValue - current;
-          break;
-        case "×":
-          result = calculatorPreviousValue * current;
-          break;
-        case "÷":
-          result = current !== 0 ? calculatorPreviousValue / current : 0;
-          break;
-      }
-      setCalculatorPreviousValue(result);
-      setCalculatorOperation(op);
-      // 顯示新的運算式：例如 "300 ×"
-      const expression = `${result} ${op}`;
-      setCalculatorExpression(expression);
-      setCalculatorDisplay(expression);
-      setCalculatorCurrentInput("0");
-    } else {
-      // No previous operation, just set the new one
-      setCalculatorPreviousValue(current);
-      setCalculatorOperation(op);
-      const expression = `${current} ${op}`;
-      setCalculatorExpression(expression);
-      setCalculatorDisplay(expression);
-      setCalculatorCurrentInput("0");
-    }
-  };
-
   const handleClear = () => {
     setDate(new Date().toISOString().split("T")[0]);
     setTagId("");
@@ -216,11 +80,7 @@ export default function NewTransactionPage() {
     setCurrency("TWD");
     setAmount("");
     setNote("");
-    setCalculatorDisplay("0");
     setCalculatorExpression("");
-    setCalculatorCurrentInput("0");
-    setCalculatorPreviousValue(null);
-    setCalculatorOperation(null);
     setError(null);
   };
 
@@ -519,21 +379,12 @@ export default function NewTransactionPage() {
                 )}
               </div>
 
-              {/* Amount Display - 顯示運算式，可用游標編輯 */}
-              <input
-                type="text"
-                inputMode="decimal"
-                value={calculatorDisplay === "0" && !calculatorExpression && !amount ? "" : calculatorDisplay}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  const display = val === "" ? "0" : val;
-                  setCalculatorDisplay(display);
-                  setCalculatorExpression(display === "0" ? "" : display);
-                  setCalculatorCurrentInput(extractLastNumber(display));
-                }}
-                placeholder="金額"
-                className="h-10 w-full rounded-full bg-white px-3 py-2 text-xs text-black placeholder:text-gray-400 shadow-sm text-left"
-              />
+              {/* Amount Display - 顯示計算機運算式 */}
+              <div className="flex h-10 w-full items-center rounded-full bg-white px-3 py-2 shadow-sm">
+                <span className="text-xs font-medium text-black">
+                  {calculatorExpression || amount || "金額"}
+                </span>
+              </div>
             </div>
 
             {/* Notes - Flexible block that can expand/contract */}
@@ -563,151 +414,15 @@ export default function NewTransactionPage() {
             </button>
           </form>
 
-          <div className="mt-auto shrink-0 bg-[#D2D2D2] pb-0 pt-10">
-          <div className="grid grid-cols-5 gap-2 pb-1">
-            {/* Row 1: 7, 8, 9, ÷, AC */}
-            <button
-              type="button"
-              onClick={() => handleCalculatorInput("7")}
-              className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
-            >
-              7
-            </button>
-            <button
-              type="button"
-              onClick={() => handleCalculatorInput("8")}
-              className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
-            >
-              8
-            </button>
-            <button
-              type="button"
-              onClick={() => handleCalculatorInput("9")}
-              className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
-            >
-              9
-            </button>
-            <button
-              type="button"
-              onClick={() => handleCalculatorOperation("÷")}
-              className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
-            >
-              ÷
-            </button>
-            <button
-              type="button"
-              onClick={() => handleCalculatorInput("AC")}
-              className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
-            >
-              AC
-            </button>
-
-            {/* Row 2: 4, 5, 6, ×, ← */}
-            <button
-              type="button"
-              onClick={() => handleCalculatorInput("4")}
-              className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
-            >
-              4
-            </button>
-            <button
-              type="button"
-              onClick={() => handleCalculatorInput("5")}
-              className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
-            >
-              5
-            </button>
-            <button
-              type="button"
-              onClick={() => handleCalculatorInput("6")}
-              className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
-            >
-              6
-            </button>
-            <button
-              type="button"
-              onClick={() => handleCalculatorOperation("×")}
-              className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
-            >
-              ×
-            </button>
-            <button
-              type="button"
-              onClick={() => handleCalculatorInput("←")}
-              className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
-            >
-              ←
-            </button>
-
-            {/* Row 3: 1, 2, 3, ＋, OK */}
-            <button
-              type="button"
-              onClick={() => handleCalculatorInput("1")}
-              className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
-            >
-              1
-            </button>
-            <button
-              type="button"
-              onClick={() => handleCalculatorInput("2")}
-              className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
-            >
-              2
-            </button>
-            <button
-              type="button"
-              onClick={() => handleCalculatorInput("3")}
-              className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
-            >
-              3
-            </button>
-            <button
-              type="button"
-              onClick={() => handleCalculatorOperation("+")}
-              className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
-            >
-              ＋
-            </button>
-            {/* OK 佔兩格（兩列） */}
-            <button
-              type="button"
-              onClick={() => handleCalculatorInput("OK")}
-              className="row-span-2 flex h-full items-center justify-center rounded-full bg-green-500 text-lg font-medium text-white active:bg-green-600"
-            >
-              OK
-            </button>
-
-            {/* Row 4: 00, 0, ., − */}
-            <button
-              type="button"
-              onClick={() => handleCalculatorInput("00")}
-              className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
-            >
-              00
-            </button>
-            <button
-              type="button"
-              onClick={() => handleCalculatorInput("0")}
-              className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
-            >
-              0
-            </button>
-            <button
-              type="button"
-              onClick={() => handleCalculatorInput(".")}
-              className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
-            >
-              .
-            </button>
-            <button
-              type="button"
-              onClick={() => handleCalculatorOperation("-")}
-              className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
-            >
-              −
-            </button>
-          </div>
-          </div>
+          <CalculatorKeypad
+            onConfirm={(result) => {
+              setAmount(result.toFixed(2));
+            }}
+            onExpressionChange={(expr) => {
+              setCalculatorExpression(expr);
+            }}
+            clearOnConfirm={true}
+          />
         </div>
     </div>
   );
