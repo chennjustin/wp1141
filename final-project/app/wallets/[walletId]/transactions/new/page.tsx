@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { createTransactionAction } from "@/modules/transaction/routes/create-transaction";
 import { listTagsAction } from "@/modules/tag/routes/list-tags";
 import type { TransactionType } from "@/modules/transaction/domain/transaction.types";
-import { CalculatorKeypad } from "@/components/CalculatorKeypad";
+import { CalculatorKeypad } from "@/ui/components/CalculatorKeypad";
 
 interface Tag {
   id: string;
@@ -415,10 +415,10 @@ export default function NewTransactionPage() {
           </form>
 
           <CalculatorKeypad
-            onConfirm={(result) => {
+            onConfirm={(result: number) => {
               setAmount(result.toFixed(2));
             }}
-            onExpressionChange={(expr) => {
+            onExpressionChange={(expr: string) => {
               setCalculatorExpression(expr);
             }}
             clearOnConfirm={true}
