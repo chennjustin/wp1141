@@ -62,6 +62,15 @@ export class UnauthorizedError extends AppError {
 }
 
 /**
+ * Forbidden error (403)
+ * Used when user is authenticated but lacks permission to access the resource
+ */
+export class ForbiddenError extends AppError {
+  readonly statusCode = 403;
+  readonly code = "FORBIDDEN";
+}
+
+/**
  * Not found error (404)
  * Used when requested resource doesn't exist
  */
