@@ -1,0 +1,217 @@
+[1mdiff --git a/final-project/ui/components/CalculatorKeypad.tsx b/final-project/ui/components/CalculatorKeypad.tsx[m
+[1mnew file mode 100644[m
+[1mindex 0000000..5db9c17[m
+[1m--- /dev/null[m
+[1m+++ b/final-project/ui/components/CalculatorKeypad.tsx[m
+[36m@@ -0,0 +1,211 @@[m
+[32m+[m[32m"use client";[m
+[32m+[m
+[32m+[m[32mimport { useState } from "react";[m
+[32m+[m[32mimport {[m
+[32m+[m[32m  canAppendChar,[m
+[32m+[m[32m  backspace as backspaceExpr,[m
+[32m+[m[32m  clearExpression,[m
+[32m+[m[32m  evaluate,[m
+[32m+[m[32m} from "@/lib/calculator";[m
+[32m+[m
+[32m+[m[32minterface CalculatorKeypadProps {[m
+[32m+[m[32m  onConfirm: (result: number) => void;[m
+[32m+[m[32m  clearOnConfirm?: boolean;[m
+[32m+[m[32m  onExpressionChange?: (expression: string) => void; // 當 expression 改變時通知父元件[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32m/**[m
+[32m+[m[32m * 計算機元件：[m
+[32m+[m[32m * - 內部維護一個字串 expression，例如 "12+3×4-5.6"[m
+[32m+[m[32m * - 按 OK 時 evaluate()，把結果傳給 onConfirm(result)[m
+[32m+[m[32m * - AC 清空，← 刪除最後一個字元[m
+[32m+[m[32m */[m
+[32m+[m[32mexport function CalculatorKeypad({[m
+[32m+[m[32m  onConfirm,[m
+[32m+[m[32m  clearOnConfirm = true,[m
+[32m+[m[32m  onExpressionChange,[m
+[32m+[m[32m}: CalculatorKeypadProps) {[m
+[32m+[m[32m  const [expression, setExpression] = useState<string>("");[m
+[32m+[m
+[32m+[m[32m  // 更新 expression 並通知父元件[m
+[32m+[m[32m  const updateExpression = (newExpr: string) => {[m
+[32m+[m[32m    setExpression(newExpr);[m
+[32m+[m[32m    onExpressionChange?.(newExpr);[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const handleAppend = (ch: string) => {[m
+[32m+[m[32m    if (!canAppendChar(expression, ch)) return;[m
+[32m+[m[32m    updateExpression(expression + ch);[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const handleBackspace = () => {[m
+[32m+[m[32m    updateExpression(backspaceExpr(expression));[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const handleClear = () => {[m
+[32m+[m[32m    updateExpression(clearExpression());[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const handleOk = () => {[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      if (!expression.trim()) return;[m
+[32m+[m[32m      const result = evaluate(expression);[m
+[32m+[m[32m      onConfirm(result);[m
+[32m+[m[32m      if (clearOnConfirm) {[m
+[32m+[m[32m        updateExpression(clearExpression());[m
+[32m+[m[32m      }[m
+[32m+[m[32m    } catch {[m
+[32m+[m[32m      // expression 無效時暫時忽略（不更新）[m
+[32m+[m[32m    }[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  return ([m
+[32m+[m[32m    <div className="mt-auto shrink-0 bg-[#D2D2D2] pb-0 pt-10">[m
+[32m+[m[32m      {/* Keypad: 5 columns */}[m
+[32m+[m[32m      <div className="grid grid-cols-5 gap-2 pb-1">[m
+[32m+[m[32m        {/* Row 1: 7, 8, 9, ÷, AC */}[m
+[32m+[m[32m        <button[m
+[32m+[m[32m          type="button"[m
+[32m+[m[32m          onClick={() => handleAppend("7")}[m
+[32m+[m[32m          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"[m
+[32m+[m[32m        >[m
+[32m+[m[32m          7[m
+[32m+[m[32m        </button>[m
+[32m+[m[32m        <button[m
+[32m+[m[32m          type="button"[m
+[32m+[m[32m          onClick={() => handleAppend("8")}[m
+[32m+[m[32m          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"[m
+[32m+[m[32m        >[m
+[32m+[m[32m          8[m
+[32m+[m[32m        </button>[m
+[32m+[m[32m        <button[m
+[32m+[m[32m          type="button"[m
+[32m+[m[32m          onClick={() => handleAppend("9")}[m
+[32m+[m[32m          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"[m
+[32m+[m[32m        >[m
+[32m+[m[32m          9[m
+[32m+[m[32m        </button>[m
+[32m+[m[32m        <button[m
+[32m+[m[32m          type="button"[m
+[32m+[m[32m          onClick={() => handleAppend("÷")}[m
+[32m+[m[32m          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"[m
+[32m+[m[32m        >[m
+[32m+[m[32m          ÷[m
+[32m+[m[32m        </button>[m
+[32m+[m[32m        <button[m
+[32m+[m[32m          type="button"[m
+[32m+[m[32m          onClick={handleClear}[m
+[32m+[m[32m          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"[m
+[32m+[m[32m        >[m
+[32m+[m[32m          AC[m
+[32m+[m[32m        </button>[m
+[32m+[m
+[32m+[m[32m        {/* Row 2: 4, 5, 6, ×, ← */}[m
+[32m+[m[32m        <button[m
+[32m+[m[32m          type="button"[m
+[32m+[m[32m          onClick={() => handleAppend("4")}[m
+[32m+[m[32m          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"[m
+[32m+[m[32m        >[m
+[32m+[m[32m          4[m
+[32m+[m[32m        </button>[m
+[32m+[m[32m        <button[m
+[32m+[m[32m          type="button"[m
+[32m+[m[32m          onClick={() => handleAppend("5")}[m
+[32m+[m[32m          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"[m
+[32m+[m[32m        >[m
+[32m+[m[32m          5[m
+[32m+[m[32m        </button>[m
+[32m+[m[32m        <button[m
+[32m+[m[32m          type="button"[m
+[32m+[m[32m          onClick={() => handleAppend("6")}[m
+[32m+[m[32m          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"[m
+[32m+[m[32m        >[m
+[32m+[m[32m          6[m
+[32m+[m[32m        </button>[m
+[32m+[m[32m        <button[m
+[32m+[m[32m          type="button"[m
+[32m+[m[32m          onClick={() => handleAppend("×")}[m
+[32m+[m[32m          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"[m
+[32m+[m[32m        >[m
+[32m+[m[32m          ×[m
+[32m+[m[32m        </button>[m
+[32m+[m[32m        <button[m
+[32m+[m[32m          type="button"[m
+[32m+[m[32m          onClick={handleBackspace}[m
+[32m+[m[32m          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"[m
+[32m+[m[32m        >[m
+[32m+[m[32m          ←[m
+[32m+[m[32m        </button>[m
+[32m+[m
+[32m+[m[32m        {/* Row 3: 1, 2, 3, ＋, OK (2 rows) */}[m
+[32m+[m[32m        <button[m
+[32m+[m[32m          type="button"[m
+[32m+[m[32m          onClick={() => handleAppend("1")}[m
+[32m+[m[32m          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"[m
+[32m+[m[32m        >[m
+[32m+[m[32m          1[m
+[32m+[m[32m        </button>[m
+[32m+[m[32m        <button[m
+[32m+[m[32m          type="button"[m
+[32m+[m[32m          onClick={() => handleAppend("2")}[m
+[32m+[m[32m          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"[m
+[32m+[m[32m        >[m
+[32m+[m[32m          2[m
+[32m+[m[32m        </button>[m
+[32m+[m[32m        <button[m
+[32m+[m[32m          type="button"[m
+[32m+[m[32m          onClick={() => handleAppend("3")}[m
+[32m+[m[32m          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"[m
+[32m+[m[32m        >[m
+[32m+[m[32m          3[m
+[32m+[m[32m        </button>[m
+[32m+[m[32m        <button[m
+[32m+[m[32m          type="button"[m
+[32m+[m[32m          onClick={() => handleAppend("+")}[m
+[32m+[m[32m          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"[m
+[32m+[m[32m        >[m
+[32m+[m[32m          ＋[m
+[32m+[m[32m        </button>[m
+[32m+[m[32m        <button[m
+[32m+[m[32m          type="button"[m
+[32m+[m[32m          onClick={handleOk}[m
+[32m+[m[32m          className="row-span-2 flex h-full items-center justify-center rounded-full bg-green-500 text-lg font-medium text-white active:bg-green-600"[m
+[32m+[m[32m        >[m
+[32m+[m[32m          OK[m
+[32m+[m[32m        </button>[m
+[32m+[m
+[32m+[m[32m        {/* Row 4: 00, 0, ., − */}[m
+[32m+[m[32m        <button[m
+[32m+[m[32m          type="button"[m
+[32m+[m[32m          onClick={() => handleAppend("00")}[m
+[32m+[m[32m          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"[m
+[32m+[m[32m        >[m
+[32m+[m[32m          00[m
+[32m+[m[32m        </button>[m
+[32m+[m[32m        <button[m
+[32m+[m[32m          type="button"[m
+[32m+[m[32m          onClick={() => handleAppend("0")}[m
+[32m+[m[32m          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"[m
+[32m+[m[32m        >[m
+[32m+[m[32m          0[m
+[32m+[m[32m        </button>[m
+[32m+[m[32m        <button[m
+[32m+[m[32m          type="button"[m
+[32m+[m[32m          onClick={() => handleAppend(".")}[m
+[32m+[m[32m          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"[m
+[32m+[m[32m        >[m
+[32m+[m[32m          .[m
+[32m+[m[32m        </button>[m
+[32m+[m[32m        <button[m
+[32m+[m[32m          type="button"[m
+[32m+[m[32m          onClick={() => handleAppend("-")}[m
+[32m+[m[32m          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"[m
+[32m+[m[32m        >[m
+[32m+[m[32m          −[m
+[32m+[m[32m        </button>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m    </div>[m
+[32m+[m[32m  );[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m

@@ -14,6 +14,7 @@ import type { AppError } from "@/lib/errors";
 export interface Tag {
   id: string;
   name: string;
+  type: "EXPENSE" | "INCOME";
   createdBy: string;
   createdAt: Date;
   isDeleted: boolean;

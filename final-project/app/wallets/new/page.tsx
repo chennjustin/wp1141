@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useWallets } from "@/hooks/useWallet";
+import { useUser } from "@/hooks/useUser";
+import { WalletRole } from "@/modules/wallet/domain/wallet.types";
 
 /**
  * Create wallet page
@@ -13,6 +15,7 @@ import { useWallets } from "@/hooks/useWallet";
 export default function CreateWalletPage() {
   const router = useRouter();
   const { refetch: refreshWallets } = useWallets();
+  const { profile } = useUser();
   const [step, setStep] = useState<"type" | "personal" | "group">("type");
   const [walletType, setWalletType] = useState<"PERSONAL" | "GROUP" | null>(null);
   
@@ -115,10 +118,20 @@ export default function CreateWalletPage() {
       if (response.ok) {
         setSuccess(true);
         refreshWallets();
-        // Navigate to the newly created wallet page
-        const walletId = data.id;
+        
+        // Check if this is "我的錢包" (My Wallet)
+        // "我的錢包" should navigate to /wallets (root), not /wallets/[id]
+        const isMyWallet = data.name === "我的錢包" || 
+          (data.members && data.members.length === 1 && 
+           data.members[0].userId === profile?.id && 
+           data.members[0].role === WalletRole.OWNER);
+        
         setTimeout(() => {
-          router.push(`/wallets/${walletId}`);
+          if (isMyWallet) {
+            router.push("/wallets");
+          } else {
+            router.push(`/wallets/${data.id}`);
+          }
         }, 1500);
       } else {
         setError(data.error || "新增失敗，請稍後再試");

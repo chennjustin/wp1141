@@ -333,6 +333,11 @@ const swaggerDefinition = {
                 type: "string",
                 example: "food",
               },
+              type: {
+                type: "string",
+                enum: ["EXPENSE", "INCOME"],
+                example: "EXPENSE",
+              },
             },
           },
           createdAt: {
@@ -685,6 +690,13 @@ const swaggerDefinition = {
             description: "Tag name",
             example: "food",
           },
+          type: {
+            type: "string",
+            enum: ["EXPENSE", "INCOME"],
+            description: "Tag type - EXPENSE for expense tags, INCOME for income tags",
+            default: "EXPENSE",
+            example: "EXPENSE",
+          },
           createdBy: {
             type: "string",
             description: "User ID who created the tag",
@@ -716,7 +728,7 @@ const swaggerDefinition = {
             },
           },
         },
-        required: ["id", "name", "createdBy", "createdAt", "isDeleted"],
+        required: ["id", "name", "type", "createdBy", "createdAt", "isDeleted"],
       },
       CreateTagRequest: {
         type: "object",
@@ -725,6 +737,13 @@ const swaggerDefinition = {
             type: "string",
             description: "Tag name (must be unique)",
             example: "custom-tag-1",
+          },
+          type: {
+            type: "string",
+            enum: ["EXPENSE", "INCOME"],
+            description: "Tag type - EXPENSE for expense tags, INCOME for income tags (defaults to EXPENSE)",
+            default: "EXPENSE",
+            example: "EXPENSE",
           },
         },
         required: ["name"],
@@ -736,6 +755,12 @@ const swaggerDefinition = {
             type: "string",
             description: "Tag name (must be unique)",
             example: "custom-tag-2",
+          },
+          type: {
+            type: "string",
+            enum: ["EXPENSE", "INCOME"],
+            description: "Tag type - EXPENSE for expense tags, INCOME for income tags",
+            example: "INCOME",
           },
         },
       },
@@ -785,6 +810,11 @@ const swaggerDefinition = {
               name: {
                 type: "string",
                 example: "food",
+              },
+              type: {
+                type: "string",
+                enum: ["EXPENSE", "INCOME"],
+                example: "EXPENSE",
               },
             },
           },
@@ -854,8 +884,9 @@ const swaggerDefinition = {
                 name: "Salary",
                 note: "Monthly salary",
                 tag: {
-                  id: "custom-tag-1",
-                  name: "custom-tag-1",
+                  id: "system-tag-salary",
+                  name: "salary",
+                  type: "INCOME",
                 },
               },
             ],
@@ -877,6 +908,7 @@ const swaggerDefinition = {
                 tag: {
                   id: "system-tag-food",
                   name: "food",
+                  type: "EXPENSE",
                 },
               },
             ],
@@ -895,6 +927,65 @@ const swaggerDefinition = {
           "incomes",
           "expenses",
         ],
+      },
+      DeviceCarrier: {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+            description: "Carrier ID",
+          },
+          userId: {
+            type: "string",
+            description: "User ID who owns this carrier",
+          },
+          carrierCode: {
+            type: "string",
+            description: "Carrier code (e.g., /ABCDEF1)",
+            example: "/ABCDEF1",
+          },
+          isDeleted: {
+            type: "boolean",
+            description: "Soft delete flag",
+          },
+          createdAt: {
+            type: "string",
+            format: "date-time",
+            description: "Creation timestamp",
+          },
+        },
+        required: ["id", "userId", "carrierCode", "isDeleted", "createdAt"],
+      },
+      CreateCarrierRequest: {
+        type: "object",
+        properties: {
+          carrierCode: {
+            type: "string",
+            description: "Carrier code",
+            example: "/ABCDEF1",
+          },
+        },
+        required: ["carrierCode"],
+      },
+      UpdateCarrierRequest: {
+        type: "object",
+        properties: {
+          carrierCode: {
+            type: "string",
+            description: "Carrier code",
+            example: "/ABCDEF2",
+          },
+        },
+      },
+      CarrierDeleteResponse: {
+        type: "object",
+        properties: {
+          success: {
+            type: "boolean",
+            example: true,
+          },
+        },
+        required: ["success"],
       },
     },
   },

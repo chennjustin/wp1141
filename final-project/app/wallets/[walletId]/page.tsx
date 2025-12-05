@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useState, useMemo, useEffect } from "react";
+import { useRouter, useParams, usePathname } from "next/navigation";
 import { useWallet } from "@/hooks/useWallet";
 import { useMonthlySummary } from "@/hooks/useMonthlySummary";
 import { useDailyTransactions } from "@/hooks/useDailyTransactions";
@@ -41,11 +41,12 @@ export default function WalletDetailPage() {
     );
   }, [wallet, profile]);
 
-  // Fetch monthly summary from API
+  // Fetch monthly summary from API with refetch capability
   const {
     data: monthlySummary,
     loading: summaryLoading,
     error: summaryError,
+    refetch: refetchSummary,
   } = useMonthlySummary({
     walletId: wallet?.id ?? null,
     year,
@@ -62,11 +63,41 @@ export default function WalletDetailPage() {
     data: dailyTransactions,
     loading: transactionsLoading,
     error: transactionsError,
+    refetch: refetchTransactions,
   } = useDailyTransactions({
     walletId: wallet?.id ?? null,
     date: today,
     enabled: !!wallet,
   });
+
+  // Refetch data when returning from transaction creation page
+  const pathname = usePathname();
+  useEffect(() => {
+    // Refetch transactions and summary when wallet is loaded
+    if (wallet && pathname === `/wallets/${wallet.id}`) {
+      // Small delay to ensure navigation is complete
+      const timer = setTimeout(() => {
+        refetchTransactions();
+        refetchSummary();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [wallet?.id, pathname, refetchTransactions, refetchSummary]);
+
+  // Also refetch when page becomes visible (user returns to tab)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && wallet) {
+        refetchTransactions();
+        refetchSummary();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [wallet, refetchTransactions, refetchSummary]);
 
   // Transform transactions for display
   const displayTransactions = useMemo(() => {
