@@ -39,9 +39,18 @@ export const userRepository = {
       include: {
         _count: {
           select: {
-            posts: { where: { deletedAt: null, isDraft: false } },
-            followers: true,
-            following: true,
+            // Only include fields that exist in the User model
+            accounts: true,
+            sessions: true,
+            walletUsers: true,
+            pinnedWallets: true,
+            createdTransactions: true,
+            transactionPayers: true,
+            transactionShares: true,
+            notifications: true,
+            tags: true,
+            subscriptions: true,
+            deviceCarriers: true,
           },
         },
       },
