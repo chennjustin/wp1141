@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { searchUsers } from "@/modules/user/routes/search-users";
 
+// Force dynamic rendering since this route uses request.url to parse query parameters
+export const dynamic = 'force-dynamic';
+
 /**
  * @swagger
  * /api/users/search:

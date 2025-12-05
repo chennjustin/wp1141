@@ -8,6 +8,9 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/modules/auth/permissions";
 import { userRepository } from "@/modules/user/repositories/user.repository";
 
+// Force dynamic rendering since this route uses headers for authentication
+export const dynamic = 'force-dynamic';
+
 /**
  * @swagger
  * /api/auth/me:

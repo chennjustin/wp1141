@@ -4,6 +4,9 @@ import { BadRequestError, InternalServerError } from "@/lib/errors";
 import { handleServiceError, createErrorResponse } from "@/lib/api-response";
 import type { MonthlySummaryFilters } from "@/modules/transaction/domain/transaction.types";
 
+// Force dynamic rendering since this route uses request.url to parse query parameters
+export const dynamic = 'force-dynamic';
+
 /**
  * @swagger
  * /api/transactions/summary:
