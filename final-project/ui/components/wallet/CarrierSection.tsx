@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import JsBarcode from "jsbarcode";
 import { generateBarcodePattern, BARCODE_HEIGHT, BARCODE_WIDTH } from "@/ui/utils/barcode";
 
@@ -28,6 +28,8 @@ export function CarrierSection({
 }: CarrierSectionProps) {
   const barcodeRef = useRef<SVGSVGElement>(null);
   const barcodePattern = generateBarcodePattern(carrierCode);
+  const [showCopyToast, setShowCopyToast] = useState(false);
+  const [isFadingOut, setIsFadingOut] = useState(false);
 
   // Generate real barcode when carrier is available
   useEffect(() => {
@@ -56,20 +58,63 @@ export function CarrierSection({
     }
   }, [hasRealCarrier, carrierCode, brightCarrier]);
 
-  const handleCopyCarrierCode = () => {
+  const handleCopyCarrierCode = async () => {
     if (navigator?.clipboard?.writeText) {
-      navigator.clipboard.writeText(carrierCode).catch(() => {
+      try {
+        await navigator.clipboard.writeText(carrierCode);
+        setIsFadingOut(false);
+        setShowCopyToast(true);
+        setTimeout(() => {
+          setIsFadingOut(true);
+          setTimeout(() => {
+            setShowCopyToast(false);
+            setIsFadingOut(false);
+          }, 300); // 淡出动画时间
+        }, 1700); // 显示时间
+      } catch (error) {
         // Swallow clipboard errors silently for now
-      });
+      }
     }
   };
 
   return (
     <section
-      className={`rounded-xl p-4 text-sm transition-colors ${
+      className={`relative rounded-xl p-4 text-sm transition-colors ${
         brightCarrier ? "bg-white text-black" : "bg-black text-white"
       }`}
     >
+      {/* Copy toast notification */}
+      {showCopyToast && (
+        <div 
+          className="absolute left-1/2 top-4 z-10 rounded-lg bg-gradient-to-r from-gray-800 to-gray-700 px-4 py-2.5 text-xs text-white shadow-2xl border border-gray-600/50 backdrop-blur-sm"
+          style={{
+            animation: isFadingOut 
+              ? 'fadeOut 0.3s ease-in forwards' 
+              : 'slideDown 0.3s ease-out, scaleIn 0.3s ease-out',
+            transform: 'translateX(-50%)',
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <svg
+              className="h-3.5 w-3.5 text-green-400"
+              style={{
+                animation: isFadingOut ? 'none' : 'checkmark 0.4s ease-out 0.1s both',
+              }}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2.5}
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+            <span className="font-medium">已複製載具代碼</span>
+          </div>
+        </div>
+      )}
       <div className="mb-3 flex items-center justify-between">
         <span className="text-sm font-medium">載具</span>
         <button

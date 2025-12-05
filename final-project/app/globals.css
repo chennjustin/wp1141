@@ -19,3 +19,62 @@ body {
   color: var(--foreground);
   font-family: var(--font-inter), Arial, Helvetica, sans-serif;
 }
+
+/* Custom animations for copy toast */
+@keyframes slideDown {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -30px) scale(0.85);
+  }
+  60% {
+    opacity: 1;
+    transform: translate(-50%, 5px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+@keyframes scaleIn {
+  0% {
+    transform: translate(-50%, -30px) scale(0.8);
+  }
+  50% {
+    transform: translate(-50%, 0) scale(1.08);
+  }
+  70% {
+    transform: translate(-50%, 0) scale(0.98);
+  }
+  100% {
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+@keyframes checkmark {
+  0% {
+    opacity: 0;
+    transform: scale(0) rotate(-180deg);
+  }
+  50% {
+    transform: scale(1.3) rotate(10deg);
+  }
+  75% {
+    transform: scale(0.95) rotate(-5deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes fadeOut {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -10px) scale(0.95);
+  }
+}
