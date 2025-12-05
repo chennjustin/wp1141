@@ -1,91 +1,76 @@
-"use client";
-
-import { useWalletHome } from "@/hooks/useWalletHome";
-import { MonthlySummarySection } from "@/ui/components/wallet/MonthlySummarySection";
-import { CarrierSection } from "@/ui/components/wallet/CarrierSection";
-import { DailyTransactionsSection } from "@/ui/components/wallet/DailyTransactionsSection";
-import { FloatingAddButton } from "@/ui/components/wallet/FloatingAddButton";
-import { WalletHomeLoading } from "@/ui/components/wallet/WalletHomeLoading";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { walletService } from "@/modules/wallet/services/wallet.service";
+import { prisma } from "@/lib/prisma";
+import { WalletRole } from "@/modules/wallet/domain/wallet.types";
 
 /**
- * Wallet home page.
- *
- * This page renders the main wallet overview according to the mobile-first
- * wireframe: monthly summary, carrier section, and daily transactions list
- * with a floating action button to add a new transaction.
+ * Wallets home page redirect
+ * 
+ * This page automatically redirects to the appropriate wallet detail page
+ * based on the user's default wallet or "我的錢包" (My Wallet).
+ * 
+ * Priority order:
+ * 1. Session's defaultWalletId (if exists and user has access)
+ * 2. "我的錢包" (My Wallet) - wallet named "我的錢包" or personal wallet with single owner
+ * 3. First available wallet
+ * 4. /wallets/new if no wallets exist
  */
-export default function WalletHomePage() {
-  const {
-    // Monthly summary data
-    year,
-    month,
-    incomeTotal,
-    expenseTotal,
-    summaryLoading,
-    summaryError,
-    
-    // Carrier data
-    carrierCode,
-    hasRealCarrier,
-    carrierLoading,
-    
-    // Daily transactions data
-    displayTransactions,
-    transactionsLoading,
-    transactionsError,
-    
-    // UI state
-    showAmounts,
-    setShowAmounts,
-    brightCarrier,
-    setBrightCarrier,
-    
-    // Loading state
-    isInitialLoading,
-    
-    // Handlers
-    handleAddTransaction,
-    
-    // Wallet data
-    activeWallet,
-  } = useWalletHome();
-
-  // Show loading state while initial data is being fetched
-  if (isInitialLoading) {
-    return <WalletHomeLoading />;
+export default async function WalletsPage() {
+  // Check authentication
+  const session = await getServerSession(authOptions);
+  
+  if (!session?.user?.id) {
+    redirect("/login");
   }
 
-  return (
-    <div className="flex h-full flex-col gap-4">
-      <MonthlySummarySection
-        year={year}
-        month={month}
-        incomeTotal={incomeTotal}
-        expenseTotal={expenseTotal}
-        loading={summaryLoading}
-        error={summaryError}
-        showAmounts={showAmounts}
-        onToggleAmounts={() => setShowAmounts((prev) => !prev)}
-      />
+  // Get user's wallets
+  const wallets = await walletService.getUserWallets(session.user.id);
 
-      <CarrierSection
-        carrierCode={carrierCode}
-        hasRealCarrier={hasRealCarrier}
-        carrierLoading={carrierLoading}
-        brightCarrier={brightCarrier}
-        onToggleBrightness={() => setBrightCarrier((prev) => !prev)}
-      />
+  // If no wallets exist, redirect to create wallet page
+  if (wallets.length === 0) {
+    redirect("/wallets/new");
+  }
 
-      <DailyTransactionsSection
-        transactions={displayTransactions}
-        loading={transactionsLoading}
-        error={transactionsError}
-      />
+  // Priority 1: Check if user has defaultWalletId in session
+  if (session.user.defaultWalletId) {
+    // Verify wallet exists and user has access
+    const walletResult = await walletService.getWalletById(
+      session.user.defaultWalletId,
+      session.user.id
+    );
+    
+    if (walletResult.success && walletResult.data) {
+      redirect(`/wallets/${session.user.defaultWalletId}`);
+    } else {
+      // Wallet doesn't exist or user lost access, clear defaultWalletId
+      await prisma.user.update({
+        where: { id: session.user.id },
+        data: { defaultWalletId: null },
+      });
+    }
+  }
 
-      <FloatingAddButton
-        onClick={handleAddTransaction}
-        disabled={!activeWallet}
-      />
-    </div>
-  );
+  // Priority 2: Find "我的錢包" (My Wallet)
+  // A personal wallet typically has name "我的錢包" or has only one member who is the owner
+  const myWallet = wallets.find((w) => {
+    const isNamedMyWallet = w.name === "我的錢包";
+    const isPersonalWallet = w.members.length === 1 &&
+      w.members[0].userId === session.user.id &&
+      w.members[0].role === WalletRole.OWNER;
+    return isNamedMyWallet || isPersonalWallet;
+  });
+
+  if (myWallet) {
+    redirect(`/wallets/${myWallet.id}`);
+  }
+
+  // Priority 3: Use first available wallet
+  if (wallets.length > 0) {
+    redirect(`/wallets/${wallets[0].id}`);
+  }
+
+  // Fallback: redirect to create wallet page
+  redirect("/wallets/new");
 }

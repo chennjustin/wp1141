@@ -23,6 +23,7 @@ export default function NewTransactionPage() {
   useEffect(() => {
     if (!walletId) {
       console.error("WalletId is missing from params");
+      // Redirect to /wallets which will automatically redirect to default wallet
       router.push("/wallets");
     }
   }, [walletId, router]);

@@ -8,8 +8,8 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { useWallets } from "@/hooks/useWallet";
+import { useRouter, usePathname } from "next/navigation";
+import { useWallets, useWallet } from "@/hooks/useWallet";
 import { useUserCarrier } from "@/hooks/useCarrier";
 import { useMonthlySummary } from "@/hooks/useMonthlySummary";
 import { useDailyTransactions } from "@/hooks/useDailyTransactions";
@@ -26,14 +26,27 @@ export interface DisplayTransaction {
 
 /**
  * Hook for wallet home page logic
+ * 
+ * @param walletId - Optional wallet ID. If provided, uses that specific wallet.
+ *                   If not provided, uses the first wallet from the wallets list.
  */
-export function useWalletHome() {
+export function useWalletHome(walletId?: string | null) {
   const router = useRouter();
+  const pathname = usePathname();
   const { wallets, loading: walletsLoading } = useWallets();
+  const { wallet: walletById, loading: walletByIdLoading } = useWallet(walletId ?? null);
   const { carrier, loading: carrierLoading } = useUserCarrier();
 
-  // For now we treat the first wallet as the active wallet on this page
-  const activeWallet = wallets[0] ?? null;
+  // Determine active wallet: use walletById if walletId is provided, otherwise use first wallet
+  const activeWallet = useMemo(() => {
+    if (walletId && walletById) {
+      return walletById;
+    }
+    if (!walletId) {
+      return wallets[0] ?? null;
+    }
+    return null;
+  }, [walletId, walletById, wallets]);
 
   const [showAmounts, setShowAmounts] = useState(true);
   const [brightCarrier, setBrightCarrier] = useState(true);
@@ -50,11 +63,12 @@ export function useWalletHome() {
   const carrierCode = carrier?.carrierCode || "/ABCDEF";
   const hasRealCarrier = !!carrier;
 
-  // Fetch monthly summary from API
+  // Fetch monthly summary from API with refetch capability
   const {
     data: monthlySummary,
     loading: summaryLoading,
     error: summaryError,
+    refetch: refetchSummary,
   } = useMonthlySummary({
     walletId: activeWallet?.id ?? null,
     year,
@@ -66,11 +80,12 @@ export function useWalletHome() {
   const incomeTotal = monthlySummary?.totalIncome ?? 0;
   const expenseTotal = monthlySummary?.totalExpense ?? 0;
 
-  // Fetch daily transactions for today
+  // Fetch daily transactions for today with refetch capability
   const {
     data: dailyTransactions,
     loading: transactionsLoading,
     error: transactionsError,
+    refetch: refetchTransactions,
   } = useDailyTransactions({
     walletId: activeWallet?.id ?? null,
     date: today,
@@ -109,8 +124,11 @@ export function useWalletHome() {
   };
 
   // Manage loading state with minimum display time
+  // Consider both walletsLoading and walletByIdLoading
+  const isLoading = walletId ? walletByIdLoading : walletsLoading;
+  
   useEffect(() => {
-    if (walletsLoading) {
+    if (isLoading) {
       // Start loading
       if (loadingStartTimeRef.current === null) {
         loadingStartTimeRef.current = Date.now();
@@ -137,12 +155,40 @@ export function useWalletHome() {
         }
       }
     }
-  }, [walletsLoading, minLoadingTime]);
+  }, [isLoading, minLoadingTime]);
+
+  // Refetch data when returning from transaction creation page
+  useEffect(() => {
+    // Refetch transactions and summary when wallet is loaded and pathname matches
+    if (activeWallet && pathname === `/wallets/${activeWallet.id}`) {
+      // Small delay to ensure navigation is complete
+      const timer = setTimeout(() => {
+        refetchTransactions();
+        refetchSummary();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [activeWallet?.id, pathname, refetchTransactions, refetchSummary]);
+
+  // Also refetch when page becomes visible (user returns to tab)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && activeWallet) {
+        refetchTransactions();
+        refetchSummary();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [activeWallet, refetchTransactions, refetchSummary]);
 
   return {
     // Wallet data
     activeWallet,
-    walletsLoading,
+    walletsLoading: isLoading,
     
     // Carrier data
     carrier,
@@ -174,6 +220,10 @@ export function useWalletHome() {
     
     // Handlers
     handleAddTransaction,
+    
+    // Refetch functions
+    refetchTransactions,
+    refetchSummary,
   };
 }
 

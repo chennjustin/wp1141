@@ -119,19 +119,9 @@ export default function CreateWalletPage() {
         setSuccess(true);
         refreshWallets();
         
-        // Check if this is "我的錢包" (My Wallet)
-        // "我的錢包" should navigate to /wallets (root), not /wallets/[id]
-        const isMyWallet = data.name === "我的錢包" || 
-          (data.members && data.members.length === 1 && 
-           data.members[0].userId === profile?.id && 
-           data.members[0].role === WalletRole.OWNER);
-        
+        // Navigate to the newly created wallet
         setTimeout(() => {
-          if (isMyWallet) {
-            router.push("/wallets");
-          } else {
-            router.push(`/wallets/${data.id}`);
-          }
+          router.push(`/wallets/${data.id}`);
         }, 1500);
       } else {
         setError(data.error || "新增失敗，請稍後再試");

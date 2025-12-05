@@ -89,17 +89,34 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
 
     // Check if second part is a special path or a valid wallet ID
     if (secondPart && !specialPaths.includes(secondPart)) {
-      // Check if it's a valid wallet ID
-      if (wallets.some(w => w.id === secondPart)) {
-        if (currentWalletId !== secondPart) {
-          setCurrentWalletId(secondPart);
+      // Always set currentWalletId from URL to ensure it updates immediately
+      // This ensures the display updates when navigating between wallets
+      if (currentWalletId !== secondPart) {
+        setCurrentWalletId(secondPart);
+      }
+      
+      // If wallets are loaded, verify it's a valid wallet ID
+      // If not found, we still keep the walletId from URL (it might be loading or user lost access)
+      if (!walletsLoading && !wallets.some(w => w.id === secondPart)) {
+        // Wallet not found in list, but keep the walletId from URL
+        // This ensures the URL and currentWalletId stay in sync
+      }
+      
+      return;
+    }
+
+    // If path is /wallets (root), it will redirect server-side, but we still need to set currentWalletId
+    // Use the same priority as server-side: defaultWalletId > "我的錢包" > first wallet
+    if (pathname === "/wallets") {
+      // Priority 1: Use defaultWalletId from session if available
+      if (session?.user?.defaultWalletId && wallets.some(w => w.id === session.user.defaultWalletId)) {
+        if (currentWalletId !== session.user.defaultWalletId) {
+          setCurrentWalletId(session.user.defaultWalletId);
         }
         return;
       }
-    }
 
-    // If path is /wallets (root), find "我的錢包" (My Wallet)
-    if (pathname === "/wallets") {
+      // Priority 2: Find "我的錢包" (My Wallet)
       const myWallet = wallets.find(w => 
         w.name === "我的錢包" ||
         (w.members.length === 1 &&
@@ -262,6 +279,23 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
     return userName || session?.user?.name || session?.user?.email || "User";
   }, [isPersonalWallet, currentRole, userName, session]);
 
+  // Default wallet name display
+  // Must be defined before any conditional returns to follow React Hooks rules
+  const walletDisplayName = useMemo(() => {
+    if (currentWallet) {
+      return currentWallet.name === "我的錢包" || isPersonalWallet
+        ? "我的錢包"
+        : currentWallet.name;
+    }
+    
+    // If currentWalletId is set but currentWallet is null, wallet might be loading
+    if (currentWalletId) {
+      return walletsLoading ? "載入中..." : "No wallet";
+    }
+    
+    return "No wallet";
+  }, [currentWallet, currentWalletId, walletsLoading, isPersonalWallet]);
+
   // Show loading state while checking authentication
   if (sessionStatus === "loading") {
     return (
@@ -278,16 +312,11 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
   }
 
   const handleWalletChange = (walletId: string) => {
-    // Find the wallet to check if it's "My Wallet"
-    const wallet = wallets.find(w => w.id === walletId);
+    // Immediately update currentWalletId to ensure UI updates instantly
+    setCurrentWalletId(walletId);
     
-    // If it's "My Wallet" (我的錢包), navigate to root wallets page
-    // Otherwise, navigate to the wallet's detail page
-    if (wallet?.name === "我的錢包") {
-      router.push("/wallets");
-    } else {
-      router.push(`/wallets/${walletId}`);
-    }
+    // Navigate to the wallet's detail page
+    router.push(`/wallets/${walletId}`);
     
     // Note: setIsWalletSelectorOpen(false) will be called automatically
     // by the pathname change effect, but we can also close it immediately
@@ -299,13 +328,6 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
     if (pathname === path) return;
     router.push(path);
   };
-
-  // Default wallet name display
-  const walletDisplayName = currentWallet
-    ? currentWallet.name === "我的錢包" || isPersonalWallet
-      ? "我的錢包"
-      : currentWallet.name
-    : "No wallet";
 
   // 是否為「新增交易」頁面：/wallets/[walletId]/transactions/new
   const isNewTransactionPage =
@@ -431,7 +453,12 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
               className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-black/5"
               onClick={() => {
                 setIsMenuOpen(false);
-                router.push("/wallets");
+                // Navigate to current wallet or redirect to /wallets (which will redirect to default wallet)
+                if (currentWalletId) {
+                  router.push(`/wallets/${currentWalletId}`);
+                } else {
+                  router.push("/wallets");
+                }
               }}
               aria-label="Go to wallet home"
             >
