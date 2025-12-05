@@ -74,10 +74,9 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
     }
   }, [isWalletSelectorOpen]);
 
-  // Initialize currentWalletId from URL pathname or session defaultWalletId
+  // Extract walletId from URL pathname for header display
+  // Simplified logic since page.tsx handles the redirect logic
   useEffect(() => {
-    if (wallets.length === 0 || walletsLoading) return;
-
     // Special paths that are not wallet IDs
     const specialPaths = ["new", "all", "history", "notifications", "settings", "subscriptions"];
     
@@ -87,60 +86,20 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
       ? pathParts[1] 
       : null;
 
-    // Check if second part is a special path or a valid wallet ID
+    // If it's a wallet ID path (not a special path), set currentWalletId
     if (secondPart && !specialPaths.includes(secondPart)) {
-      // Always set currentWalletId from URL to ensure it updates immediately
-      // This ensures the display updates when navigating between wallets
       if (currentWalletId !== secondPart) {
         setCurrentWalletId(secondPart);
       }
-      
-      // If wallets are loaded, verify it's a valid wallet ID
-      // If not found, we still keep the walletId from URL (it might be loading or user lost access)
-      if (!walletsLoading && !wallets.some(w => w.id === secondPart)) {
-        // Wallet not found in list, but keep the walletId from URL
-        // This ensures the URL and currentWalletId stay in sync
-      }
-      
       return;
     }
 
-    // If path is /wallets (root), it will redirect server-side, but we still need to set currentWalletId
-    // Use the same priority as server-side: defaultWalletId > "我的錢包" > first wallet
-    if (pathname === "/wallets") {
-      // Priority 1: Use defaultWalletId from session if available
-      if (session?.user?.defaultWalletId && wallets.some(w => w.id === session.user.defaultWalletId)) {
-        if (currentWalletId !== session.user.defaultWalletId) {
-          setCurrentWalletId(session.user.defaultWalletId);
-        }
-        return;
-      }
-
-      // Priority 2: Find "我的錢包" (My Wallet)
-      const myWallet = wallets.find(w => 
-        w.name === "我的錢包" ||
-        (w.members.length === 1 &&
-         w.members.some(m => m.userId === profile?.id && m.role === WalletRole.OWNER))
-      );
-      if (myWallet && currentWalletId !== myWallet.id) {
-        setCurrentWalletId(myWallet.id);
-      }
-      return;
+    // For special paths or /wallets root, clear currentWalletId
+    // The page.tsx will handle redirect to appropriate wallet
+    if (currentWalletId !== null) {
+      setCurrentWalletId(null);
     }
-
-    // Otherwise, use defaultWalletId from session if available
-    if (session?.user?.defaultWalletId && wallets.some(w => w.id === session.user.defaultWalletId)) {
-      if (currentWalletId !== session.user.defaultWalletId) {
-        setCurrentWalletId(session.user.defaultWalletId);
-      }
-      return;
-    }
-
-    // Fallback to first wallet
-    if (wallets.length > 0 && wallets[0].id !== currentWalletId) {
-      setCurrentWalletId(wallets[0].id);
-    }
-  }, [pathname, wallets, walletsLoading, session?.user?.defaultWalletId, currentWalletId, profile?.id]);
+  }, [pathname, currentWalletId]);
 
   const currentWallet: Wallet | null = useMemo(() => {
     if (!wallets || wallets.length === 0) {
