@@ -47,29 +47,38 @@ export default function WalletHistoryPage() {
     return groupTransactionsByDate(transactions);
   }, [transactions]);
 
-  // Generate month options for dropdown (last 12 months)
-  const monthOptions = useMemo(() => {
-    const options: Array<{ year: number; month: number; label: string }> = [];
-    const currentDate = new Date();
-    
-    for (let i = 0; i < 12; i++) {
-      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-      const year = date.getFullYear();
-      const month = date.getMonth() + 1;
-      const label = `${year} 年 ${month} 月`;
-      
-      options.push({ year, month, label });
+  // Check if current selected month is the current month
+  const isCurrentMonth = useMemo(() => {
+    return selectedYear === today.getFullYear() && selectedMonth === today.getMonth() + 1;
+  }, [selectedYear, selectedMonth, today]);
+
+  // Format month label
+  const monthLabel = useMemo(() => {
+    return `${selectedYear} 年 ${selectedMonth} 月收支明細`;
+  }, [selectedYear, selectedMonth]);
+
+  // Handle previous month navigation
+  const handlePreviousMonth = () => {
+    if (selectedMonth === 1) {
+      setSelectedYear(selectedYear - 1);
+      setSelectedMonth(12);
+    } else {
+      setSelectedMonth(selectedMonth - 1);
+    }
+  };
+
+  // Handle next month navigation
+  const handleNextMonth = () => {
+    if (isCurrentMonth) {
+      return; // Disabled when at current month
     }
     
-    return options;
-  }, []);
-
-  // Handle month selection change
-  const handleMonthChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = event.target.value;
-    const [year, month] = value.split("-").map(Number);
-    setSelectedYear(year);
-    setSelectedMonth(month);
+    if (selectedMonth === 12) {
+      setSelectedYear(selectedYear + 1);
+      setSelectedMonth(1);
+    } else {
+      setSelectedMonth(selectedMonth + 1);
+    }
   };
 
   // Handle statistics icon click (placeholder)
@@ -106,26 +115,43 @@ export default function WalletHistoryPage() {
     <div className="flex h-full flex-col gap-4">
       {/* Header section with title and statistics icon */}
       <section className="flex items-center justify-between">
+        {/* Left spacer - same width as right button to center the middle content */}
+        <div className="w-8" />
+
+        {/* Center: Month navigation and title */}
         <div className="flex items-center gap-3">
-          {/* Month selector */}
-          <select
-            value={`${selectedYear}-${selectedMonth}`}
-            onChange={handleMonthChange}
-            className="rounded border border-black bg-white px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-black/20"
+          {/* Previous month button */}
+          <button
+            type="button"
+            onClick={handlePreviousMonth}
+            className="flex items-center justify-center text-lg font-medium text-black hover:bg-black/5 rounded transition-colors"
+            aria-label="Previous month"
           >
-            {monthOptions.map((option) => (
-              <option key={`${option.year}-${option.month}`} value={`${option.year}-${option.month}`}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          
+            ◀
+          </button>
+
+          {/* Month title */}
           <h1 className="text-lg font-medium text-black">
-            {selectedMonth} 月收支明細
+            {monthLabel}
           </h1>
+
+          {/* Next month button */}
+          <button
+            type="button"
+            onClick={handleNextMonth}
+            disabled={isCurrentMonth}
+            className={`flex items-center justify-center text-lg font-medium rounded transition-colors ${
+              isCurrentMonth
+                ? "text-black/30 cursor-not-allowed"
+                : "text-black hover:bg-black/5"
+            }`}
+            aria-label="Next month"
+          >
+            ▶
+          </button>
         </div>
 
-        {/* Statistics icon (pie chart) */}
+        {/* Right: Statistics icon (pie chart) */}
         <button
           type="button"
           onClick={handleStatisticsClick}
