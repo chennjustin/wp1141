@@ -1,4 +1,3 @@
-
 # Final Project - Midterm Plan
 
 ## Deploy Link
