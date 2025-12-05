@@ -151,14 +151,65 @@ export default function WalletHistoryPage() {
           </button>
         </div>
 
-        {/* Right: Statistics icon (pie chart) */}
+        {/* Right: Statistics icon (bar chart) */}
         <button
           type="button"
           onClick={handleStatisticsClick}
           className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-black/5"
           aria-label="View statistics"
         >
-          <span className="text-xl">📊</span>
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className="text-black"
+          >
+            {/* Baseline */}
+            <line
+              x1="4"
+              y1="20"
+              x2="20"
+              y2="20"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+            {/* Bar 1 - short */}
+            <rect
+              x="5"
+              y="16"
+              width="3"
+              height="4"
+              rx="0.5"
+              stroke="currentColor"
+              strokeWidth="2"
+              fill="none"
+            />
+            {/* Bar 2 - medium */}
+            <rect
+              x="11"
+              y="12"
+              width="3"
+              height="8"
+              rx="0.5"
+              stroke="currentColor"
+              strokeWidth="2"
+              fill="none"
+            />
+            {/* Bar 3 - tallest */}
+            <rect
+              x="17"
+              y="6"
+              width="3"
+              height="14"
+              rx="0.5"
+              stroke="currentColor"
+              strokeWidth="2"
+              fill="none"
+            />
+          </svg>
         </button>
       </section>
 

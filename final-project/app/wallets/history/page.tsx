@@ -7,7 +7,7 @@ import { useWallets } from "@/hooks/useWallet";
 
 /**
  * History page redirect handler
- * 
+ *
  * This page redirects to the current wallet's history page.
  * It uses the user's default wallet from session, or falls back to the first wallet.
  * If no wallet is available, it redirects to the wallets home page.
