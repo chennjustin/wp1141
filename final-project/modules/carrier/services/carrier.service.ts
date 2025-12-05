@@ -306,7 +306,7 @@ export const carrierService = {
         return {
           success: false,
           error: "Only carrier owner can delete this carrier",
-        };
+      };
       }
     }
 
