@@ -65,6 +65,7 @@ export function calculateMonthlySummary(
     tag: {
       id: string;
       name: string;
+      iconKey: string;
     };
   }>,
   targetCurrency: string = DEFAULT_CURRENCY,
