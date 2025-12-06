@@ -1,17 +1,22 @@
 "use client";
 
+import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useWalletHome } from "@/hooks/useWalletHome";
+import { useUser } from "@/hooks/useUser";
 import { MonthlySummarySection } from "@/ui/components/wallet/MonthlySummarySection";
 import { CarrierSection } from "@/ui/components/wallet/CarrierSection";
 import { DailyTransactionsSection } from "@/ui/components/wallet/DailyTransactionsSection";
 import { FloatingAddButton } from "@/ui/components/wallet/FloatingAddButton";
 import { WalletHomeLoading } from "@/ui/components/wallet/WalletHomeLoading";
+import { WalletRole } from "@/modules/wallet/domain/wallet.types";
 
 export default function WalletDetailPage() {
   const params = useParams();
-  const walletId = params.walletId as string;
+  const walletId = (params?.walletId as string) ?? "";
+  const { profile } = useUser();
 
+  // Fetch all wallet home data using the hook
   const {
     // Monthly summary data
     year,
@@ -47,6 +52,17 @@ export default function WalletDetailPage() {
     activeWallet,
   } = useWalletHome(walletId);
 
+  // Check if this is a personal wallet
+  const isPersonalWallet = useMemo(() => {
+    if (!activeWallet || !profile) return false;
+    return (
+      activeWallet.name === "我的錢包" ||
+      (activeWallet.members.length === 1 &&
+        activeWallet.members[0].userId === profile.id &&
+        activeWallet.members[0].role === WalletRole.OWNER)
+    );
+  }, [activeWallet, profile]);
+
   // Show loading state while initial data is being fetched
   if (isInitialLoading) {
     return <WalletHomeLoading />;
@@ -73,13 +89,16 @@ export default function WalletDetailPage() {
         onToggleAmounts={() => setShowAmounts((prev) => !prev)}
       />
 
-      <CarrierSection
-        carrierCode={carrierCode}
-        hasRealCarrier={hasRealCarrier}
-        carrierLoading={carrierLoading}
-        brightCarrier={brightCarrier}
-        onToggleBrightness={() => setBrightCarrier((prev) => !prev)}
-      />
+      {/* Carrier section - only for personal wallets */}
+      {isPersonalWallet && (
+        <CarrierSection
+          carrierCode={carrierCode}
+          hasRealCarrier={hasRealCarrier}
+          carrierLoading={carrierLoading}
+          brightCarrier={brightCarrier}
+          onToggleBrightness={() => setBrightCarrier((prev) => !prev)}
+        />
+      )}
 
       <DailyTransactionsSection
         transactions={displayTransactions}

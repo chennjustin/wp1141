@@ -2,7 +2,7 @@
 
 import { ReactNode, useMemo, useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { useUser } from "@/hooks/useUser";
 import { useWallets } from "@/hooks/useWallet";
 import { createWalletAction } from "@/modules/wallet/routes/create-wallet";
@@ -288,6 +288,14 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
     router.push(path);
   };
 
+  const handleLogout = async () => {
+    setIsMenuOpen(false);
+    await signOut({ 
+      callbackUrl: "/login",
+      redirect: true 
+    });
+  };
+
   // 是否為「新增交易」頁面：/wallets/[walletId]/transactions/new
   const isNewTransactionPage =
     pathname?.startsWith("/wallets/") &&
@@ -480,6 +488,14 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
               onClick={() => handleNavigate("/wallets/settings")}
             >
               設定
+            </button>
+            <div className="border-t border-gray-200 my-1" />
+            <button
+              type="button"
+              className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-left text-red-700 hover:bg-red-100"
+              onClick={handleLogout}
+            >
+              登出
             </button>
           </nav>
         </aside>

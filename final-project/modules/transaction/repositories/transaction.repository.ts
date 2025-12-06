@@ -432,6 +432,7 @@ export const transactionRepository = {
           select: {
             id: true,
             name: true,
+            iconKey: true,
           },
         },
       },
@@ -453,6 +454,7 @@ export const transactionRepository = {
       tag: {
         id: tx.tag.id,
         name: tx.tag.name,
+        iconKey: tx.tag.iconKey,
       },
     }));
   },
