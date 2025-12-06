@@ -30,23 +30,17 @@ export interface DisplayTransaction {
  * @param walletId - Optional wallet ID. If provided, uses that specific wallet.
  *                   If not provided, uses the first wallet from the wallets list.
  */
-export function useWalletHome(walletId?: string | null) {
+export function useWalletHome(walletId: string) {
   const router = useRouter();
   const pathname = usePathname();
   const { wallets, loading: walletsLoading } = useWallets();
-  const { wallet: walletById, loading: walletByIdLoading } = useWallet(walletId ?? null);
+  const { wallet: walletById, loading: walletByIdLoading } = useWallet(walletId);
   const { carrier, loading: carrierLoading } = useUserCarrier();
 
   // Determine active wallet: use walletById if walletId is provided, otherwise use first wallet
   const activeWallet = useMemo(() => {
-    if (walletId && walletById) {
-      return walletById;
-    }
-    if (!walletId) {
-      return wallets[0] ?? null;
-    }
-    return null;
-  }, [walletId, walletById, wallets]);
+    return walletById ?? wallets[0] ?? null;
+  }, [walletById, wallets]);
 
   const [showAmounts, setShowAmounts] = useState(true);
   const [brightCarrier, setBrightCarrier] = useState(true);

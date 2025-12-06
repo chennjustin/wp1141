@@ -8,17 +8,9 @@ import { DailyTransactionsSection } from "@/ui/components/wallet/DailyTransactio
 import { FloatingAddButton } from "@/ui/components/wallet/FloatingAddButton";
 import { WalletHomeLoading } from "@/ui/components/wallet/WalletHomeLoading";
 
-/**
- * Wallet detail page
- * 
- * This page displays a specific wallet's overview including monthly summary,
- * carrier section, and daily transactions list.
- * 
- * Uses the same hook and component structure as the wallet home page for consistency.
- */
 export default function WalletDetailPage() {
   const params = useParams();
-  const walletId = params?.walletId as string | null;
+  const walletId = params.walletId as string;
 
   const {
     // Monthly summary data
@@ -60,7 +52,6 @@ export default function WalletDetailPage() {
     return <WalletHomeLoading />;
   }
 
-  // Show error state if wallet doesn't exist or user doesn't have access
   if (!activeWallet) {
     return (
       <div className="flex h-full items-center justify-center">
