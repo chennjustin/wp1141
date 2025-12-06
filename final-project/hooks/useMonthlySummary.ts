@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import { getMonthlySummaryAction } from "@/modules/transaction/routes/get-monthly-summary";
 import type { MonthlySummary } from "@/modules/transaction/domain/transaction.types";
 
 interface UseMonthlySummaryParams {
@@ -86,30 +87,21 @@ export function useMonthlySummary({
       setLoading(true);
       setError(null);
 
-      // Build query parameters
-      const params = new URLSearchParams({
+      const result = await getMonthlySummaryAction({
         walletId,
-        year: year.toString(),
-        month: month.toString(),
+        year,
+        month,
+        targetCurrency,
       });
 
-      // Add targetCurrency if provided
-      if (targetCurrency) {
-        params.append("targetCurrency", targetCurrency);
+      if (result.success && result.data) {
+        setData(result.data);
+      } else {
+        const errorMsg = result.error instanceof Error 
+          ? result.error.message 
+          : String(result.error || "Failed to fetch monthly summary");
+        setError(errorMsg);
       }
-
-      // Fetch monthly summary from API
-      const response = await fetch(`/api/transactions/summary?${params.toString()}`);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || `Failed to fetch monthly summary: ${response.statusText}`
-        );
-      }
-
-      const summaryData: MonthlySummary = await response.json();
-      setData(summaryData);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to fetch monthly summary";

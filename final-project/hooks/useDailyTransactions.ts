@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useSession } from "next-auth/react";
+import { listTransactionsAction } from "@/modules/transaction/routes/list-transactions";
 import type { Transaction } from "@/modules/transaction/domain/transaction.types";
 
 interface UseDailyTransactionsParams {
@@ -102,40 +103,35 @@ export function useDailyTransactions({
         const endOfDay = new Date(date);
         endOfDay.setHours(23, 59, 59, 999);
 
-        // Build query parameters
-        const params = new URLSearchParams({
+        const result = await listTransactionsAction({
           walletId,
-          startDate: startOfDay.toISOString(),
-          endDate: endOfDay.toISOString(),
+          startDate: startOfDay,
+          endDate: endOfDay,
         });
 
-        // Fetch transactions from API
-        const response = await fetch(`/api/transactions?${params.toString()}`);
+        if (result.success && result.data) {
+          const transactions = result.data;
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(
-            errorData.error ||
-              `Failed to fetch transactions: ${response.statusText}`
-          );
+          // Sort transactions by date (most recent first)
+          const sortedTransactions = transactions.sort((a, b) => {
+            const dateA = new Date(a.date).getTime();
+            const dateB = new Date(b.date).getTime();
+            return dateB - dateA;
+          });
+
+          // Update last query reference after successful fetch
+          lastQueryRef.current = {
+            walletId,
+            dateKey,
+          };
+
+          setData(sortedTransactions);
+        } else {
+          const errorMsg = result.error instanceof Error 
+            ? result.error.message 
+            : String(result.error || "Failed to fetch transactions");
+          setError(errorMsg);
         }
-
-        const transactions: Transaction[] = await response.json();
-
-        // Sort transactions by date (most recent first)
-        const sortedTransactions = transactions.sort((a, b) => {
-          const dateA = new Date(a.date).getTime();
-          const dateB = new Date(b.date).getTime();
-          return dateB - dateA;
-        });
-
-        // Update last query reference after successful fetch
-        lastQueryRef.current = {
-          walletId,
-          dateKey,
-        };
-
-        setData(sortedTransactions);
       } catch (err) {
         const errorMessage =
           err instanceof Error
@@ -147,7 +143,7 @@ export function useDailyTransactions({
         setLoading(false);
       }
     },
-    [walletId, dateKey, enabled, session, status]
+    [walletId, date, dateKey, enabled, session, status]
   );
 
   useEffect(() => {
