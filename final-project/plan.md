@@ -1,7 +1,6 @@
 # Final Project - Midterm Plan
 
 ## Deploy Link
-
 <coin-undergraduate.ocean1029.com>
 
 ## 1. 本次 Prototype 已完成
