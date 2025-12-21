@@ -2,12 +2,15 @@
 
 import { ReactNode, useMemo, useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useUser } from "@/hooks/useUser";
 import { useWallets } from "@/hooks/useWallet";
-import { createWalletAction } from "@/modules/wallet/routes/create-wallet";
 import type { Wallet, WalletMember } from "@/modules/wallet/domain/wallet.types";
 import { WalletRole } from "@/modules/wallet/domain/wallet.types";
+import { WalletHeader } from "@/ui/components/wallet/WalletHeader";
+import { WalletSelectorDropdown } from "@/ui/components/wallet/WalletSelectorDropdown";
+import { SideMenuOverlay } from "@/ui/components/wallet/SideMenuOverlay";
+import { SideMenu } from "@/ui/components/wallet/SideMenu";
 
 interface WalletLayoutProps {
   children: ReactNode;
@@ -300,14 +303,6 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
     router.push(path);
   };
 
-  const handleLogout = async () => {
-    setIsMenuOpen(false);
-    await signOut({ 
-      callbackUrl: "/login",
-      redirect: true 
-    });
-  };
-
   // 是否為「新增交易」頁面：/wallets/[walletId]/transactions/new
   const isNewTransactionPage =
     pathname?.startsWith("/wallets/") &&
@@ -319,213 +314,41 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
       <div className="relative flex h-[calc(100vh-2rem)] w-full max-w-sm flex-col border-[3px] border-black rounded-[3rem] overflow-hidden" style={{ backgroundColor: 'var(--wallet-bg)' }}>
         {/* Header */}
         {!isNewTransactionPage && (
-        <>
-        <header className="relative mb-4 flex items-center justify-between px-4 py-3" style={{ backgroundColor: 'var(--wallet-bg)' }}>
-          {/* Left: main menu toggle */}
-          <button
-            type="button"
-            className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/10"
-            onClick={() => setIsMenuOpen(true)}
-            aria-label="Open main menu"
-          >
-            <span className="flex flex-col gap-0.5">
-              <span className="h-0.5 w-4 rounded-full bg-black" />
-              <span className="h-0.5 w-4 rounded-full bg-black" />
-              <span className="h-0.5 w-4 rounded-full bg-black" />
-            </span>
-          </button>
-
-          {/* Center: wallet selector - oval button, absolutely centered */}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-            <button
-              ref={walletButtonRef}
-              type="button"
-              className="relative inline-flex items-center justify-center rounded-full px-6 py-2 text-sm font-medium hover:opacity-80 active:opacity-90 focus:outline-none focus:ring-0 transition-opacity"
-              style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}
-              onClick={() => setIsWalletSelectorOpen(true)}
-              aria-label="Select wallet"
-            >
-              <span className="max-w-[140px] truncate">{walletDisplayName}</span>
-            </button>
-          </div>
-
-          {/* Right: user name or role text */}
-          <div className="flex flex-col items-end text-right text-xs leading-snug text-black">
-            <span className="font-semibold">{displayName}</span>
-          </div>
-        </header>
-
-        {/* Wallet selector dropdown - rendered outside header to avoid stacking context issues */}
-        {isWalletSelectorOpen && dropdownPosition && (
           <>
-            <div
-              className="fixed inset-0 z-[9998] bg-black/20"
-              onClick={() => setIsWalletSelectorOpen(false)}
+            <WalletHeader
+              walletDisplayName={walletDisplayName}
+              displayName={displayName}
+              onMenuToggle={() => setIsMenuOpen(true)}
+              onWalletSelectorOpen={() => setIsWalletSelectorOpen(true)}
+              walletButtonRef={walletButtonRef}
             />
-            <div
-              className="fixed z-[9999] rounded-lg shadow-lg min-w-[200px] max-h-[300px] overflow-y-auto border-0"
-              style={{
-                top: `${dropdownPosition.top}px`,
-                left: `${dropdownPosition.left}px`,
-                transform: 'translateX(-50%)',
-                backgroundColor: 'var(--card-bg)',
-                color: 'var(--card-text)',
-              }}
-            >
-              <div className="py-2">
-                {/* Show all pinned wallets (max 5) */}
-                {wallets
-                  .filter((wallet) => pinnedWalletIds.has(wallet.id))
-                  .map((wallet) => (
-                    <button
-                      key={wallet.id}
-                      type="button"
-                      className="w-full px-4 py-2 text-left text-sm hover:opacity-80 transition-opacity"
-                      style={{ color: 'var(--card-text)' }}
-                      onClick={() => handleWalletChange(wallet.id)}
-                    >
-                      {wallet.name}
-                    </button>
-                  ))}
-                <div className="border-t border-gray-200 my-1" />
-                <button
-                  type="button"
-                  className="w-full px-4 py-2 text-left text-sm hover:opacity-80 transition-opacity"
-                  style={{ color: 'var(--card-text)' }}
-                  onClick={() => {
-                    setIsWalletSelectorOpen(false);
-                    router.push("/wallets/all");
-                  }}
-                >
-                  所有錢包
-                </button>
-                <button
-                  type="button"
-                  className="w-full px-4 py-2 text-left text-sm hover:opacity-80 transition-opacity"
-                  style={{ color: 'var(--card-text)' }}
-                  onClick={() => {
-                    setIsWalletSelectorOpen(false);
-                    router.push("/wallets/new");
-                  }}
-                >
-                  + 新增錢包
-                </button>
-              </div>
-            </div>
+
+            <WalletSelectorDropdown
+              isOpen={isWalletSelectorOpen}
+              dropdownPosition={dropdownPosition}
+              wallets={wallets}
+              pinnedWalletIds={pinnedWalletIds}
+              onClose={() => setIsWalletSelectorOpen(false)}
+              onWalletChange={handleWalletChange}
+            />
           </>
-        )}
-        </>
         )}
 
         {/* Side menu overlay */}
-        <div
-          className={`fixed inset-0 z-40 bg-black/40 md:absolute md:rounded-[3rem] transition-opacity duration-300 ${
-            isMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-          }`}
-          onClick={() => setIsMenuOpen(false)}
+        <SideMenuOverlay
+          isOpen={isMenuOpen}
+          onClose={() => setIsMenuOpen(false)}
         />
-        <aside
-          className={`fixed inset-y-0 left-0 z-50 w-2/3 max-w-[280px] p-4 shadow-xl md:absolute md:inset-y-0 md:left-0 md:rounded-l-[3rem] md:rounded-r-none transition-transform duration-300 ease-out ${
-            isMenuOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
-          style={{ backgroundColor: 'var(--wallet-bg)' }}
-        >
-          {/* User block with home icon */}
-          <div className="mt-6 mb-6 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {session?.user?.image ? (
-                <img
-                  src={session.user.image}
-                  alt={userName || "User"}
-                  className="h-12 w-12 rounded-full object-cover"
-                />
-              ) : (
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-lg font-semibold text-black">
-                  {userName ? userName.charAt(0).toUpperCase() : "U"}
-                </div>
-              )}
-              <div className="flex flex-col">
-                <span className="text-md font-medium text-black">
-                  {userName || "User"}
-                </span>
-              </div>
-            </div>
-            <button
-              type="button"
-              className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-black/5"
-              onClick={() => {
-                setIsMenuOpen(false);
-                // Navigate to current wallet or redirect to /wallets (which will redirect to default wallet)
-                if (currentWalletId) {
-                  router.push(`/wallets/${currentWalletId}`);
-                } else {
-                  router.push("/wallets");
-                }
-              }}
-              aria-label="Go to wallet home"
-            >
-              {/* House icon */}
-              <svg
-                className="h-5 w-5 text-black"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-                />
-              </svg>
-            </button>
-          </div>
 
-          {/* Menu buttons */}
-          <nav className="flex flex-col gap-3 text-sm">
-            <button
-              type="button"
-              className="rounded-lg border border-gray-300 px-3 py-2 text-left hover:opacity-80 transition-opacity"
-              style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}
-              onClick={() => handleNavigate("/wallets/notifications")}
-            >
-              通知
-            </button>
-            <button
-              type="button"
-              className="rounded-lg border border-gray-300 px-3 py-2 text-left hover:opacity-80 transition-opacity"
-              style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}
-              onClick={() => handleNavigate("/wallets/history")}
-            >
-              收支明細
-            </button>
-            <button
-              type="button"
-              className="rounded-lg border border-gray-300 px-3 py-2 text-left hover:opacity-80 transition-opacity"
-              style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}
-              onClick={() => handleNavigate("/wallets/subscriptions")}
-            >
-              訂閱清單
-            </button>
-            <button
-              type="button"
-              className="rounded-lg border border-gray-300 px-3 py-2 text-left hover:opacity-80 transition-opacity"
-              style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}
-              onClick={() => handleNavigate("/wallets/settings")}
-            >
-              設定
-            </button>
-            <div className="border-t border-gray-200 my-1" />
-            <button
-              type="button"
-              className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-left text-red-700 hover:bg-red-100"
-              onClick={handleLogout}
-            >
-              登出
-            </button>
-          </nav>
-        </aside>
+        {/* Side menu */}
+        <SideMenu
+          isOpen={isMenuOpen}
+          userName={userName}
+          userImage={session?.user?.image}
+          currentWalletId={currentWalletId}
+          onClose={() => setIsMenuOpen(false)}
+          onNavigate={handleNavigate}
+        />
 
         {/* Main content area */}
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden pb-16 px-4">
