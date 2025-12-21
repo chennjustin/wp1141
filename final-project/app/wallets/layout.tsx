@@ -88,20 +88,17 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
 
     // If it's a wallet ID path (not a special path), set currentWalletId
     if (secondPart && !specialPaths.includes(secondPart)) {
-      // Only update if different to avoid unnecessary re-renders
-      if (currentWalletId !== secondPart) {
-        setCurrentWalletId(secondPart);
-      }
+      // Always update to ensure it reflects the current pathname
+      setCurrentWalletId(secondPart);
       return;
     }
 
     // For special paths or /wallets root, clear currentWalletId
     // The page.tsx will handle redirect to appropriate wallet
-    // Only clear if we're not already null to avoid unnecessary updates
-    if (currentWalletId !== null && !secondPart) {
+    if (!secondPart) {
       setCurrentWalletId(null);
     }
-  }, [pathname]); // Remove currentWalletId from dependencies to avoid circular updates
+  }, [pathname]);
 
   const currentWallet: Wallet | null = useMemo(() => {
     if (!wallets || wallets.length === 0) {
@@ -115,9 +112,9 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
     const byId = wallets.find((w) => w.id === currentWalletId);
     if (byId) return byId;
 
-    // If walletId is set but not found, return null instead of first wallet
-    // This prevents showing wrong wallet name during transition
-    return null;
+    // If walletId is set but not found, try to wait a bit for wallets to load
+    // Otherwise return first wallet as fallback
+    return wallets[0];
   }, [wallets, currentWalletId]);
 
   // Update defaultWalletId when currentWalletId changes
@@ -220,7 +217,7 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
   const isPersonalWallet = useMemo(() => {
     if (!currentWallet || !profile) return false;
     return (
-      currentWallet.name === "我的錢包" ||
+      currentWallet.name === "錢包" ||
       (currentWallet.members.length === 1 &&
         currentWallet.members[0].userId === profile.id &&
         currentWallet.members[0].role === WalletRole.OWNER)
@@ -249,19 +246,27 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
   // Default wallet name display
   // Must be defined before any conditional returns to follow React Hooks rules
   const walletDisplayName = useMemo(() => {
-    if (currentWallet) {
-      return currentWallet.name === "我的錢包" || isPersonalWallet
-        ? "我的錢包"
-        : currentWallet.name;
+    // First try to find wallet by currentWalletId directly from wallets array
+    // This ensures we get the latest wallet name even if currentWallet hasn't updated yet
+    if (currentWalletId && wallets && wallets.length > 0) {
+      const walletById = wallets.find((w) => w.id === currentWalletId);
+      if (walletById) {
+        return walletById.name;
+      }
     }
     
-    // If currentWalletId is set but currentWallet is null, wallet might be loading
+    // Fallback to currentWallet if available
+    if (currentWallet) {
+      return currentWallet.name;
+    }
+    
+    // If currentWalletId is set but wallet not found, wallet might be loading
     if (currentWalletId) {
       return walletsLoading ? "載入中..." : "No wallet";
     }
     
     return "No wallet";
-  }, [currentWallet, currentWalletId, walletsLoading, isPersonalWallet]);
+  }, [currentWalletId, wallets, currentWallet, walletsLoading]);
 
   // Show loading state while checking authentication
   if (sessionStatus === "loading") {
@@ -279,19 +284,14 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
   }
 
   const handleWalletChange = (walletId: string) => {
-    // Find the wallet from wallets array to ensure it exists
-    const selectedWallet = wallets.find((w) => w.id === walletId);
+    // Immediately update currentWalletId to ensure UI updates instantly
+    setCurrentWalletId(walletId);
     
-    if (selectedWallet) {
-      // Immediately update currentWalletId to ensure UI updates instantly
-      setCurrentWalletId(walletId);
-      
-      // Navigate to the wallet's detail page
-      router.push(`/wallets/${walletId}`);
-      
-      // Close the dropdown immediately
-      setIsWalletSelectorOpen(false);
-    }
+    // Navigate to the wallet's detail page
+    router.push(`/wallets/${walletId}`);
+    
+    // Close the dropdown immediately
+    setIsWalletSelectorOpen(false);
   };
 
   const handleNavigate = (path: string) => {
