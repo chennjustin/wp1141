@@ -120,7 +120,7 @@ export function CarrierSection({
           </div>
         </div>
       )}
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-2 flex items-center justify-between">
         <span className="text-sm font-medium">載具</span>
         <button
           type="button"
@@ -143,7 +143,7 @@ export function CarrierSection({
       </div>
 
       {/* Barcode area */}
-      <div className="mb-3 flex flex-col items-center gap-3">
+      <div className="flex flex-col items-center">
         {/* Barcode - real barcode if carrier exists, otherwise show add button */}
         <div className="flex items-center justify-center" style={{ width: `${BARCODE_WIDTH}px`, minHeight: `${BARCODE_HEIGHT}px` }}>
           {hasRealCarrier && !carrierLoading ? (
