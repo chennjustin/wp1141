@@ -28,15 +28,19 @@ function getTagColor(iconKey: string): string {
     entertainment: "bg-purple-100",
     transportation: "bg-blue-100",
     shopping: "bg-sky-100",
-    bills: "bg-gray-100",
+    bills: "bg-amber-100",
     healthcare: "bg-red-100",
     education: "bg-indigo-100",
     travel: "bg-cyan-100",
-    other: "bg-slate-100",
+    other: "bg-slate-200",
     salary: "bg-green-100",
     bonus: "bg-emerald-100",
     investment: "bg-teal-100",
     gift: "bg-pink-100",
+    freelance: "bg-lime-100",
+    interest: "bg-blue-100",
+    refund: "bg-rose-100",
+    dividend: "bg-violet-100",
     tag: "bg-gray-100",
   };
   return colorMap[iconKey] || "bg-gray-100";
@@ -263,7 +267,7 @@ export default function NewTransactionPage() {
     : "bg-[var(--expense-color)]";
 
   return (
-    <div className="flex h-full flex-col relative">
+    <div className="flex h-full flex-col relative -mx-4">
       <div className="flex min-h-0 flex-1 flex-col">
         {/* Form area */}
         <form
@@ -271,26 +275,26 @@ export default function NewTransactionPage() {
           className="flex min-h-0 flex-1 flex-col"
         >
           {/* Combined Header and Amount Section - Full width continuous block (區塊 A) - Extends to top edge */}
-          <div className={`${headerBgColor} -mx-4 -mt-4 px-4 pt-4`}>
+          <div className={`${headerBgColor} -mt-4 px-4 pt-4`}>
             {/* Header row with back and checkmark */}
-            <div className="relative flex items-center justify-between px-4 pt-3 pb-2">
+            <div className="relative flex items-center justify-between pt-3 pb-2">
               {/* Back Button */}
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="flex h-9 w-9 items-center justify-center hover:bg-black/10 transition-colors"
+                className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/20 transition-colors"
                 aria-label="返回"
               >
                 <svg
                   className="h-5 w-5 text-white"
                   fill="none"
                   stroke="currentColor"
+                  strokeWidth={2}
                   viewBox="0 0 24 24"
                 >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    strokeWidth={2}
                     d="M15 19l-7-7 7-7"
                   />
                 </svg>
@@ -301,19 +305,19 @@ export default function NewTransactionPage() {
                 type="button"
                 onClick={handleSubmit}
                 disabled={loading}
-                className="flex h-9 w-9 items-center justify-center hover:bg-black/10 transition-colors disabled:opacity-50"
+                className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="完成"
               >
                 <svg
                   className="h-5 w-5 text-white"
                   fill="none"
                   stroke="currentColor"
+                  strokeWidth={2}
                   viewBox="0 0 24 24"
                 >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    strokeWidth={2}
                     d="M5 13l4 4L19 7"
                   />
                 </svg>

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { listTagsAction } from "@/modules/tag/routes/list-tags";
 import { TagIcon } from "@/ui/utils/tag-icon";
+import { DEFAULT_SYSTEM_TAGS, DEFAULT_SYSTEM_INCOME_TAGS } from "@/config/constants";
 
 /**
  * Tag with iconKey (extended interface for UI)
@@ -13,6 +14,7 @@ interface TagWithIcon {
   name: string;
   type: "EXPENSE" | "INCOME";
   iconKey: string;
+  createdBy?: string; // Optional, to identify system tags
 }
 
 /**
@@ -29,16 +31,20 @@ function getTagColor(iconKey: string): string {
     entertainment: "bg-purple-100",
     transportation: "bg-blue-100",
     shopping: "bg-sky-100",
-    bills: "bg-gray-100",
+    bills: "bg-amber-100",
     healthcare: "bg-red-100",
     education: "bg-indigo-100",
     travel: "bg-cyan-100",
-    other: "bg-slate-100",
+    other: "bg-slate-200",
     // Income tags
     salary: "bg-green-100",
     bonus: "bg-emerald-100",
     investment: "bg-teal-100",
     gift: "bg-pink-100",
+    freelance: "bg-lime-100",
+    interest: "bg-blue-100",
+    refund: "bg-rose-100",
+    dividend: "bg-violet-100",
     // Default
     tag: "bg-gray-100",
   };
@@ -79,8 +85,64 @@ export default function SelectTagPage() {
     fetchTags();
   }, []);
 
-  // Filter tags by transaction type
-  const filteredTags = tags.filter((tag) => tag.type === transactionType);
+  // Filter and sort tags by transaction type
+  const filteredTags = useMemo(() => {
+    const allTags = tags.filter((tag) => tag.type === transactionType);
+    
+    // Separate system tags (excluding "other") and custom tags
+    // System tags are identified by: name in system tag list OR id starts with "system-tag-"
+    const systemTags: TagWithIcon[] = [];
+    let otherTag: TagWithIcon | null = null;
+    const customTags: TagWithIcon[] = [];
+    
+    // Get system tag names, excluding "other" which will be handled separately
+    const allSystemTagNames = transactionType === "INCOME" 
+      ? [...DEFAULT_SYSTEM_INCOME_TAGS]
+      : [...DEFAULT_SYSTEM_TAGS];
+    const systemTagNames = allSystemTagNames.filter(name => name !== "other");
+    
+    allTags.forEach((tag) => {
+      const isSystemTag = tag.id.startsWith("system-tag-") || 
+                          systemTagNames.includes(tag.name as any);
+      
+      if (tag.name === "other") {
+        otherTag = tag;
+      } else if (isSystemTag) {
+        systemTags.push(tag);
+      } else {
+        // Custom tags: id doesn't start with "system-tag-" AND name not in system list
+        customTags.push(tag);
+      }
+    });
+    
+    // Sort system tags by the order in constants (if in list), otherwise by name
+    systemTags.sort((a, b) => {
+      const indexA = systemTagNames.indexOf(a.name as any);
+      const indexB = systemTagNames.indexOf(b.name as any);
+      
+      // If both in the list, sort by index
+      if (indexA !== -1 && indexB !== -1) {
+        return indexA - indexB;
+      }
+      // If only one in the list, it comes first
+      if (indexA !== -1) return -1;
+      if (indexB !== -1) return 1;
+      // If neither in the list, sort alphabetically by name
+      return a.name.localeCompare(b.name);
+    });
+    
+    // Sort custom tags alphabetically by name
+    customTags.sort((a, b) => a.name.localeCompare(b.name));
+    
+    // Combine: system tags -> other -> custom tags
+    const result = [...systemTags];
+    if (otherTag) {
+      result.push(otherTag);
+    }
+    result.push(...customTags);
+    
+    return result;
+  }, [tags, transactionType]);
 
   // Handle tag selection
   const handleTagSelect = (tagId: string, tagType: "EXPENSE" | "INCOME") => {
@@ -101,7 +163,7 @@ export default function SelectTagPage() {
   }
 
   return (
-    <div className="flex h-full flex-col" style={{ backgroundColor: 'var(--wallet-bg)' }}>
+    <div className="flex h-full flex-col -mx-4" style={{ backgroundColor: 'var(--wallet-bg)' }}>
       {/* Header */}
       <header className="relative flex items-center justify-between px-4 py-3" style={{ backgroundColor: 'var(--wallet-bg)' }}>
         {/* Back Button */}

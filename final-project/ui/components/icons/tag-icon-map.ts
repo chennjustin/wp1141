@@ -33,6 +33,11 @@ import {
   Phone,
   Wifi,
   Zap,
+  // Income-related icons
+  HandCoins,
+  Percent,
+  RotateCcw,
+  PieChart,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -67,6 +72,10 @@ export const tagIconMap: Record<string, LucideIcon> = {
   bonus: DollarSign,
   investment: TrendingUp,
   gift: Gift,
+  freelance: HandCoins,
+  interest: Percent,
+  refund: RotateCcw,
+  dividend: PieChart,
   
   // Additional common icons
   "shopping-cart": ShoppingCart,
