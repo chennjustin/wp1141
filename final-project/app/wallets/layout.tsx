@@ -1,8 +1,9 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useRef, useEffect, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
+import type { Wallet, WalletMember } from "@/modules/wallet/domain/wallet.types";
 import { useUser } from "@/hooks/useUser";
 import { useWallets } from "@/hooks/useWallet";
 import { usePinnedWallets } from "@/hooks/usePinnedWallets";
@@ -248,6 +249,11 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
     setIsMenuOpen(false);
     if (pathname === path) return;
     router.push(path);
+  };
+
+  const handleLogout = async () => {
+    setIsMenuOpen(false);
+    await signOut({ callbackUrl: "/login" });
   };
 
   // 是否為「新增交易」頁面：/wallets/[walletId]/transactions/new
