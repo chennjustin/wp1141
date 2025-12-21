@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useWallets } from "@/hooks/useWallet";
+import { Loading } from "@/ui/components/common/Loading";
 
 /**
  * History page redirect handler
@@ -46,9 +47,5 @@ export default function HistoryPage() {
   }, [wallets, loading, session?.user?.defaultWalletId, router]);
 
   // Show loading state while redirecting
-  return (
-    <div className="flex h-full items-center justify-center text-sm text-black/80">
-      載入中...
-    </div>
-  );
+  return <Loading />;
 }

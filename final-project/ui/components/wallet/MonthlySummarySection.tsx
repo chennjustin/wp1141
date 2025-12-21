@@ -29,7 +29,7 @@ export function MonthlySummarySection({
   onToggleAmounts,
 }: MonthlySummarySectionProps) {
   return (
-    <section className="rounded-xl bg-white p-4 text-black">
+    <section className="rounded-xl p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}>
       <div className="mb-4 flex items-center justify-between">
         <div className="text-sm font-medium text-black">
           {year} 年 {month.toString().padStart(2, "0")} 月

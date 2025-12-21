@@ -6,7 +6,7 @@ import { MonthlySummarySection } from "@/ui/components/wallet/MonthlySummarySect
 import { CarrierSection } from "@/ui/components/wallet/CarrierSection";
 import { DailyTransactionsSection } from "@/ui/components/wallet/DailyTransactionsSection";
 import { FloatingAddButton } from "@/ui/components/wallet/FloatingAddButton";
-import { WalletHomeLoading } from "@/ui/components/wallet/WalletHomeLoading";
+import { Loading } from "@/ui/components/common/Loading";
 
 export default function WalletDetailPage() {
   const params = useParams();
@@ -51,7 +51,7 @@ export default function WalletDetailPage() {
 
   // Show loading state while initial data is being fetched
   if (isInitialLoading) {
-    return <WalletHomeLoading />;
+    return <Loading />;
   }
 
   if (!activeWallet) {

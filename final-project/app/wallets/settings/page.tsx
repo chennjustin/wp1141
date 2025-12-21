@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useCarriers } from "@/hooks/useCarrier";
 import type { DeviceCarrier } from "@/modules/carrier/domain/carrier.types";
+import { Loading } from "@/ui/components/common/Loading";
 
 /**
  * Settings page for wallet and user preferences.
@@ -143,11 +144,7 @@ export default function SettingsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center text-sm text-black">
-        載入中...
-      </div>
-    );
+    return <Loading />;
   }
 
   return (
@@ -155,7 +152,7 @@ export default function SettingsPage() {
       <h1 className="text-lg font-semibold text-black">設定</h1>
 
       {/* Carrier settings section */}
-      <section className="rounded-xl bg-white p-4 text-black">
+      <section className="rounded-xl p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}>
         <h2 className="mb-4 text-sm font-medium">載具設定</h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">

@@ -6,6 +6,7 @@ import { useWallet } from "@/hooks/useWallet";
 import { useWalletTransactions } from "@/hooks/useWalletTransactions";
 import { groupTransactionsByDate, type DailyTransactionGroup } from "@/ui/utils/transaction-grouping";
 import { TagIcon } from "@/ui/utils/tag-icon";
+import { Loading } from "@/ui/components/common/Loading";
 
 /**
  * Wallet history page
@@ -94,11 +95,7 @@ export default function WalletHistoryPage() {
   };
 
   if (walletLoading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <span className="text-sm text-black/50">載入中...</span>
-      </div>
-    );
+    return <Loading />;
   }
 
   if (!wallet) {
@@ -280,7 +277,7 @@ function DailyTransactionCard({
   };
 
   return (
-    <div className="rounded border border-black bg-white p-4">
+    <div className="rounded border border-black p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}>
       {/* Date header with daily summary */}
       <div className="mb-3 flex items-center justify-between border-b border-black/20 pb-2">
         <span className="text-sm font-medium text-black">{group.dateLabel}</span>
