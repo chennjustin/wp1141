@@ -7,6 +7,7 @@ import { useWallets } from "@/hooks/useWallet";
 import { useUser } from "@/hooks/useUser";
 import type { Wallet } from "@/modules/wallet/domain/wallet.types";
 import { WalletRole } from "@/modules/wallet/domain/wallet.types";
+import { Loading } from "@/ui/components/common/Loading";
 
 /**
  * Pin icon component - filled (pinned)
@@ -248,11 +249,7 @@ export default function AllWalletsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <span className="text-sm text-black/50">載入中...</span>
-      </div>
-    );
+    return <Loading />;
   }
 
   if (error) {

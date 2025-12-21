@@ -6,6 +6,7 @@ import { useWallet } from "@/hooks/useWallet";
 import { useWalletTransactions } from "@/hooks/useWalletTransactions";
 import { groupTransactionsByDate, type DailyTransactionGroup } from "@/ui/utils/transaction-grouping";
 import { TagIcon } from "@/ui/utils/tag-icon";
+import { Loading } from "@/ui/components/common/Loading";
 
 /**
  * Wallet history page
@@ -96,11 +97,7 @@ export default function WalletHistoryPage() {
   };
 
   if (walletLoading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <span className="text-sm text-black/50">載入中...</span>
-      </div>
-    );
+    return <Loading />;
   }
 
   if (!wallet) {

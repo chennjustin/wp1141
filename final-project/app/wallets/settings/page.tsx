@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useCarriers } from "@/hooks/useCarrier";
 import type { DeviceCarrier } from "@/modules/carrier/domain/carrier.types";
+import { Loading } from "@/ui/components/common/Loading";
 
 /**
  * Settings page for wallet and user preferences.
@@ -143,11 +144,7 @@ export default function SettingsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center text-sm text-black">
-        載入中...
-      </div>
-    );
+    return <Loading />;
   }
 
   return (

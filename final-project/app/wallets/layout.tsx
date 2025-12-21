@@ -15,6 +15,7 @@ import { WalletHeader } from "@/ui/components/wallet/WalletHeader";
 import { WalletSelectorDropdown } from "@/ui/components/wallet/WalletSelectorDropdown";
 import { SideMenuOverlay } from "@/ui/components/wallet/SideMenuOverlay";
 import { SideMenu } from "@/ui/components/wallet/SideMenu";
+import { Loading } from "@/ui/components/common/Loading";
 
 interface WalletLayoutProps {
   children: ReactNode;
@@ -52,14 +53,7 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
     profile,
   });
 
-  // Show loading state while checking authentication
-  if (sessionStatus === "loading") {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--wallet-loading-bg)' }}>
-        <div className="text-sm text-black/80">Loading...</div>
-      </div>
-    );
-  }
+  
 
   // Redirect to login if not authenticated
   if (!isAuthenticated || sessionStatus === "unauthenticated") {
@@ -135,9 +129,7 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden pb-16 px-4">
           {/* Don't show loading for /wallets page - it handles its own loading */}
           {walletsLoading && pathname !== "/wallets/new" && pathname !== "/wallets" && (
-            <div className="flex h-full items-center justify-center text-sm text-black/80">
-              Loading wallets...
-            </div>
+            <Loading message="Loading wallets..." />
           )}
           {!walletsLoading && wallets.length === 0 && pathname !== "/wallets/new" && pathname !== "/wallets" && (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-black/80">
