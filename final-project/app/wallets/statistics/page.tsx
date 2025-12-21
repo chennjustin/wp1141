@@ -1,21 +1,22 @@
 /**
  * Wallet statistics page
  * 
- * This page displays statistical analysis and charts for a specific wallet.
+ * This page displays statistical analysis and charts for the current wallet.
  * Features include:
  * - Donut chart and bar chart visualization
  * - Income/expense toggle
  * - Month and year period selection
  * - Category breakdown with colors
  * 
- * Route: /wallets/[walletId]/statistics
+ * Route: /wallets/statistics
  */
 
 "use client";
 
 import { useState, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { useWallet } from "@/hooks/useWallet";
+import { useRouter, usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { useWallets } from "@/hooks/useWallet";
 import { useWalletTransactions } from "@/hooks/useWalletTransactions";
 import {
   processTransactionsByCategory,
@@ -209,9 +210,28 @@ function useYearTransactions(
 
 export default function WalletStatisticsPage() {
   const router = useRouter();
-  const params = useParams();
-  const walletId = params?.walletId as string | null;
-  const { wallet, loading: walletLoading } = useWallet(walletId || "");
+  const pathname = usePathname();
+  const { data: session } = useSession();
+  const { wallets, loading: walletsLoading } = useWallets();
+
+  // Get current wallet - prefer default wallet, otherwise use first wallet
+  const currentWallet = useMemo(() => {
+    if (!wallets || wallets.length === 0) {
+      return null;
+    }
+    
+    // Try to find default wallet first
+    const defaultWalletId = session?.user?.defaultWalletId;
+    if (defaultWalletId) {
+      const defaultWallet = wallets.find((w) => w.id === defaultWalletId);
+      if (defaultWallet) {
+        return defaultWallet;
+      }
+    }
+    
+    // Fallback to first wallet
+    return wallets[0];
+  }, [wallets, session?.user?.defaultWalletId]);
 
   // Get current date for default selection
   const today = useMemo(() => new Date(), []);
@@ -228,10 +248,10 @@ export default function WalletStatisticsPage() {
     loading: monthLoading,
     error: monthError,
   } = useWalletTransactions({
-    walletId: wallet?.id ?? null,
+    walletId: currentWallet?.id ?? null,
     year: selectedYear,
     month: selectedMonth,
-    enabled: !!wallet && selectedPeriod === "month",
+    enabled: !!currentWallet && selectedPeriod === "month",
   });
 
   const {
@@ -239,9 +259,9 @@ export default function WalletStatisticsPage() {
     loading: yearLoading,
     error: yearError,
   } = useYearTransactions(
-    wallet?.id ?? null,
+    currentWallet?.id ?? null,
     selectedYear,
-    !!wallet && selectedPeriod === "year"
+    !!currentWallet && selectedPeriod === "year"
   );
 
   // Use appropriate data based on selected period
@@ -333,13 +353,6 @@ export default function WalletStatisticsPage() {
     }
   };
 
-  // Handle back to history page
-  const handleBackToHistory = () => {
-    if (walletId) {
-      router.push(`/wallets/${walletId}/history`);
-    }
-  };
-
   // Toggle chart type
   const handleChartTypeToggle = () => {
     setChartType((prev) => (prev === "donut" ? "bar" : "donut"));
@@ -350,7 +363,7 @@ export default function WalletStatisticsPage() {
     setTransactionType((prev) => (prev === "INCOME" ? "EXPENSE" : "INCOME"));
   };
 
-  if (walletLoading) {
+  if (walletsLoading) {
     return (
       <div className="flex h-full items-center justify-center">
         <span className="text-sm text-black/50">Loading...</span>
@@ -358,11 +371,11 @@ export default function WalletStatisticsPage() {
     );
   }
 
-  if (!wallet) {
+  if (!currentWallet) {
     return (
       <div className="flex h-full items-center justify-center">
         <span className="text-sm text-red-500">
-          Wallet not found or no access permission
+          No wallet available. Please create a wallet first.
         </span>
       </div>
     );
@@ -374,32 +387,10 @@ export default function WalletStatisticsPage() {
 
   return (
     <div className="flex h-full flex-col gap-4">
-      {/* Header section with back button and chart toggle */}
+      {/* Header section with chart toggle */}
       <section className="flex items-center justify-between">
-        {/* Left: Back button */}
-        <button
-          type="button"
-          onClick={handleBackToHistory}
-          className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-black/5 transition-colors"
-          aria-label="Back to history"
-        >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className="text-black"
-          >
-            <path
-              d="M15 18L9 12L15 6"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
+        {/* Left: Spacer */}
+        <div className="w-8" />
 
         {/* Center: Period navigation */}
         <div className="flex items-center gap-3">
@@ -531,7 +522,7 @@ export default function WalletStatisticsPage() {
               : "bg-white text-black/70 hover:bg-black/5"
           }`}
         >
-          MTH
+          Month
         </button>
         <button
           type="button"
@@ -601,7 +592,7 @@ export default function WalletStatisticsPage() {
                 <DonutChart
                   data={categoryStats}
                   totalAmount={totalAmount}
-                  currency={wallet.defaultCurrency}
+                  currency={currentWallet.defaultCurrency}
                 />
               ) : (
                 <BarChart data={categoryStats} />
@@ -615,7 +606,7 @@ export default function WalletStatisticsPage() {
               </div>
               <CategoryLegend
                 categories={categoryStats}
-                currency={wallet.defaultCurrency}
+                currency={currentWallet.defaultCurrency}
               />
             </div>
           </div>
@@ -624,3 +615,4 @@ export default function WalletStatisticsPage() {
     </div>
   );
 }
+
