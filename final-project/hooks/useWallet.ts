@@ -60,7 +60,7 @@ export function useWallets() {
 /**
  * Hook to get a single wallet by ID
  */
-export function useWallet(walletId: string) {
+export function useWallet(walletId: string | null) {
   const { data: session, status } = useSession();
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,7 +68,7 @@ export function useWallet(walletId: string) {
 
   useEffect(() => {
     async function fetchWallet() {
-      if (status !== "authenticated" || !session?.user?.id) {
+      if (status !== "authenticated" || !session?.user?.id || !walletId) {
         setLoading(false);
         return;
       }

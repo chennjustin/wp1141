@@ -407,14 +407,30 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
           onClick={() => setIsMenuOpen(false)}
         />
         <aside
-          className={`fixed inset-y-0 left-0 z-50 w-4/5 max-w-xs bg-[#E8E8E8] p-4 shadow-xl md:absolute md:inset-y-0 md:left-0 md:rounded-l-[3rem] md:rounded-r-none transition-transform duration-300 ease-out ${
+          className={`fixed inset-y-0 left-0 z-50 w-2/3 max-w-[280px] bg-[#E8E8E8] p-4 shadow-xl md:absolute md:inset-y-0 md:left-0 md:rounded-l-[3rem] md:rounded-r-none transition-transform duration-300 ease-out ${
             isMenuOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          <div className="mb-4 flex items-center justify-between">
-            <span className="text-sm font-semibold text-black">
-              主選單
-            </span>
+          {/* User block with home icon */}
+          <div className="mt-6 mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {session?.user?.image ? (
+                <img
+                  src={session.user.image}
+                  alt={userName || "User"}
+                  className="h-12 w-12 rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-lg font-semibold text-black">
+                  {userName ? userName.charAt(0).toUpperCase() : "U"}
+                </div>
+              )}
+              <div className="flex flex-col">
+                <span className="text-md font-medium text-black">
+                  {userName || "User"}
+                </span>
+              </div>
+            </div>
             <button
               type="button"
               className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-black/5"
@@ -445,18 +461,6 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
                 />
               </svg>
             </button>
-          </div>
-
-          {/* User block */}
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-sm font-semibold text-black">
-              {userName ? userName.charAt(0).toUpperCase() : "U"}
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-medium text-black">
-                {userName || "User"}
-              </span>
-            </div>
           </div>
 
           {/* Menu buttons */}

@@ -54,7 +54,7 @@ export function useWalletHome(walletId: string) {
   const year = today.getFullYear();
   const month = today.getMonth() + 1;
 
-  const carrierCode = carrier?.carrierCode || "/ABCDEF";
+  const carrierCode = carrier?.carrierCode || "";
   const hasRealCarrier = !!carrier;
 
   // Fetch monthly summary from API with refetch capability

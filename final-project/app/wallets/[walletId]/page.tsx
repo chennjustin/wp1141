@@ -87,6 +87,7 @@ export default function WalletDetailPage() {
         transactions={displayTransactions}
         loading={transactionsLoading}
         error={transactionsError}
+        walletId={activeWallet.id}
       />
 
       <FloatingAddButton
