@@ -34,15 +34,187 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
 
   // UI state
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  // Custom hooks for wallet management
-  const { pinnedWalletIds, pinnedWalletIdsArray } = usePinnedWallets(isAuthenticated);
-  const { isOpen: isWalletSelectorOpen, setIsOpen: setIsWalletSelectorOpen, dropdownPosition, walletButtonRef } = useWalletSelector();
-  const { currentWalletId, setCurrentWalletId } = useWalletFromPath();
-  const currentWallet = useCurrentWallet({ wallets, currentWalletId });
+  const [isWalletSelectorOpen, setIsWalletSelectorOpen] = useState(false);
+  const [isCreateWalletOpen, setIsCreateWalletOpen] = useState(false);
+  const [currentWalletId, setCurrentWalletId] = useState<string | null>(null);
+  const [pinnedWalletIds, setPinnedWalletIds] = useState<Set<string>>(new Set());
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
   
-  // Sync default wallet to server
-  useDefaultWalletSync(currentWallet);
+  // Track last updated wallet ID to avoid duplicate updates
+  const lastUpdatedWalletIdRef = useRef<string | null>(null);
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const walletButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  // Fetch pinned wallets
+  useEffect(() => {
+    async function fetchPinnedWallets() {
+      try {
+        const response = await fetch("/api/users/default-wallet");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.pinnedWalletIds) {
+            setPinnedWalletIds(new Set(data.pinnedWalletIds));
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching pinned wallets:", error);
+      }
+    }
+    if (isAuthenticated) {
+      fetchPinnedWallets();
+    }
+  }, [isAuthenticated]);
+
+  // Close wallet selector dropdown when route changes
+  useEffect(() => {
+    setIsWalletSelectorOpen(false);
+  }, [pathname]);
+
+  // Calculate dropdown position when it opens
+  useEffect(() => {
+    if (isWalletSelectorOpen && walletButtonRef.current) {
+      const buttonRect = walletButtonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: buttonRect.bottom + 8, // 8px margin (mt-2)
+        left: buttonRect.left + buttonRect.width / 2, // Center of button
+      });
+    } else {
+      setDropdownPosition(null);
+    }
+  }, [isWalletSelectorOpen]);
+
+  // Extract walletId from URL pathname for header display
+  // Simplified logic since page.tsx handles the redirect logic
+  useEffect(() => {
+    // Special paths that are not wallet IDs
+    const specialPaths = ["new", "all", "history", "notifications", "settings", "subscriptions", "statistics"];
+    
+    // Extract walletId from pathname (e.g., /wallets/abc123 -> abc123)
+    const pathParts = pathname.split("/").filter(Boolean);
+    const secondPart = pathParts.length >= 2 && pathParts[0] === "wallets" 
+      ? pathParts[1] 
+      : null;
+
+    // If it's a wallet ID path (not a special path), set currentWalletId
+    if (secondPart && !specialPaths.includes(secondPart)) {
+      if (currentWalletId !== secondPart) {
+        setCurrentWalletId(secondPart);
+      }
+      return;
+    }
+
+    // For special paths or /wallets root, clear currentWalletId
+    // The page.tsx will handle redirect to appropriate wallet
+    if (currentWalletId !== null) {
+      setCurrentWalletId(null);
+    }
+  }, [pathname, currentWalletId]);
+
+  const currentWallet: Wallet | null = useMemo(() => {
+    if (!wallets || wallets.length === 0) {
+      return null;
+    }
+
+    const byId = wallets.find((w) => w.id === currentWalletId);
+    if (byId) return byId;
+
+    return wallets[0];
+  }, [wallets, currentWalletId]);
+
+  // Update defaultWalletId when currentWalletId changes
+  useEffect(() => {
+    // Get the actual wallet ID from currentWallet
+    const walletId = currentWallet?.id ?? null;
+    
+    // Skip if no wallet, no session, or wallet hasn't changed
+    if (!walletId || !session?.user?.id || walletId === lastUpdatedWalletIdRef.current) {
+      return;
+    }
+
+    // Clear existing timeout
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current);
+    }
+
+    // Debounce the update to avoid excessive API calls
+    updateTimeoutRef.current = setTimeout(async () => {
+      try {
+        const response = await fetch("/api/users/default-wallet", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ walletId }),
+        });
+
+        if (response.ok) {
+          lastUpdatedWalletIdRef.current = walletId;
+        } else {
+          console.error("Failed to update default wallet:", await response.text());
+        }
+      } catch (error) {
+        console.error("Error updating default wallet:", error);
+      }
+    }, 500); // 500ms debounce
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+    };
+  }, [currentWallet?.id, session?.user?.id]);
+
+  // Backup mechanism: update defaultWalletId on page unload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const walletId = currentWallet?.id;
+      if (!walletId || !session?.user?.id || walletId === lastUpdatedWalletIdRef.current) {
+        return;
+      }
+
+      // Use sendBeacon for reliable delivery during page unload
+      // Note: sendBeacon only supports POST, so we use POST method
+      const data = JSON.stringify({ walletId });
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(
+          "/api/users/default-wallet",
+          new Blob([data], { type: "application/json" })
+        );
+      } else {
+        // Fallback to fetch if sendBeacon is not available
+        fetch("/api/users/default-wallet", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: data,
+          keepalive: true,
+        }).catch(() => {
+          // Ignore errors during page unload
+        });
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") {
+        handleBeforeUnload();
+      }
+    });
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [currentWallet?.id, session?.user?.id]);
+
+  const currentRole: WalletMember["role"] | null = useMemo(() => {
+    if (!currentWallet || !profile) return null;
+
+    const member = currentWallet.members.find(
+      (m) => m.userId === profile.id
+    );
+
+    return member?.role ?? null;
+  }, [currentWallet, profile]);
 
   // Calculate display information
   const { walletDisplayName, displayName, userName } = useWalletDisplay({
@@ -53,14 +225,9 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
     profile,
   });
 
-  // Redirect to login if not authenticated (use useEffect to avoid render-time navigation)
-  useEffect(() => {
-    if (!isAuthenticated || sessionStatus === "unauthenticated") {
-      router.push("/login");
-    }
-  }, [isAuthenticated, sessionStatus, router]);
+  
 
-  // Don't render content if not authenticated
+  // Redirect to login if not authenticated
   if (!isAuthenticated || sessionStatus === "unauthenticated") {
     return null;
   }
@@ -119,16 +286,110 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
           isOpen={isMenuOpen}
           onClose={() => setIsMenuOpen(false)}
         />
+        <aside
+          className={`fixed inset-y-0 left-0 z-50 w-2/3 max-w-[280px] bg-[#E8E8E8] p-4 shadow-xl md:absolute md:inset-y-0 md:left-0 md:rounded-l-[3rem] md:rounded-r-none transition-transform duration-300 ease-out ${
+            isMenuOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          {/* User block with home icon */}
+          <div className="mt-6 mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {session?.user?.image ? (
+                <img
+                  src={session.user.image}
+                  alt={userName || "User"}
+                  className="h-12 w-12 rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-lg font-semibold text-black">
+                  {userName ? userName.charAt(0).toUpperCase() : "U"}
+                </div>
+              )}
+              <div className="flex flex-col">
+                <span className="text-md font-medium text-black">
+                  {userName || "User"}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-black/5"
+              onClick={() => {
+                setIsMenuOpen(false);
+                // Navigate to current wallet or redirect to /wallets (which will redirect to default wallet)
+                if (currentWalletId) {
+                  router.push(`/wallets/${currentWalletId}`);
+                } else {
+                  router.push("/wallets");
+                }
+              }}
+              aria-label="Go to wallet home"
+            >
+              {/* House icon */}
+              <svg
+                className="h-5 w-5 text-black"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                />
+              </svg>
+            </button>
+          </div>
 
-        {/* Side menu */}
-        <SideMenu
-          isOpen={isMenuOpen}
-          userName={userName}
-          userImage={session?.user?.image}
-          currentWalletId={currentWalletId}
-          onClose={() => setIsMenuOpen(false)}
-          onNavigate={handleNavigate}
-        />
+          {/* Menu buttons */}
+          <nav className="flex flex-col gap-3 text-sm text-black">
+            <button
+              type="button"
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-left hover:bg-gray-50"
+              onClick={() => handleNavigate("/wallets/notifications")}
+            >
+              通知
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-left hover:bg-gray-50"
+              onClick={() => handleNavigate("/wallets/history")}
+            >
+              收支明細
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-left hover:bg-gray-50"
+              onClick={() => handleNavigate("/wallets/statistics")}
+            >
+              統計
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-left hover:bg-gray-50"
+              onClick={() => handleNavigate("/wallets/subscriptions")}
+            >
+              訂閱清單
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-left hover:bg-gray-50"
+              onClick={() => handleNavigate("/wallets/settings")}
+            >
+              設定
+            </button>
+            <div className="border-t border-gray-200 my-1" />
+            <button
+              type="button"
+              className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-left text-red-700 hover:bg-red-100"
+              onClick={handleLogout}
+            >
+              登出
+            </button>
+          </nav>
+        </aside>
 
         {/* Main content area */}
         <main className={`flex min-h-0 flex-1 flex-col pb-16 px-4 ${
