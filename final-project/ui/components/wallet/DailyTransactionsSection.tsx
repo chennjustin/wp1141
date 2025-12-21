@@ -29,8 +29,8 @@ export function DailyTransactionsSection({
   };
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col rounded-xl bg-white p-4 text-sm">
-      <div className="mb-2 flex items-center justify-between">
+    <section className="flex min-h-0 flex-1 flex-col rounded-xl bg-white pl-4 pr-2 pt-4 pb-4 text-sm">
+      <div className="mb-2 flex items-center justify-between pr-2">
         <h2 className="text-sm font-medium text-black">當天款項</h2>
         <button
           type="button"
@@ -41,7 +41,7 @@ export function DailyTransactionsSection({
           查看歷史
         </button>
       </div>
-      <div className="mt-1 flex-1 overflow-y-auto">
+      <div className="mt-1 min-h-0 flex-1 overflow-y-auto pr-0">
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <span className="text-sm text-black/50">載入中...</span>
@@ -57,7 +57,7 @@ export function DailyTransactionsSection({
             <span className="text-sm text-black/50">今天還沒有交易記錄</span>
           </div>
         ) : (
-          <ul>
+          <ul className="pr-2">
             {transactions.map((tx, index) => (
               <li key={tx.id}>
                 <div className="flex items-center justify-between py-3">
