@@ -81,11 +81,9 @@ export default function WalletHistoryPage() {
     }
   };
 
-  // Handle statistics icon click (placeholder)
+  // Handle statistics icon click - navigate to statistics page
   const handleStatisticsClick = () => {
-    if (walletId) {
-      router.push(`/wallets/${walletId}/statistics`);
-    }
+    router.push("/wallets/statistics");
   };
 
   // Format amount with sign and color

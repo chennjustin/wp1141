@@ -78,7 +78,7 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
   // Simplified logic since page.tsx handles the redirect logic
   useEffect(() => {
     // Special paths that are not wallet IDs
-    const specialPaths = ["new", "all", "history", "notifications", "settings", "subscriptions"];
+    const specialPaths = ["new", "all", "history", "notifications", "settings", "subscriptions", "statistics"];
     
     // Extract walletId from pathname (e.g., /wallets/abc123 -> abc123)
     const pathParts = pathname.split("/").filter(Boolean);
@@ -478,6 +478,13 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
               onClick={() => handleNavigate("/wallets/history")}
             >
               收支明細
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-left hover:bg-gray-50"
+              onClick={() => handleNavigate("/wallets/statistics")}
+            >
+              統計
             </button>
             <button
               type="button"
