@@ -103,7 +103,7 @@ export function BarChart({ data }: BarChartProps) {
       <ResponsiveContainer width="100%" height={400}>
         <RechartsBarChart
           data={chartData}
-          margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+          margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
           <XAxis
@@ -112,7 +112,7 @@ export function BarChart({ data }: BarChartProps) {
             tick={CustomXAxisTick}
             angle={-45}
             textAnchor="end"
-            height={80}
+            height={60}
           />
           <YAxis
             type="number"
