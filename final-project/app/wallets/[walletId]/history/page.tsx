@@ -282,7 +282,7 @@ function DailyTransactionCard({
   };
 
   return (
-    <div className="rounded border border-black bg-white p-4">
+    <div className="rounded border border-black p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}>
       {/* Date header with daily summary */}
       <div className="mb-3 flex items-center justify-between border-b border-black/20 pb-2">
         <span className="text-sm font-medium text-black">{group.dateLabel}</span>

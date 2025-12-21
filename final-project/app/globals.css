@@ -5,6 +5,10 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --wallet-bg: #f8f9fa;
+  --wallet-loading-bg: #f8f9fa;
+  --card-bg: #ffffff;
+  --card-text: #000000;
 }
 
 @media (prefers-color-scheme: dark) {

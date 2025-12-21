@@ -84,9 +84,11 @@ export function CarrierSection({
 
   return (
     <section
-      className={`relative rounded-xl p-4 text-sm transition-colors ${
-        brightCarrier ? "bg-white text-black" : "bg-black text-white"
-      }`}
+      className="relative rounded-xl p-4 text-sm transition-colors"
+      style={{
+        backgroundColor: brightCarrier ? 'var(--card-bg)' : '#000000',
+        color: brightCarrier ? 'var(--card-text)' : '#ffffff',
+      }}
     >
       {/* Copy toast notification */}
       {showCopyToast && (

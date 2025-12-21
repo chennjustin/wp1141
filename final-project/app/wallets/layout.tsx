@@ -88,6 +88,7 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
 
     // If it's a wallet ID path (not a special path), set currentWalletId
     if (secondPart && !specialPaths.includes(secondPart)) {
+      // Only update if different to avoid unnecessary re-renders
       if (currentWalletId !== secondPart) {
         setCurrentWalletId(secondPart);
       }
@@ -96,20 +97,27 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
 
     // For special paths or /wallets root, clear currentWalletId
     // The page.tsx will handle redirect to appropriate wallet
-    if (currentWalletId !== null) {
+    // Only clear if we're not already null to avoid unnecessary updates
+    if (currentWalletId !== null && !secondPart) {
       setCurrentWalletId(null);
     }
-  }, [pathname, currentWalletId]);
+  }, [pathname]); // Remove currentWalletId from dependencies to avoid circular updates
 
   const currentWallet: Wallet | null = useMemo(() => {
     if (!wallets || wallets.length === 0) {
       return null;
     }
 
+    if (!currentWalletId) {
+      return wallets[0];
+    }
+
     const byId = wallets.find((w) => w.id === currentWalletId);
     if (byId) return byId;
 
-    return wallets[0];
+    // If walletId is set but not found, return null instead of first wallet
+    // This prevents showing wrong wallet name during transition
+    return null;
   }, [wallets, currentWalletId]);
 
   // Update defaultWalletId when currentWalletId changes
@@ -258,7 +266,7 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
   // Show loading state while checking authentication
   if (sessionStatus === "loading") {
     return (
-      <div className="min-h-screen bg-[#D2D2D2] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--wallet-loading-bg)' }}>
         <div className="text-sm text-black/80">Loading...</div>
       </div>
     );
@@ -271,15 +279,19 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
   }
 
   const handleWalletChange = (walletId: string) => {
-    // Immediately update currentWalletId to ensure UI updates instantly
-    setCurrentWalletId(walletId);
+    // Find the wallet from wallets array to ensure it exists
+    const selectedWallet = wallets.find((w) => w.id === walletId);
     
-    // Navigate to the wallet's detail page
-    router.push(`/wallets/${walletId}`);
-    
-    // Note: setIsWalletSelectorOpen(false) will be called automatically
-    // by the pathname change effect, but we can also close it immediately
-    setIsWalletSelectorOpen(false);
+    if (selectedWallet) {
+      // Immediately update currentWalletId to ensure UI updates instantly
+      setCurrentWalletId(walletId);
+      
+      // Navigate to the wallet's detail page
+      router.push(`/wallets/${walletId}`);
+      
+      // Close the dropdown immediately
+      setIsWalletSelectorOpen(false);
+    }
   };
 
   const handleNavigate = (path: string) => {
@@ -302,13 +314,13 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
     pathname.includes("/transactions/new");
 
   return (
-    <div className="h-screen overflow-hidden bg-[#E8E8E8] flex justify-center px-4 py-4">
+    <div className="h-screen overflow-hidden flex justify-center px-4 py-4" style={{ backgroundColor: 'var(--wallet-bg)' }}>
       {/* Mobile-sized container with thick black border and rounded corners */}
-      <div className="relative flex h-[calc(100vh-2rem)] w-full max-w-sm flex-col border-[3px] border-black bg-[#E8E8E8] rounded-[3rem] overflow-hidden">
+      <div className="relative flex h-[calc(100vh-2rem)] w-full max-w-sm flex-col border-[3px] border-black rounded-[3rem] overflow-hidden" style={{ backgroundColor: 'var(--wallet-bg)' }}>
         {/* Header */}
         {!isNewTransactionPage && (
         <>
-        <header className="relative mb-4 flex items-center justify-between bg-[#E8E8E8] px-4 py-3">
+        <header className="relative mb-4 flex items-center justify-between px-4 py-3" style={{ backgroundColor: 'var(--wallet-bg)' }}>
           {/* Left: main menu toggle */}
           <button
             type="button"
@@ -328,7 +340,8 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
             <button
               ref={walletButtonRef}
               type="button"
-              className="relative inline-flex items-center justify-center rounded-full bg-white px-6 py-2 text-sm font-medium text-black hover:bg-gray-100 active:bg-white focus:bg-white focus:outline-none focus:ring-0"
+              className="relative inline-flex items-center justify-center rounded-full px-6 py-2 text-sm font-medium hover:opacity-80 active:opacity-90 focus:outline-none focus:ring-0 transition-opacity"
+              style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}
               onClick={() => setIsWalletSelectorOpen(true)}
               aria-label="Select wallet"
             >
@@ -350,11 +363,13 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
               onClick={() => setIsWalletSelectorOpen(false)}
             />
             <div
-              className="fixed z-[9999] rounded-lg bg-white shadow-lg min-w-[200px] max-h-[300px] overflow-y-auto border-0"
+              className="fixed z-[9999] rounded-lg shadow-lg min-w-[200px] max-h-[300px] overflow-y-auto border-0"
               style={{
                 top: `${dropdownPosition.top}px`,
                 left: `${dropdownPosition.left}px`,
                 transform: 'translateX(-50%)',
+                backgroundColor: 'var(--card-bg)',
+                color: 'var(--card-text)',
               }}
             >
               <div className="py-2">
@@ -365,7 +380,8 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
                     <button
                       key={wallet.id}
                       type="button"
-                      className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100"
+                      className="w-full px-4 py-2 text-left text-sm hover:opacity-80 transition-opacity"
+                      style={{ color: 'var(--card-text)' }}
                       onClick={() => handleWalletChange(wallet.id)}
                     >
                       {wallet.name}
@@ -374,7 +390,8 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
                 <div className="border-t border-gray-200 my-1" />
                 <button
                   type="button"
-                  className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100"
+                  className="w-full px-4 py-2 text-left text-sm hover:opacity-80 transition-opacity"
+                  style={{ color: 'var(--card-text)' }}
                   onClick={() => {
                     setIsWalletSelectorOpen(false);
                     router.push("/wallets/all");
@@ -384,7 +401,8 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
                 </button>
                 <button
                   type="button"
-                  className="w-full px-4 py-2 text-left text-sm text-black hover:bg-gray-100"
+                  className="w-full px-4 py-2 text-left text-sm hover:opacity-80 transition-opacity"
+                  style={{ color: 'var(--card-text)' }}
                   onClick={() => {
                     setIsWalletSelectorOpen(false);
                     router.push("/wallets/new");
@@ -407,9 +425,10 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
           onClick={() => setIsMenuOpen(false)}
         />
         <aside
-          className={`fixed inset-y-0 left-0 z-50 w-2/3 max-w-[280px] bg-[#E8E8E8] p-4 shadow-xl md:absolute md:inset-y-0 md:left-0 md:rounded-l-[3rem] md:rounded-r-none transition-transform duration-300 ease-out ${
+          className={`fixed inset-y-0 left-0 z-50 w-2/3 max-w-[280px] p-4 shadow-xl md:absolute md:inset-y-0 md:left-0 md:rounded-l-[3rem] md:rounded-r-none transition-transform duration-300 ease-out ${
             isMenuOpen ? "translate-x-0" : "-translate-x-full"
           }`}
+          style={{ backgroundColor: 'var(--wallet-bg)' }}
         >
           {/* User block with home icon */}
           <div className="mt-6 mb-6 flex items-center justify-between">
@@ -464,31 +483,35 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
           </div>
 
           {/* Menu buttons */}
-          <nav className="flex flex-col gap-3 text-sm text-black">
+          <nav className="flex flex-col gap-3 text-sm">
             <button
               type="button"
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-left hover:bg-gray-50"
+              className="rounded-lg border border-gray-300 px-3 py-2 text-left hover:opacity-80 transition-opacity"
+              style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}
               onClick={() => handleNavigate("/wallets/notifications")}
             >
               通知
             </button>
             <button
               type="button"
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-left hover:bg-gray-50"
+              className="rounded-lg border border-gray-300 px-3 py-2 text-left hover:opacity-80 transition-opacity"
+              style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}
               onClick={() => handleNavigate("/wallets/history")}
             >
               收支明細
             </button>
             <button
               type="button"
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-left hover:bg-gray-50"
+              className="rounded-lg border border-gray-300 px-3 py-2 text-left hover:opacity-80 transition-opacity"
+              style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}
               onClick={() => handleNavigate("/wallets/subscriptions")}
             >
               訂閱清單
             </button>
             <button
               type="button"
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-left hover:bg-gray-50"
+              className="rounded-lg border border-gray-300 px-3 py-2 text-left hover:opacity-80 transition-opacity"
+              style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}
               onClick={() => handleNavigate("/wallets/settings")}
             >
               設定

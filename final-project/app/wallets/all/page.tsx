@@ -98,7 +98,8 @@ function WalletCard({
 
   return (
     <div
-      className="relative z-0 rounded-xl bg-white p-4 text-black border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
+      className="relative z-0 rounded-xl p-4 border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
+      style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}
       onClick={() => onCardClick(wallet.id)}
     >
       {/* Pin button - top right */}

@@ -29,7 +29,7 @@ export function DailyTransactionsSection({
   };
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col rounded-xl bg-white pl-4 pr-2 pt-4 pb-4 text-sm">
+    <section className="flex min-h-0 flex-1 flex-col rounded-xl pl-4 pr-2 pt-4 pb-4 text-sm" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}>
       <div className="mb-2 flex items-center justify-between pr-2">
         <h2 className="text-sm font-medium text-black">當天款項</h2>
         <button

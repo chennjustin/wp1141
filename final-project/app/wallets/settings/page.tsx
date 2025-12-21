@@ -155,7 +155,7 @@ export default function SettingsPage() {
       <h1 className="text-lg font-semibold text-black">設定</h1>
 
       {/* Carrier settings section */}
-      <section className="rounded-xl bg-white p-4 text-black">
+      <section className="rounded-xl p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}>
         <h2 className="mb-4 text-sm font-medium">載具設定</h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">

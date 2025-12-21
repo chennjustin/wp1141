@@ -164,23 +164,25 @@ export default function CreateWalletPage() {
             <button
               type="button"
               onClick={() => handleSelectWalletType("PERSONAL")}
-              className="flex flex-col items-center gap-3 rounded-xl border-2 border-gray-300 bg-white p-6 text-center hover:border-blue-500 hover:bg-blue-50"
+              className="flex flex-col items-center gap-3 rounded-xl border-2 border-gray-300 p-6 text-center hover:opacity-80 transition-opacity"
+              style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}
             >
               <span className="text-4xl">👤</span>
               <div>
-                <div className="text-base font-semibold text-black">個人</div>
-                <div className="mt-1 text-xs text-gray-600">個人使用的錢包</div>
+                <div className="text-base font-semibold">個人</div>
+                <div className="mt-1 text-xs opacity-70">個人使用的錢包</div>
               </div>
             </button>
             <button
               type="button"
               onClick={() => handleSelectWalletType("GROUP")}
-              className="flex flex-col items-center gap-3 rounded-xl border-2 border-gray-300 bg-white p-6 text-center hover:border-blue-500 hover:bg-blue-50"
+              className="flex flex-col items-center gap-3 rounded-xl border-2 border-gray-300 p-6 text-center hover:opacity-80 transition-opacity"
+              style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}
             >
               <span className="text-4xl">👥</span>
               <div>
-                <div className="text-base font-semibold text-black">團體</div>
-                <div className="mt-1 text-xs text-gray-600">多人共用的錢包</div>
+                <div className="text-base font-semibold">團體</div>
+                <div className="mt-1 text-xs opacity-70">多人共用的錢包</div>
               </div>
             </button>
           </div>
