@@ -302,9 +302,9 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
     pathname.includes("/transactions/new");
 
   return (
-    <div className="min-h-screen bg-[#E8E8E8] flex justify-center px-4 py-4">
+    <div className="h-screen overflow-hidden bg-[#E8E8E8] flex justify-center px-4 py-4">
       {/* Mobile-sized container with thick black border and rounded corners */}
-      <div className="relative flex min-h-[calc(100vh-2rem)] w-full max-w-sm flex-col border-[3px] border-black bg-[#E8E8E8] rounded-[3rem] overflow-clip">
+      <div className="relative flex h-[calc(100vh-2rem)] w-full max-w-sm flex-col border-[3px] border-black bg-[#E8E8E8] rounded-[3rem] overflow-hidden">
         {/* Header */}
         {!isNewTransactionPage && (
         <>
@@ -505,7 +505,7 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
         </aside>
 
         {/* Main content area */}
-        <main className="flex-1 pb-16 px-4">
+        <main className="flex min-h-0 flex-1 flex-col overflow-hidden pb-16 px-4">
           {/* Don't show loading for /wallets page - it handles its own loading */}
           {walletsLoading && pathname !== "/wallets/new" && pathname !== "/wallets" && (
             <div className="flex h-full items-center justify-center text-sm text-black/80">
