@@ -60,42 +60,42 @@ export function CalculatorKeypad({
   };
 
   return (
-    <div className="mt-auto shrink-0 pb-0 pt-10">
+    <div className="shrink-0 pb-4 pt-6 bg-white border-t border-gray-200">
       {/* Keypad: 5 columns */}
-      <div className="grid grid-cols-5 gap-2 pb-1">
+      <div className="grid grid-cols-5 gap-2 px-4">
         {/* Row 1: 7, 8, 9, ÷, AC */}
         <button
           type="button"
           onClick={() => handleAppend("7")}
-          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
+          className="flex h-12 items-center justify-center bg-gray-50 text-lg font-medium text-black active:scale-95 active:bg-gray-200 transition-all"
         >
           7
         </button>
         <button
           type="button"
           onClick={() => handleAppend("8")}
-          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
+          className="flex h-12 items-center justify-center bg-gray-50 text-lg font-medium text-black active:scale-95 active:bg-gray-200 transition-all"
         >
           8
         </button>
         <button
           type="button"
           onClick={() => handleAppend("9")}
-          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
+          className="flex h-12 items-center justify-center bg-gray-50 text-lg font-medium text-black active:scale-95 active:bg-gray-200 transition-all"
         >
           9
         </button>
         <button
           type="button"
           onClick={() => handleAppend("÷")}
-          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
+          className="flex h-12 items-center justify-center bg-gray-50 text-lg font-medium text-black active:scale-95 active:bg-gray-200 transition-all"
         >
           ÷
         </button>
         <button
           type="button"
           onClick={handleClear}
-          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
+          className="flex h-12 items-center justify-center bg-gray-50 text-lg font-medium text-black active:scale-95 active:bg-gray-200 transition-all"
         >
           AC
         </button>
@@ -104,35 +104,35 @@ export function CalculatorKeypad({
         <button
           type="button"
           onClick={() => handleAppend("4")}
-          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
+          className="flex h-12 items-center justify-center bg-gray-50 text-lg font-medium text-black active:scale-95 active:bg-gray-200 transition-all"
         >
           4
         </button>
         <button
           type="button"
           onClick={() => handleAppend("5")}
-          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
+          className="flex h-12 items-center justify-center bg-gray-50 text-lg font-medium text-black active:scale-95 active:bg-gray-200 transition-all"
         >
           5
         </button>
         <button
           type="button"
           onClick={() => handleAppend("6")}
-          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
+          className="flex h-12 items-center justify-center bg-gray-50 text-lg font-medium text-black active:scale-95 active:bg-gray-200 transition-all"
         >
           6
         </button>
         <button
           type="button"
           onClick={() => handleAppend("×")}
-          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
+          className="flex h-12 items-center justify-center bg-gray-50 text-lg font-medium text-black active:scale-95 active:bg-gray-200 transition-all"
         >
           ×
         </button>
         <button
           type="button"
           onClick={handleBackspace}
-          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
+          className="flex h-12 items-center justify-center bg-gray-50 text-lg font-medium text-black active:scale-95 active:bg-gray-200 transition-all"
         >
           ←
         </button>
@@ -141,65 +141,65 @@ export function CalculatorKeypad({
         <button
           type="button"
           onClick={() => handleAppend("1")}
-          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
+          className="flex h-12 items-center justify-center bg-gray-50 text-lg font-medium text-black active:scale-95 active:bg-gray-200 transition-all"
         >
           1
         </button>
         <button
           type="button"
           onClick={() => handleAppend("2")}
-          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
+          className="flex h-12 items-center justify-center bg-gray-50 text-lg font-medium text-black active:scale-95 active:bg-gray-200 transition-all"
         >
           2
         </button>
         <button
           type="button"
           onClick={() => handleAppend("3")}
-          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
+          className="flex h-12 items-center justify-center bg-gray-50 text-lg font-medium text-black active:scale-95 active:bg-gray-200 transition-all"
         >
           3
         </button>
         <button
           type="button"
           onClick={() => handleAppend("+")}
-          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
+          className="flex h-12 items-center justify-center bg-gray-50 text-lg font-medium text-black active:scale-95 active:bg-gray-200 transition-all"
         >
           ＋
         </button>
         <button
           type="button"
           onClick={handleOk}
-          className="row-span-2 flex h-full items-center justify-center rounded-full bg-green-500 text-lg font-medium text-white active:bg-green-600"
+          className="row-span-2 flex h-full items-center justify-center bg-black text-lg font-medium text-white active:scale-95 active:bg-gray-800 transition-all"
         >
-          OK
+          完成
         </button>
 
         {/* Row 4: 00, 0, ., − */}
         <button
           type="button"
           onClick={() => handleAppend("00")}
-          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
+          className="flex h-12 items-center justify-center bg-gray-50 text-lg font-medium text-black active:scale-95 active:bg-gray-200 transition-all"
         >
           00
         </button>
         <button
           type="button"
           onClick={() => handleAppend("0")}
-          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
+          className="flex h-12 items-center justify-center bg-gray-50 text-lg font-medium text-black active:scale-95 active:bg-gray-200 transition-all"
         >
           0
         </button>
         <button
           type="button"
           onClick={() => handleAppend(".")}
-          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
+          className="flex h-12 items-center justify-center bg-gray-50 text-lg font-medium text-black active:scale-95 active:bg-gray-200 transition-all"
         >
           .
         </button>
         <button
           type="button"
           onClick={() => handleAppend("-")}
-          className="flex h-12 items-center justify-center rounded-full bg-white text-lg font-medium text-black active:bg-gray-100"
+          className="flex h-12 items-center justify-center bg-gray-50 text-lg font-medium text-black active:scale-95 active:bg-gray-200 transition-all"
         >
           −
         </button>

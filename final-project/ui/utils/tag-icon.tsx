@@ -2,112 +2,57 @@
  * Tag icon utility functions
  * 
  * This module provides utilities for rendering tag icons based on iconKey.
- * Currently uses emoji mapping, but can be extended to use icon libraries.
+ * Uses lucide-react SVG icons for better visual consistency and customization.
  */
 
+import { tagIconMap, Tag } from "@/ui/components/icons/tag-icon-map";
+import type { LucideIcon } from "@/ui/components/icons/tag-icon-map";
+
 /**
- * Map iconKey to emoji
- * 
- * This function maps tag iconKey values to corresponding emoji icons.
- * If the iconKey is not recognized, returns a default tag emoji.
+ * Get the icon component for a given iconKey
  * 
  * @param iconKey - The icon key from the tag (e.g., "shopping-cart", "coffee")
- * @returns Emoji string representing the icon
+ * @returns The corresponding lucide-react icon component, or Tag as default
  * 
  * @example
  * ```tsx
- * const icon = getTagIcon("coffee"); // Returns "☕"
+ * const IconComponent = getTagIconComponent("coffee"); // Returns Coffee icon component
  * ```
  */
-export function getTagIcon(iconKey: string): string {
-  const iconMap: Record<string, string> = {
-    // Common icons
-    tag: "🏷️",
-    "shopping-cart": "🛒",
-    coffee: "☕",
-    food: "🍽️",
-    restaurant: "🍴",
-    "fast-food": "🍔",
-    drink: "🥤",
-    grocery: "🛍️",
-    transportation: "🚗",
-    car: "🚗",
-    bus: "🚌",
-    train: "🚆",
-    taxi: "🚕",
-    gas: "⛽",
-    parking: "🅿️",
-    entertainment: "🎬",
-    movie: "🎬",
-    music: "🎵",
-    game: "🎮",
-    book: "📚",
-    shopping: "🛍️",
-    clothes: "👕",
-    shoes: "👟",
-    electronics: "📱",
-    phone: "📱",
-    computer: "💻",
-    health: "🏥",
-    hospital: "🏥",
-    medicine: "💊",
-    gym: "💪",
-    fitness: "💪",
-    education: "📖",
-    school: "🏫",
-    tuition: "🎓",
-    bill: "📄",
-    utility: "💡",
-    electricity: "⚡",
-    water: "💧",
-    internet: "🌐",
-    phone_bill: "📞",
-    insurance: "🛡️",
-    travel: "✈️",
-    flight: "✈️",
-    hotel: "🏨",
-    vacation: "🏖️",
-    income: "💰",
-    salary: "💵",
-    bonus: "🎁",
-    gift: "🎁",
-    investment: "📈",
-    stock: "📊",
-    savings: "💳",
-    bank: "🏦",
-    atm: "🏧",
-    transfer: "💸",
-    payment: "💳",
-    credit: "💳",
-    cash: "💵",
-    other: "📝",
-    default: "🏷️",
-  };
-
-  // Return mapped icon or default
-  return iconMap[iconKey] || iconMap.default;
+export function getTagIconComponent(iconKey: string): LucideIcon {
+  return tagIconMap[iconKey] || Tag;
 }
 
 /**
  * Tag icon component
  * 
- * Renders an emoji icon based on the tag's iconKey.
+ * Renders an SVG icon based on the tag's iconKey using lucide-react.
  * 
  * @param iconKey - The icon key from the tag
  * @param className - Optional CSS class name
- * @returns JSX element with the emoji icon
+ * @param size - Optional icon size in pixels (default: 20)
+ * @param color - Optional icon color (default: "currentColor")
+ * @returns JSX element with the SVG icon
  */
 export function TagIcon({ 
   iconKey, 
-  className = "" 
+  className = "",
+  size = 20,
+  color = "currentColor"
 }: { 
   iconKey: string; 
   className?: string;
+  size?: number;
+  color?: string;
 }) {
+  const IconComponent = getTagIconComponent(iconKey);
+  
   return (
-    <span className={className} role="img" aria-label={`Tag icon: ${iconKey}`}>
-      {getTagIcon(iconKey)}
-    </span>
+    <IconComponent 
+      className={className} 
+      size={size} 
+      color={color}
+      aria-label={`Tag icon: ${iconKey}`}
+    />
   );
 }
-
