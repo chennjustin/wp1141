@@ -188,6 +188,23 @@ export const walletRepository = {
   },
 
   /**
+   * Soft delete membership (remove member from wallet)
+   */
+  async removeMembership(walletId: string, userId: string) {
+    return prisma.walletUser.update({
+      where: {
+        walletId_userId: {
+          walletId,
+          userId,
+        },
+      },
+      data: {
+        isDeleted: true,
+      },
+    });
+  },
+
+  /**
    * Update wallet
    */
   async update(id: string, data: UpdateWalletData) {

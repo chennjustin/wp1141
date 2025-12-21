@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useWalletHome } from "@/hooks/useWalletHome";
 import { MonthlySummarySection } from "@/ui/components/wallet/MonthlySummarySection";
 import { CarrierSection } from "@/ui/components/wallet/CarrierSection";
@@ -10,6 +10,7 @@ import { Loading } from "@/ui/components/common/Loading";
 
 export default function WalletDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const walletId = (params?.walletId as string) ?? "";
   
 
@@ -64,6 +65,17 @@ export default function WalletDetailPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+      {/* Edit wallet button */}
+      <div className="flex justify-end px-4">
+        <button
+          type="button"
+          onClick={() => router.push(`/wallets/${walletId}/edit`)}
+          className="text-xs text-black/60 hover:text-black/80 transition-colors"
+        >
+          編輯錢包
+        </button>
+      </div>
+
       <MonthlySummarySection
         year={year}
         month={month}

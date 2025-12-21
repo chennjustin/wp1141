@@ -232,19 +232,28 @@ export const walletService = {
   },
 
   /**
-   * Update wallet (only owner can update)
+   * Update wallet (all members can update, but default wallet cannot change name)
    */
   async updateWallet(
     walletId: string,
     userId: string,
     data: UpdateWalletData
   ): Promise<WalletServiceResult<Wallet>> {
-    // Check authorization
-    const isOwner = await walletRepository.isOwner(walletId, userId);
-    if (!isOwner) {
+    // Check wallet exists and user is a member
+    const wallet = await walletRepository.findById(walletId, userId);
+    if (!wallet) {
       return {
         success: false,
-        error: "Only wallet owner can update this wallet",
+        error: "Wallet not found or access denied",
+      };
+    }
+
+    // Check if user is trying to update name of default wallet
+    const user = await userRepository.findById(userId);
+    if (user?.defaultWalletId === walletId && data.name !== undefined && data.name !== null) {
+      return {
+        success: false,
+        error: "Cannot change name of default wallet",
       };
     }
 
@@ -612,6 +621,113 @@ export const walletService = {
       return {
         success: false,
         error: "Failed to reject wallet invitation",
+      };
+    }
+  },
+
+  /**
+   * Remove member from wallet (only creator can remove members)
+   */
+  async removeMemberFromWallet(
+    walletId: string,
+    userId: string,
+    targetUserId: string
+  ): Promise<WalletServiceResult<void>> {
+    // Check authorization - only creator can remove members
+    const isOwner = await walletRepository.isOwner(walletId, userId);
+    if (!isOwner) {
+      return {
+        success: false,
+        error: "Only wallet creator can remove members",
+      };
+    }
+
+    // Check wallet exists
+    const wallet = await walletRepository.findById(walletId);
+    if (!wallet) {
+      return {
+        success: false,
+        error: "Wallet not found",
+      };
+    }
+
+    // Check target user is not the creator
+    const targetMembership = await walletRepository.findMembershipByWalletAndUser(
+      walletId,
+      targetUserId
+    );
+    if (!targetMembership || targetMembership.isDeleted) {
+      return {
+        success: false,
+        error: "Member not found",
+      };
+    }
+
+    // Cannot remove the creator
+    if (targetMembership.status === WalletUserStatus.OWNER && targetMembership.role === "OWNER") {
+      return {
+        success: false,
+        error: "Cannot remove wallet creator",
+      };
+    }
+
+    try {
+      await walletRepository.removeMembership(walletId, targetUserId);
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error("Error removing member from wallet:", error);
+      return {
+        success: false,
+        error: "Failed to remove member",
+      };
+    }
+  },
+
+  /**
+   * Leave wallet (members can leave, but creator cannot)
+   */
+  async leaveWallet(
+    walletId: string,
+    userId: string
+  ): Promise<WalletServiceResult<void>> {
+    // Check wallet exists
+    const wallet = await walletRepository.findById(walletId);
+    if (!wallet) {
+      return {
+        success: false,
+        error: "Wallet not found",
+      };
+    }
+
+    // Check user is a member
+    const membership = await walletRepository.findMembershipByWalletAndUser(walletId, userId);
+    if (!membership || membership.isDeleted) {
+      return {
+        success: false,
+        error: "You are not a member of this wallet",
+      };
+    }
+
+    // Creator cannot leave
+    if (membership.status === WalletUserStatus.OWNER && membership.role === "OWNER") {
+      return {
+        success: false,
+        error: "Wallet creator cannot leave the wallet",
+      };
+    }
+
+    try {
+      await walletRepository.removeMembership(walletId, userId);
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error("Error leaving wallet:", error);
+      return {
+        success: false,
+        error: "Failed to leave wallet",
       };
     }
   },

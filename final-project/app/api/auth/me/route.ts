@@ -71,6 +71,7 @@ export async function GET() {
         name: user.name,
         email: user.email,
         image: user.image,
+        defaultWalletId: (user as { defaultWalletId?: string | null }).defaultWalletId || null,
       },
       { status: 200 }
     );
