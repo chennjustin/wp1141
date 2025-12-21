@@ -257,8 +257,10 @@ export default function NewTransactionPage() {
     );
   }
 
-  // Use subtle colors that match the system style - deeper, more muted tones
-  const headerBgColor = transactionType === "INCOME" ? "bg-emerald-700" : "bg-rose-700";
+  // Use CSS variables for income/expense colors
+  const headerBgColor = transactionType === "INCOME" 
+    ? "bg-[var(--income-color)]" 
+    : "bg-[var(--expense-color)]";
 
   return (
     <div className="flex h-full flex-col relative">
@@ -268,8 +270,8 @@ export default function NewTransactionPage() {
           onSubmit={handleSubmit}
           className="flex min-h-0 flex-1 flex-col"
         >
-          {/* Combined Header and Amount Section - Full width continuous block (區塊 A) */}
-          <div className={`${headerBgColor}`}>
+          {/* Combined Header and Amount Section - Full width continuous block (區塊 A) - Extends to top edge */}
+          <div className={`${headerBgColor} -mx-4 -mt-4 px-4 pt-4`}>
             {/* Header row with back and checkmark */}
             <div className="relative flex items-center justify-between px-4 pt-3 pb-2">
               {/* Back Button */}
@@ -348,7 +350,7 @@ export default function NewTransactionPage() {
           </div>
 
           {/* Form Fields Section - Middle (區塊 B) */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-white">
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4" style={{ backgroundColor: 'var(--wallet-bg)' }}>
             {/* 1. Description - 明細描述 */}
             <div>
               <div className="flex items-center gap-2 mb-2">

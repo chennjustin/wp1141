@@ -58,7 +58,7 @@ export function MonthlySummarySection({
       <div className="flex gap-4">
         <div className="flex flex-1 flex-col gap-1">
           <span className="text-xs text-black/70">收入</span>
-          <span className="text-xl font-semibold text-black">
+          <span className="text-xl font-semibold" style={{ color: 'var(--income-color)' }}>
             {loading ? (
               <span className="text-sm text-black/50">載入中...</span>
             ) : error ? (
@@ -74,7 +74,7 @@ export function MonthlySummarySection({
         </div>
         <div className="flex flex-1 flex-col gap-1 items-end text-right">
           <span className="text-xs text-black/70">支出</span>
-          <span className="text-xl font-semibold text-black">
+          <span className="text-xl font-semibold" style={{ color: 'var(--expense-color)' }}>
             {loading ? (
               <span className="text-sm text-black/50">載入中...</span>
             ) : error ? (
