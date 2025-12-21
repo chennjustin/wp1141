@@ -6,22 +6,41 @@
 
 "use client";
 
+import { useRouter } from "next/navigation";
 import type { DisplayTransaction } from "@/hooks/useWalletHome";
 
 interface DailyTransactionsSectionProps {
   transactions: DisplayTransaction[];
   loading: boolean;
   error: string | null;
+  walletId: string;
 }
 
 export function DailyTransactionsSection({
   transactions,
   loading,
   error,
+  walletId,
 }: DailyTransactionsSectionProps) {
+  const router = useRouter();
+
+  const handleViewHistory = () => {
+    router.push(`/wallets/${walletId}/history`);
+  };
+
   return (
     <section className="flex min-h-0 flex-1 flex-col rounded-xl bg-white p-4 text-sm">
-      <h2 className="mb-2 text-sm font-medium text-black">當天款項</h2>
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-sm font-medium text-black">當天款項</h2>
+        <button
+          type="button"
+          onClick={handleViewHistory}
+          className="text-xs text-black/70 hover:text-black transition-colors"
+          aria-label="View transaction history"
+        >
+          查看歷史
+        </button>
+      </div>
       <div className="mt-1 flex-1 overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center py-8">
