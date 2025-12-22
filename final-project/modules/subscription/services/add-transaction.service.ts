@@ -8,6 +8,8 @@
 import { prisma } from "@/lib/prisma";
 import { transactionRepository } from "@/modules/transaction/repositories/transaction.repository";
 import { subscriptionRepository } from "../repositories/subscription.repository";
+import { notificationRepository } from "@/modules/notification/repositories/notification.repository";
+import { NotificationType } from "@prisma/client";
 import type { Subscription } from "../domain/subscription.types";
 
 /**
@@ -68,6 +70,92 @@ function shouldCreateTransaction(subscription: Subscription): boolean {
   }
   
   return true;
+}
+
+/**
+ * Check if subscription billing is tomorrow (for reminder notification)
+ */
+function isBillingTomorrow(subscription: Subscription): boolean {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  
+  const nextBilling = new Date(subscription.nextBilling);
+  nextBilling.setHours(0, 0, 0, 0);
+  
+  // Check if nextBilling is tomorrow
+  return (
+    nextBilling.getTime() === tomorrow.getTime() &&
+    (!subscription.endDate || nextBilling <= new Date(subscription.endDate))
+  );
+}
+
+/**
+ * Format date for display (YYYY/MM/DD)
+ */
+function formatDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}/${month}/${day}`;
+}
+
+/**
+ * Format amount for display
+ */
+function formatAmount(amount: number, currency: string): string {
+  const rounded = Math.round(amount * 100) / 100;
+  return `${currency} ${rounded.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+}
+
+/**
+ * Create subscription reminder notification if needed
+ */
+async function createSubscriptionReminderIfNeeded(subscription: Subscription) {
+  if (!isBillingTomorrow(subscription)) {
+    return;
+  }
+
+  try {
+    // Check if reminder notification already exists for this subscription
+    const existingReminder = await prisma.notification.findFirst({
+      where: {
+        userId: subscription.userId,
+        type: NotificationType.SUBSCRIPTION_REMINDER,
+        isRead: false,
+        isDeleted: false,
+        message: {
+          contains: subscription.name || subscription.tag.name,
+        },
+      },
+    });
+
+    // If reminder already exists, skip creating a new one
+    if (existingReminder) {
+      return;
+    }
+
+    // Create reminder notification
+    // Format: "「訂閱名稱」將於明天（YYYY/MM/DD）自動扣款 金額"
+    const subscriptionName = subscription.name || subscription.tag.name;
+    const billingDate = formatDate(new Date(subscription.nextBilling));
+    const amount = formatAmount(subscription.amount, subscription.currency);
+    const message = `「${subscriptionName}」將於明天（${billingDate}）自動扣款 ${amount}`;
+
+    await notificationRepository.create(
+      subscription.userId,
+      NotificationType.SUBSCRIPTION_REMINDER,
+      message
+    );
+  } catch (error) {
+    // Log error but don't fail the entire process
+    console.error(
+      `Error creating subscription reminder for subscription ${subscription.id}:`,
+      error
+    );
+  }
 }
 
 /**
@@ -139,6 +227,9 @@ export async function addTransactionFromSubscriptions() {
           createdAt: new Date(sub.createdAt),
           updatedAt: new Date(sub.updatedAt),
         };
+
+        // Check if billing is tomorrow and create reminder notification
+        await createSubscriptionReminderIfNeeded(subscriptionTyped);
 
         if (!shouldCreateTransaction(subscriptionTyped)) {
           results.skipped++;

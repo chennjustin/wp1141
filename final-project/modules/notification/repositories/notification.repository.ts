@@ -77,5 +77,82 @@ export const notificationRepository = {
       },
     });
   },
+
+  /**
+   * Find all notifications for a user
+   * Returns notifications ordered by createdAt descending (newest first)
+   */
+  async findByUserId(userId: string) {
+    return prisma.notification.findMany({
+      where: {
+        userId,
+        isDeleted: false,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+  },
+
+  /**
+   * Mark all unread notifications as read for a user
+   */
+  async markAllAsRead(userId: string) {
+    return prisma.notification.updateMany({
+      where: {
+        userId,
+        isRead: false,
+        isDeleted: false,
+      },
+      data: {
+        isRead: true,
+      },
+    });
+  },
+
+  /**
+   * Get count of unread notifications for a user
+   */
+  async getUnreadCount(userId: string) {
+    return prisma.notification.count({
+      where: {
+        userId,
+        isRead: false,
+        isDeleted: false,
+      },
+    });
+  },
+
+  /**
+   * Mark notification as unread by ID
+   */
+  async markAsUnread(notificationId: string, userId: string) {
+    return prisma.notification.updateMany({
+      where: {
+        id: notificationId,
+        userId,
+        isDeleted: false,
+      },
+      data: {
+        isRead: false,
+      },
+    });
+  },
+
+  /**
+   * Soft delete notification by ID
+   */
+  async delete(notificationId: string, userId: string) {
+    return prisma.notification.updateMany({
+      where: {
+        id: notificationId,
+        userId,
+        isDeleted: false,
+      },
+      data: {
+        isDeleted: true,
+      },
+    });
+  },
 };
 
