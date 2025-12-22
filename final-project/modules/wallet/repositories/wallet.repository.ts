@@ -345,18 +345,35 @@ export const walletRepository = {
 
   /**
    * Count user's pinned wallets
+   * @param excludeMyWallet - If true, exclude "我的錢包" from the count
    */
-  async countPinnedWallets(userId: string) {
+  async countPinnedWallets(userId: string, excludeMyWallet: boolean = false) {
+    const where: any = { userId };
+    
+    if (excludeMyWallet) {
+      // Exclude "我的錢包" from count
+      where.wallet = {
+        name: { not: "我的錢包" },
+      };
+    }
+    
     return prisma.userPinnedWallet.count({
-      where: { userId },
+      where,
     });
   },
 
   /**
    * Pin a wallet for user
    * Returns true if successful, false if limit reached
+   * @param excludeMyWalletFromLimit - If true, exclude "我的錢包" from limit check
+   * @param skipLimitCheck - If true, skip limit check entirely (for "我的錢包")
    */
-  async pinWallet(userId: string, walletId: string): Promise<boolean> {
+  async pinWallet(
+    userId: string, 
+    walletId: string, 
+    excludeMyWalletFromLimit: boolean = false,
+    skipLimitCheck: boolean = false
+  ): Promise<boolean> {
     // Check if already pinned
     const existing = await prisma.userPinnedWallet.findUnique({
       where: {
@@ -371,10 +388,13 @@ export const walletRepository = {
       return true; // Already pinned
     }
 
-    // Check limit (max 5)
-    const count = await this.countPinnedWallets(userId);
-    if (count >= 5) {
-      return false; // Limit reached
+    // Check limit (max 5, but "我的錢包" doesn't count toward limit if excludeMyWalletFromLimit is true)
+    // Skip limit check entirely if skipLimitCheck is true (for "我的錢包")
+    if (!skipLimitCheck) {
+      const count = await this.countPinnedWallets(userId, excludeMyWalletFromLimit);
+      if (count >= 5) {
+        return false; // Limit reached
+      }
     }
 
     // Get max order

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useWallets } from "@/hooks/useWallet";
 import { useUser } from "@/hooks/useUser";
@@ -150,6 +150,7 @@ function WalletCard({
  */
 export default function AllWalletsPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const { data: session, update: updateSession } = useSession();
   const { profile } = useUser();
   const { wallets, loading, error, refetch } = useWallets();
@@ -158,7 +159,7 @@ export default function AllWalletsPage() {
 
   const currentUserId = profile?.id;
 
-  // Fetch pinned wallets on mount
+  // Fetch pinned wallets on mount and when pathname changes (user returns to this page)
   useEffect(() => {
     async function fetchPinnedWallets() {
       try {
@@ -174,7 +175,14 @@ export default function AllWalletsPage() {
       }
     }
     fetchPinnedWallets();
-  }, []);
+  }, [pathname]);
+
+  // Refetch wallets when pathname changes (user returns to this page after creating/deleting wallets)
+  useEffect(() => {
+    if (pathname === "/wallets/all") {
+      refetch();
+    }
+  }, [pathname, refetch]);
 
   // Handle pin toggle
   const handlePinToggle = async (walletId: string, isPinned: boolean) => {
@@ -238,9 +246,9 @@ export default function AllWalletsPage() {
     }
   };
 
-  // Handle card click - navigate to wallet history page
+  // Handle card click - navigate to wallet detail page
   const handleCardClick = (walletId: string) => {
-    router.push(`/wallets/${walletId}/history`);
+    router.push(`/wallets/${walletId}`);
   };
 
   // Check if wallet is My Wallet
@@ -269,9 +277,9 @@ export default function AllWalletsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4 relative z-0">
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto">
       <h1 className="text-xl font-semibold text-black mb-2">所有錢包</h1>
-      <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 gap-4 pb-4">
         {wallets.map((wallet) => {
           const isPinned = pinnedWalletIds.has(wallet.id);
           const myWallet = isMyWallet(wallet);

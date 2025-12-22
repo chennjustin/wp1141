@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useUser } from "@/hooks/useUser";
@@ -58,9 +58,15 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
     profile,
   });
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated (use useEffect to avoid render-time navigation)
+  useEffect(() => {
+    if (!isAuthenticated || sessionStatus === "unauthenticated") {
+      router.push("/login");
+    }
+  }, [isAuthenticated, sessionStatus, router]);
+
+  // Don't render content if not authenticated
   if (!isAuthenticated || sessionStatus === "unauthenticated") {
-    router.push("/login");
     return null;
   }
 
