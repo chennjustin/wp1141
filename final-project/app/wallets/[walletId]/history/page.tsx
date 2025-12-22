@@ -90,8 +90,10 @@ export default function WalletHistoryPage() {
   // Format amount with sign and color
   const formatAmount = (amount: number, type: "INCOME" | "EXPENSE") => {
     const sign = type === "INCOME" ? "+" : "-";
-    const colorClass = type === "INCOME" ? "text-blue-500" : "text-red-500";
-    return { sign, colorClass, formatted: Math.abs(amount).toLocaleString() };
+    const colorStyle = type === "INCOME" 
+      ? { color: 'var(--income-color)' }
+      : { color: 'var(--expense-color)' };
+    return { sign, colorStyle, formatted: Math.abs(amount).toLocaleString() };
   };
 
   if (walletLoading) {
@@ -257,7 +259,7 @@ function DailyTransactionCard({
   group: DailyTransactionGroup;
   formatAmount: (amount: number, type: "INCOME" | "EXPENSE") => {
     sign: string;
-    colorClass: string;
+    colorStyle: React.CSSProperties;
     formatted: string;
   };
   walletId: string;
@@ -266,7 +268,9 @@ function DailyTransactionCard({
   
   // Calculate daily net amount and determine color
   const netAmount = group.netAmount;
-  const dailyAmountColor = netAmount >= 0 ? "text-blue-500" : "text-red-500";
+  const dailyAmountColor = netAmount >= 0 
+    ? { color: 'var(--income-color)' }
+    : { color: 'var(--expense-color)' };
   const dailyAmountSign = netAmount >= 0 ? "+" : "-";
   const dailyAmountFormatted = Math.abs(netAmount).toLocaleString();
 
@@ -281,7 +285,7 @@ function DailyTransactionCard({
       {/* Date header with daily summary */}
       <div className="mb-3 flex items-center justify-between border-b border-black/20 pb-2">
         <span className="text-sm font-medium text-black">{group.dateLabel}</span>
-        <span className={`text-sm font-semibold ${dailyAmountColor}`}>
+        <span className="text-sm font-semibold" style={dailyAmountColor}>
           ${dailyAmountSign}{dailyAmountFormatted}
         </span>
       </div>
@@ -290,7 +294,7 @@ function DailyTransactionCard({
       <div className="flex flex-col gap-2">
         {group.transactions.map((transaction, index) => {
           const itemName = transaction.name || transaction.tag?.name || "未命名交易";
-          const { sign, colorClass, formatted } = formatAmount(
+          const { sign, colorStyle, formatted } = formatAmount(
             transaction.amount,
             transaction.type
           );
@@ -317,7 +321,7 @@ function DailyTransactionCard({
 
                 {/* Right: Amount */}
                 <div className="text-right flex-shrink-0">
-                  <span className={`text-sm font-semibold ${colorClass}`}>
+                  <span className="text-sm font-semibold" style={colorStyle}>
                     ${sign}{formatted}
                   </span>
                 </div>

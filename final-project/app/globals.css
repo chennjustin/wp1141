@@ -9,6 +9,9 @@
   --wallet-loading-bg: #f8f9fa;
   --card-bg: #ffffff;
   --card-text: #000000;
+  /* Transaction type colors - 柔和的收入/支出顏色 */
+  --income-color: #2ac893; /* emerald-500 - 柔和的綠色 */
+  --expense-color: #dc405a; /* rose-500 - 柔和的紅色 */
 }
 
 @media (prefers-color-scheme: dark) {

@@ -208,12 +208,14 @@ export const tagRepository = {
     if (existingTag) {
       // If exists but ID doesn't match, update it to use the fixed ID
       if (existingTag.id !== tagId) {
+        const iconKey = name; // Use tag name as iconKey
         return prisma.tag.update({
           where: { id: existingTag.id },
           data: {
             id: tagId,
             name,
             type: type as any,
+            iconKey,
             createdBy: SYSTEM_USER_ID,
             isDeleted: false,
           } as any,
@@ -227,11 +229,16 @@ export const tagRepository = {
           },
         });
       }
-      // Update type if it doesn't match (check if type property exists)
-      if ((existingTag as any).type !== type) {
+      // Update type and iconKey if they don't match
+      const iconKey = name; // Use tag name as iconKey
+      const needsUpdate = (existingTag as any).type !== type || (existingTag as any).iconKey !== iconKey;
+      if (needsUpdate) {
         return prisma.tag.update({
           where: { id: existingTag.id },
-          data: { type: type as any } as any,
+          data: { 
+            type: type as any,
+            iconKey,
+          } as any,
           include: {
             creator: {
               select: {
@@ -245,12 +252,16 @@ export const tagRepository = {
       return existingTag;
     }
 
+    // Map tag name to iconKey (use name as iconKey if it matches our icon map, otherwise default to "tag")
+    const iconKey = name; // Use tag name as iconKey (e.g., "food", "travel", "shopping")
+    
     // Create new tag with fixed ID
     return prisma.tag.create({
       data: {
         id: tagId,
         name,
         type: type as any,
+        iconKey,
         createdBy: SYSTEM_USER_ID,
       } as any,
       include: {

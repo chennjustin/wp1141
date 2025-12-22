@@ -114,7 +114,7 @@ export function useWalletHome(walletId: string) {
 
   const handleAddTransaction = () => {
     if (!activeWallet) return;
-    router.push(`/wallets/${activeWallet.id}/transactions/new`);
+    router.push(`/wallets/${activeWallet.id}/transactions/new/tag`);
   };
 
   // Manage loading state with minimum display time
