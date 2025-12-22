@@ -126,7 +126,13 @@ export function SideMenu({
           type="button"
           className="rounded-lg border border-gray-300 px-3 py-2 text-left hover:opacity-80 transition-opacity"
           style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}
-          onClick={() => onNavigate("/wallets/subscriptions")}
+          onClick={() => {
+            if (currentWalletId) {
+              onNavigate(`/wallets/subscriptions?walletId=${currentWalletId}`);
+            } else {
+              onNavigate("/wallets/subscriptions");
+            }
+          }}
         >
           訂閱清單
         </button>

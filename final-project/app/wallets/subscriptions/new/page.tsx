@@ -387,7 +387,7 @@ export default function NewSubscriptionPage() {
       console.log("[NewSubscription] Create result:", result);
 
       if (result.success) {
-        router.push(`/wallets/subscriptions`);
+        router.push(`/wallets/subscriptions${walletId ? `?walletId=${walletId}` : ""}`);
         setTimeout(() => {
           router.refresh();
         }, 100);
