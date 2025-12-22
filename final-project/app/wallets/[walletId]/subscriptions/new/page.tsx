@@ -97,7 +97,7 @@ export default function NewSubscriptionPage() {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-
+      
       // If calculator is open and user clicks outside, save the expression
       if (showCalculator && state.calculatorExpression) {
         if (!target.closest('[data-calculator]')) {
@@ -222,7 +222,7 @@ export default function NewSubscriptionPage() {
     try {
       const finalAmount =
         state.amountMode === "total"
-          ? Math.round((calculatedMonthlyAmount || 0) * 100) / 100
+        ? Math.round((calculatedMonthlyAmount || 0) * 100) / 100
           : Math.round(parseFloat(state.monthlyAmount) * 100) / 100;
 
       const result = await createSubscriptionAction({
@@ -336,32 +336,32 @@ export default function NewSubscriptionPage() {
             onCustomIntervalMonthsChange={actions.setCustomIntervalMonths}
             onCustomIntervalUnitChange={actions.setCustomIntervalUnit}
             onToggleStartDatePicker={() => {
-              setShowStartDatePicker(!showStartDatePicker);
-              setShowEndDatePicker(false);
-              setShowCurrencyDropdown(false);
-              setShowCalculator(false);
-            }}
+                    setShowStartDatePicker(!showStartDatePicker);
+                    setShowEndDatePicker(false);
+                    setShowCurrencyDropdown(false);
+                    setShowCalculator(false);
+                  }}
             onToggleEndDatePicker={() => {
-              setShowEndDatePicker(!showEndDatePicker);
-              setShowStartDatePicker(false);
-              setShowCurrencyDropdown(false);
-              setShowCalculator(false);
-            }}
+                    setShowEndDatePicker(!showEndDatePicker);
+                    setShowStartDatePicker(false);
+                    setShowCurrencyDropdown(false);
+                    setShowCalculator(false);
+                  }}
             onToggleCurrencyDropdown={() => {
-              setShowCurrencyDropdown(!showCurrencyDropdown);
-              setShowStartDatePicker(false);
-              setShowEndDatePicker(false);
-              setShowCalculator(false);
-            }}
+                  setShowCurrencyDropdown(!showCurrencyDropdown);
+                  setShowStartDatePicker(false);
+                  setShowEndDatePicker(false);
+                  setShowCalculator(false);
+                }}
             onHideCalculator={() => handleHideCalculator(handleSaveCalculatorExpression)}
           />
 
-          {/* Error message */}
+            {/* Error message */}
           {state.error && (
-            <div data-error className="px-3 py-2 bg-red-50 text-red-600 text-sm">
+              <div data-error className="px-3 py-2 bg-red-50 text-red-600 text-sm">
               {state.error}
-            </div>
-          )}
+              </div>
+            )}
         </form>
       </div>
 

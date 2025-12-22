@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { transactionRepository } from "@/modules/transaction/repositories/transaction.repository";
 import { subscriptionRepository } from "../repositories/subscription.repository";
 import { notificationRepository } from "@/modules/notification/repositories/notification.repository";
+import { sendPusherNotification } from "@/modules/notification/services/pusher-notification.service";
 import { NotificationType } from "@prisma/client";
 import type { Subscription } from "../domain/subscription.types";
 
@@ -73,21 +74,21 @@ function shouldCreateTransaction(subscription: Subscription): boolean {
 }
 
 /**
- * Check if subscription billing is tomorrow (for reminder notification)
+ * Check if subscription billing is in two days (for reminder notification)
  */
-function isBillingTomorrow(subscription: Subscription): boolean {
+function isBillingInTwoDays(subscription: Subscription): boolean {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  const twoDaysLater = new Date(today);
+  twoDaysLater.setDate(twoDaysLater.getDate() + 2);
   
   const nextBilling = new Date(subscription.nextBilling);
   nextBilling.setHours(0, 0, 0, 0);
   
-  // Check if nextBilling is tomorrow
+  // Check if nextBilling is in two days
   return (
-    nextBilling.getTime() === tomorrow.getTime() &&
+    nextBilling.getTime() === twoDaysLater.getTime() &&
     (!subscription.endDate || nextBilling <= new Date(subscription.endDate))
   );
 }
@@ -114,7 +115,7 @@ function formatAmount(amount: number, currency: string): string {
  * Create subscription reminder notification if needed
  */
 async function createSubscriptionReminderIfNeeded(subscription: Subscription) {
-  if (!isBillingTomorrow(subscription)) {
+  if (!isBillingInTwoDays(subscription)) {
     return;
   }
 
@@ -138,16 +139,30 @@ async function createSubscriptionReminderIfNeeded(subscription: Subscription) {
     }
 
     // Create reminder notification
-    // Format: "「訂閱名稱」將於明天（YYYY/MM/DD）自動扣款 金額"
+    // Format: "「訂閱名稱」將於後天（YYYY/MM/DD）自動扣款 金額（錢包名稱）"
+    // We need to get wallet name from the subscription
+    const wallet = await prisma.wallet.findUnique({
+      where: { id: subscription.walletId },
+      select: { name: true },
+    });
     const subscriptionName = subscription.name || subscription.tag.name;
+    const walletName = wallet?.name || "未知錢包";
     const billingDate = formatDate(new Date(subscription.nextBilling));
     const amount = formatAmount(subscription.amount, subscription.currency);
-    const message = `「${subscriptionName}」將於明天（${billingDate}）自動扣款 ${amount}`;
+    const message = `「${subscriptionName}」將於後天（${billingDate}）自動扣款 ${amount}（${walletName}）`;
 
-    await notificationRepository.create(
+    const notification = await notificationRepository.create(
       subscription.userId,
       NotificationType.SUBSCRIPTION_REMINDER,
       message
+    );
+
+    // Send Pusher notification
+    await sendPusherNotification(
+      subscription.userId,
+      NotificationType.SUBSCRIPTION_REMINDER,
+      message,
+      notification.id
     );
   } catch (error) {
     // Log error but don't fail the entire process
@@ -181,6 +196,7 @@ export async function addTransactionFromSubscriptions() {
         wallet: {
           select: {
             id: true,
+            name: true,
             members: {
               where: {
                 isDeleted: false,
@@ -257,6 +273,34 @@ export async function addTransactionFromSubscriptions() {
           type: sub.type,
           tagId: sub.tagId,
         });
+
+        // Create notification for successful transaction creation
+        const subscriptionName = sub.name || sub.tag.name;
+        const walletName = sub.wallet?.name || "未知錢包";
+        const amount = formatAmount(sub.amount, sub.currency);
+        const transactionMessage = `「${subscriptionName}」已自動扣款 ${amount}（${walletName}）`;
+
+        try {
+          const notification = await notificationRepository.create(
+            userId,
+            NotificationType.SUBSCRIPTION_REMINDER,
+            transactionMessage
+          );
+
+          // Send Pusher notification
+          await sendPusherNotification(
+            userId,
+            NotificationType.SUBSCRIPTION_REMINDER,
+            transactionMessage,
+            notification.id
+          );
+        } catch (error) {
+          // Log error but don't fail the transaction creation
+          console.error(
+            `Error creating transaction notification for subscription ${sub.id}:`,
+            error
+          );
+        }
 
         // Calculate next billing date
         const nextBilling = calculateNextBilling(

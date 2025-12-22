@@ -14,6 +14,7 @@ interface WalletHeaderProps {
   onMenuToggle: () => void;
   onWalletSelectorOpen: () => void;
   walletButtonRef: React.RefObject<HTMLButtonElement>;
+  unreadCount?: number;
 }
 
 export function WalletHeader({
@@ -22,13 +23,14 @@ export function WalletHeader({
   onMenuToggle,
   onWalletSelectorOpen,
   walletButtonRef,
+  unreadCount = 0,
 }: WalletHeaderProps) {
   return (
     <header className="relative mb-1 flex items-center justify-between px-4 py-3" style={{ backgroundColor: 'var(--wallet-bg)' }}>
       {/* Left: main menu toggle */}
       <button
         type="button"
-        className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/10"
+        className="relative flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/10"
         onClick={onMenuToggle}
         aria-label="Open main menu"
       >
@@ -37,6 +39,11 @@ export function WalletHeader({
           <span className="h-0.5 w-4 rounded-full bg-black" />
           <span className="h-0.5 w-4 rounded-full bg-black" />
         </span>
+        {unreadCount > 0 && (
+          <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        )}
       </button>
 
       {/* Center: wallet selector - oval button, absolutely centered */}

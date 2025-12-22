@@ -11,6 +11,7 @@ import { useWalletFromPath } from "@/hooks/useWalletFromPath";
 import { useCurrentWallet } from "@/hooks/useCurrentWallet";
 import { useWalletDisplay } from "@/hooks/useWalletDisplay";
 import { useDefaultWalletSync } from "@/hooks/useDefaultWalletSync";
+import { useUnreadNotificationCount } from "@/hooks/useNotifications";
 import { WalletHeader } from "@/ui/components/wallet/WalletHeader";
 import { WalletSelectorDropdown } from "@/ui/components/wallet/WalletSelectorDropdown";
 import { SideMenuOverlay } from "@/ui/components/wallet/SideMenuOverlay";
@@ -57,6 +58,9 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
     walletsLoading,
     profile,
   });
+
+  // Get unread notification count
+  const { count: unreadCount } = useUnreadNotificationCount();
 
   // Redirect to login if not authenticated (use useEffect to avoid render-time navigation)
   useEffect(() => {
@@ -107,6 +111,7 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
               onMenuToggle={() => setIsMenuOpen(true)}
               onWalletSelectorOpen={() => setIsWalletSelectorOpen(true)}
               walletButtonRef={walletButtonRef}
+              unreadCount={unreadCount}
             />
 
             <WalletSelectorDropdown

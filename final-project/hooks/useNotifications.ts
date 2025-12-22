@@ -157,6 +157,7 @@ export function useNotifications() {
 
 /**
  * Hook to get unread notification count
+ * Automatically updates when Pusher notifications are received
  */
 export function useUnreadNotificationCount() {
   const { data: session, status } = useSession();
@@ -194,9 +195,29 @@ export function useUnreadNotificationCount() {
     return () => clearInterval(interval);
   }, [session, status]);
 
+  // Expose a function to manually refresh the count
+  // This can be called when Pusher notifications are received
+  const refreshCount = async () => {
+    if (status === "loading" || !session?.user?.id) {
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/notifications");
+      if (response.ok) {
+        const notifications: Notification[] = await response.json();
+        const unreadCount = notifications.filter((n) => !n.isRead).length;
+        setCount(unreadCount);
+      }
+    } catch (err) {
+      console.error("Error refreshing unread notification count:", err);
+    }
+  };
+
   return {
     count,
     loading,
+    refreshCount,
   };
 }
 

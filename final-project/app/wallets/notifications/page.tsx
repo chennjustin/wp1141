@@ -2,7 +2,8 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useNotifications } from "@/hooks/useNotifications";
+import { useNotifications, useUnreadNotificationCount } from "@/hooks/useNotifications";
+import { usePusherNotifications } from "@/hooks/usePusherNotifications";
 import { NotificationType } from "@prisma/client";
 import type { Notification } from "@prisma/client";
 
@@ -166,9 +167,38 @@ function extractWalletNameFromMessage(message: string): string | null {
 export default function NotificationsPage() {
   const router = useRouter();
   const { notifications, loading, error, markAsRead, markAsUnread, deleteNotification, refetch } = useNotifications();
+  const { refreshCount: refreshUnreadCount } = useUnreadNotificationCount();
   const [processingInvitations, setProcessingInvitations] = useState<Set<string>>(new Set());
   const [pendingInvitations, setPendingInvitations] = useState<Map<string, string>>(new Map());
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  // Listen for Pusher notifications
+  usePusherNotifications({
+    onNotification: () => {
+      // Refetch notifications when a new notification arrives
+      refetch();
+      // Refresh unread count
+      refreshUnreadCount();
+    },
+  });
+
+  // Handle mark as read with refetch to update unread count
+  const handleMarkAsRead = async (notificationId: string) => {
+    await markAsRead(notificationId);
+    // Refetch to update the list
+    refetch();
+    // Refresh unread count immediately
+    refreshUnreadCount();
+  };
+
+  // Handle mark as unread with refetch to update unread count
+  const handleMarkAsUnread = async (notificationId: string) => {
+    await markAsUnread(notificationId);
+    // Refetch to update the list
+    refetch();
+    // Refresh unread count immediately
+    refreshUnreadCount();
+  };
 
   // Fetch pending wallet invitations to map wallet names to IDs
   useEffect(() => {
@@ -198,7 +228,7 @@ export default function NotificationsPage() {
   const handleNotificationClick = async (notification: Notification) => {
     // Mark as read if unread
     if (!notification.isRead) {
-      await markAsRead(notification.id);
+      await handleMarkAsRead(notification.id);
     }
 
     // Handle different notification types
@@ -284,12 +314,17 @@ export default function NotificationsPage() {
         key={notification.id}
         onClick={() => !isWalletInvitation && handleNotificationClick(notification)}
         className={`flex items-start gap-3 p-3 bg-white rounded-lg relative ${
-          !notification.isRead ? "border-l-4 border-red-500" : ""
-        } ${!isWalletInvitation ? "cursor-pointer hover:bg-gray-50 transition-colors" : ""}`}
+          !isWalletInvitation ? "cursor-pointer hover:bg-gray-50 transition-colors" : ""
+        }`}
       >
         {/* Unread indicator - red dot */}
         {!notification.isRead && (
           <div className="mt-2 h-2 w-2 rounded-full bg-red-500 flex-shrink-0" />
+        )}
+        
+        {/* Spacer for read notifications to align content */}
+        {notification.isRead && (
+          <div className="mt-2 h-2 w-2 flex-shrink-0" />
         )}
 
         {/* Notification icon */}
@@ -300,9 +335,24 @@ export default function NotificationsPage() {
         {/* Notification content */}
         <div className="flex-1 min-w-0">
           <p className="text-sm text-black mb-1">{notification.message}</p>
-          <p className="text-xs text-black/50">
-            {formatRelativeTime(new Date(notification.createdAt))}
-          </p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-black/50">
+              {formatRelativeTime(new Date(notification.createdAt))}
+            </p>
+            {/* Mark as read button for unread notifications */}
+            {!notification.isRead && !isWalletInvitation && (
+              <button
+                type="button"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  await handleMarkAsRead(notification.id);
+                }}
+                className="px-3 py-1 text-xs font-medium text-black/60 bg-gray-100 rounded hover:bg-gray-200 transition-colors flex-shrink-0"
+              >
+                已讀
+              </button>
+            )}
+          </div>
 
           {/* Action buttons for wallet invitation */}
           {isWalletInvitation && walletId && (
@@ -376,7 +426,7 @@ export default function NotificationsPage() {
                   onClick={async (e) => {
                     e.stopPropagation();
                     setOpenMenuId(null);
-                    await markAsUnread(notification.id);
+                    await handleMarkAsUnread(notification.id);
                   }}
                   className="w-full px-3 py-2 text-left text-sm text-black hover:bg-gray-100 transition-colors"
                 >

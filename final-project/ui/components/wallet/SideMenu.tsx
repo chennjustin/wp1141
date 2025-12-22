@@ -8,6 +8,7 @@
 
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { useUnreadNotificationCount } from "@/hooks/useNotifications";
 
 interface SideMenuProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export function SideMenu({
   onNavigate,
 }: SideMenuProps) {
   const router = useRouter();
+  const { count: unreadCount } = useUnreadNotificationCount();
 
   const handleHomeClick = () => {
     onClose();
@@ -100,11 +102,18 @@ export function SideMenu({
       <nav className="flex flex-col gap-3 text-sm">
         <button
           type="button"
-          className="rounded-lg border border-gray-300 px-3 py-2 text-left hover:opacity-80 transition-opacity"
+          className="relative rounded-lg border border-gray-300 px-3 py-2 text-left hover:opacity-80 transition-opacity"
           style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}
           onClick={() => onNavigate("/wallets/notifications")}
         >
-          通知
+          <span className="flex items-center justify-between">
+            <span>通知</span>
+            {unreadCount > 0 && (
+              <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
+          </span>
         </button>
         <button
           type="button"
