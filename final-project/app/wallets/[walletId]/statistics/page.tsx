@@ -380,7 +380,7 @@ export default function WalletStatisticsPage() {
         <button
           type="button"
           onClick={handleBackToHistory}
-          className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-black/5 transition-colors"
+          className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-black/5 transition-colors shadow-md"
           aria-label="Back to history"
         >
           <svg

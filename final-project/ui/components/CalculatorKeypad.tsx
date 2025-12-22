@@ -12,6 +12,7 @@ interface CalculatorKeypadProps {
   onConfirm: (result: number) => void;
   clearOnConfirm?: boolean;
   onExpressionChange?: (expression: string) => void; // 當 expression 改變時通知父元件
+  initialValue?: string; // 初始值，用於繼續編輯已有金額
 }
 
 /**
@@ -24,8 +25,18 @@ export function CalculatorKeypad({
   onConfirm,
   clearOnConfirm = true,
   onExpressionChange,
+  initialValue = "",
 }: CalculatorKeypadProps) {
-  const [expression, setExpression] = useState<string>("");
+  const [expression, setExpression] = useState<string>(initialValue);
+  
+  // 當 initialValue 改變時，更新 expression（用於繼續編輯）
+  // 只在 expression 為空且 initialValue 有值時設置，避免覆蓋用戶正在輸入的內容
+  React.useEffect(() => {
+    if (initialValue && !expression && initialValue !== expression) {
+      setExpression(initialValue);
+      onExpressionChange?.(initialValue);
+    }
+  }, [initialValue]); // 只在 initialValue 改變時執行
 
   // 更新 expression 並通知父元件
   const updateExpression = (newExpr: string) => {
