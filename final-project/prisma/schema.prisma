@@ -109,7 +109,7 @@ model WalletUser {
 
   walletId String
   userId   String
-  role     WalletRole @default(MEMBER)
+  role     WalletRole       @default(MEMBER)
   status   WalletUserStatus @default(OWNER)
 
   // Soft delete flag for wallet membership records
@@ -126,7 +126,7 @@ model UserPinnedWallet {
 
   userId   String
   walletId String
-  order    Int @default(0) // Order for displaying pinned wallets
+  order    Int    @default(0) // Order for displaying pinned wallets
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -157,8 +157,8 @@ enum WalletUserStatus {
 // =========================================================
 
 model Tag {
-  id   String @id @default(cuid())
-  name String @unique
+  id   String  @id @default(cuid())
+  name String  @unique
   type TagType @default(EXPENSE)
 
   // system user or normal user (NOT NULL)
@@ -175,7 +175,8 @@ model Tag {
 
   creator User @relation("UserCreatedTags", fields: [createdBy], references: [id])
 
-  transactions Transaction[]
+  transactions  Transaction[]
+  subscriptions Subscription[]
 }
 
 enum TagType {
@@ -249,9 +250,13 @@ model Subscription {
 
   amount         Float
   currency       String
-  label          String
   nextBilling    DateTime
   intervalMonths Int      @default(1)
+
+  startDate DateTime
+  endDate   DateTime?
+  type      TransactionType @default(EXPENSE)
+  tagId     String
 
   // Soft delete flag for subscriptions
   isDeleted Boolean @default(false)
@@ -261,6 +266,7 @@ model Subscription {
 
   wallet Wallet @relation(fields: [walletId], references: [id])
   user   User   @relation(fields: [userId], references: [id])
+  tag    Tag    @relation(fields: [tagId], references: [id])
 
   histories SubscriptionHistory[]
 }
