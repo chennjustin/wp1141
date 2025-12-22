@@ -14,18 +14,14 @@ interface TagWithIcon {
   name: string;
   type: "EXPENSE" | "INCOME";
   iconKey: string;
-  createdBy?: string; // Optional, to identify system tags
+  createdBy?: string;
 }
 
 /**
  * Get tag background color based on iconKey
- * Returns a low-saturation color for the tag icon background
- * This is a simple mapping - can be extended in the future
  */
 function getTagColor(iconKey: string): string {
-  // Low-saturation color palette for tag backgrounds
   const colorMap: Record<string, string> = {
-    // Expense tags
     food: "bg-orange-100",
     drinks: "bg-amber-100",
     entertainment: "bg-purple-100",
@@ -36,7 +32,6 @@ function getTagColor(iconKey: string): string {
     education: "bg-indigo-100",
     travel: "bg-cyan-100",
     other: "bg-slate-200",
-    // Income tags
     salary: "bg-green-100",
     bonus: "bg-emerald-100",
     investment: "bg-teal-100",
@@ -45,7 +40,6 @@ function getTagColor(iconKey: string): string {
     interest: "bg-blue-100",
     refund: "bg-rose-100",
     dividend: "bg-violet-100",
-    // Default
     tag: "bg-gray-100",
   };
 
@@ -53,12 +47,12 @@ function getTagColor(iconKey: string): string {
 }
 
 /**
- * Select Tag page
+ * Select Tag page for subscription
  * 
- * This is the first step in creating a new transaction.
- * User selects a tag (category) which determines the transaction type.
+ * This is the first step in creating a new subscription.
+ * User selects a tag (category) which determines the subscription type.
  */
-export default function SelectTagPage() {
+export default function SelectSubscriptionTagPage() {
   const router = useRouter();
   const params = useParams();
   const walletId = params.walletId as string;
@@ -73,7 +67,6 @@ export default function SelectTagPage() {
       try {
         const result = await listTagsAction({ filter: "all" });
         if (result.success && result.data) {
-          // Type assertion - the data from DB includes iconKey but type definition may not
           setTags(result.data as unknown as TagWithIcon[]);
         }
       } catch (err) {
@@ -89,13 +82,10 @@ export default function SelectTagPage() {
   const filteredTags = useMemo(() => {
     const allTags = tags.filter((tag) => tag.type === transactionType);
     
-    // Separate system tags (excluding "other") and custom tags
-    // System tags are identified by: name in system tag list OR id starts with "system-tag-"
     const systemTags: TagWithIcon[] = [];
     let otherTag: TagWithIcon | null = null;
     const customTags: TagWithIcon[] = [];
     
-    // Get system tag names, excluding "other" which will be handled separately
     const allSystemTagNames = transactionType === "INCOME" 
       ? [...DEFAULT_SYSTEM_INCOME_TAGS]
       : [...DEFAULT_SYSTEM_TAGS];
@@ -110,31 +100,24 @@ export default function SelectTagPage() {
       } else if (isSystemTag) {
         systemTags.push(tag);
       } else {
-        // Custom tags: id doesn't start with "system-tag-" AND name not in system list
         customTags.push(tag);
       }
     });
     
-    // Sort system tags by the order in constants (if in list), otherwise by name
     systemTags.sort((a, b) => {
       const indexA = systemTagNames.indexOf(a.name as any);
       const indexB = systemTagNames.indexOf(b.name as any);
       
-      // If both in the list, sort by index
       if (indexA !== -1 && indexB !== -1) {
         return indexA - indexB;
       }
-      // If only one in the list, it comes first
       if (indexA !== -1) return -1;
       if (indexB !== -1) return 1;
-      // If neither in the list, sort alphabetically by name
       return a.name.localeCompare(b.name);
     });
     
-    // Sort custom tags alphabetically by name
     customTags.sort((a, b) => a.name.localeCompare(b.name));
     
-    // Combine: system tags -> other -> custom tags
     const result = [...systemTags];
     if (otherTag) {
       result.push(otherTag);
@@ -146,7 +129,11 @@ export default function SelectTagPage() {
 
   // Handle tag selection
   const handleTagSelect = (tagId: string, tagType: "EXPENSE" | "INCOME") => {
-    router.push(`/wallets/${walletId}/transactions/new?tagId=${tagId}&type=${tagType}`);
+    if (!walletId) {
+      console.error("No wallet ID available");
+      return;
+    }
+    router.push(`/wallets/${walletId}/subscriptions/new?tagId=${tagId}&type=${tagType}`);
   };
 
   // Handle type toggle
@@ -158,6 +145,14 @@ export default function SelectTagPage() {
     return (
       <div className="flex h-full items-center justify-center">
         <span className="text-sm text-gray-500">載入中...</span>
+      </div>
+    );
+  }
+
+  if (!walletId) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <span className="text-sm text-red-500">無法取得錢包資訊</span>
       </div>
     );
   }
@@ -222,7 +217,7 @@ export default function SelectTagPage() {
         </div>
       </div>
 
-      {/* Tag Grid - Content-driven, not layout-driven */}
+      {/* Tag Grid */}
       <div className="flex-1 overflow-y-auto">
         {filteredTags.length === 0 ? (
           <div className="flex h-full items-center justify-center">
@@ -237,7 +232,6 @@ export default function SelectTagPage() {
                   key={tag.id}
                   className="flex flex-col items-center gap-1.5"
                 >
-                  {/* Circular button - only clickable area */}
                   <button
                     type="button"
                     onClick={() => handleTagSelect(tag.id, tag.type)}
@@ -250,7 +244,6 @@ export default function SelectTagPage() {
                       className="text-gray-700"
                     />
                   </button>
-                  {/* Tag name - not clickable */}
                   <span className="text-xs text-gray-700 text-center leading-tight pointer-events-none">{tag.name}</span>
                 </div>
               );
@@ -261,3 +254,4 @@ export default function SelectTagPage() {
     </div>
   );
 }
+

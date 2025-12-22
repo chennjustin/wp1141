@@ -128,9 +128,10 @@ export function SideMenu({
           style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}
           onClick={() => {
             if (currentWalletId) {
-              onNavigate(`/wallets/subscriptions?walletId=${currentWalletId}`);
+              onNavigate(`/wallets/${currentWalletId}/subscriptions`);
             } else {
-              onNavigate("/wallets/subscriptions");
+              // Fallback - should not happen if currentWalletId exists
+              onNavigate("/wallets");
             }
           }}
         >

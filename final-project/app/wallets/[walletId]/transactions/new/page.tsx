@@ -118,26 +118,49 @@ export default function NewTransactionPage() {
     fetchTag();
   }, [tagId]);
 
-  // Close dropdowns when clicking outside
+  // Auto-save calculator expression when clicking outside calculator
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
+      
+      // If calculator is open and user clicks outside, save the expression
+      if (showCalculator && calculatorExpression) {
+        if (!target.closest('[data-calculator]')) {
+          try {
+            const { evaluate } = require("@/lib/calculator");
+            const result = evaluate(calculatorExpression);
+            if (!isNaN(result) && isFinite(result)) {
+              setAmount(result.toFixed(2));
+              setCalculatorExpression("");
+            }
+          } catch {
+            // If expression is invalid, just clear it
+            setCalculatorExpression("");
+          }
+          setShowCalculator(false);
+        }
+      }
+      
+      // Close dropdowns when clicking outside (but not inside the dropdown itself)
       if (
         !target.closest('[data-dropdown="currency"]') &&
         !target.closest('[data-dropdown="date"]')
       ) {
         setShowCurrencyDropdown(false);
-        setShowDatePicker(false);
+        // Only close date picker if clicking outside, not when interacting with date inputs
+        if (!target.closest('input[type="date"]') && !target.closest('input[type="time"]')) {
+          setShowDatePicker(false);
+        }
       }
     };
 
-    if (showCurrencyDropdown || showDatePicker) {
+    if (showCalculator || showCurrencyDropdown || showDatePicker) {
       document.addEventListener("mousedown", handleClickOutside);
       return () => {
         document.removeEventListener("mousedown", handleClickOutside);
       };
     }
-  }, [showCurrencyDropdown, showDatePicker]);
+  }, [showCalculator, showCurrencyDropdown, showDatePicker, calculatorExpression]);
 
   // Format date for display
   const formatDate = (dateString: string) => {
@@ -185,6 +208,12 @@ export default function NewTransactionPage() {
 
   // Show calculator when amount is clicked
   const handleAmountClick = () => {
+    // 如果有已有金額，將其設置為計算器表達式，以便繼續編輯
+    if (amount && !calculatorExpression) {
+      // 移除格式化符號（$ 和逗號），只保留數字
+      const cleanAmount = amount.replace(/[$,]/g, '');
+      setCalculatorExpression(cleanAmount);
+    }
     setShowCalculator(true);
     setShowDatePicker(false);
     setShowCurrencyDropdown(false);
@@ -342,9 +371,14 @@ export default function NewTransactionPage() {
                   <button
                     type="button"
                     onClick={handleAmountClick}
-                    className="text-black text-4xl font-semibold hover:opacity-80 transition-opacity text-left"
+                    className="text-black text-4xl font-semibold hover:opacity-80 transition-opacity text-left relative"
                   >
-                    {calculatorExpression || formatAmount(amount)}
+                    <span className={showCalculator ? "" : ""}>
+                      {calculatorExpression || formatAmount(amount)}
+                    </span>
+                    {showCalculator && (
+                      <span className="inline-block w-0.5 h-8 bg-black ml-1 animate-pulse" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -426,7 +460,7 @@ export default function NewTransactionPage() {
                 </svg>
               </button>
               {showDatePicker && (
-                <div className="absolute z-[60] mt-1 w-full bg-white border border-gray-200 p-3 shadow-lg">
+                <div className="absolute z-[60] mt-1 w-full bg-white border border-gray-200 p-3 shadow-lg" onClick={(e) => e.stopPropagation()}>
                   <div className="space-y-3">
                     <input
                       type="date"
@@ -556,11 +590,14 @@ export default function NewTransactionPage() {
 
       {/* Calculator - Overlay style (區塊 C) - Inside phone container */}
       {showCalculator && (
-        <div className="absolute bottom-0 left-0 right-0 z-50 bg-white transition-transform duration-200">
+        <div className="absolute bottom-0 left-0 right-0 z-50 bg-white transition-transform duration-200" data-calculator onClick={(e) => e.stopPropagation()}>
           <CalculatorKeypad
+            key={`calc-${showCalculator}-${amount}`} // 使用 key 確保每次打開時正確初始化
+            initialValue={calculatorExpression || (amount ? amount.replace(/[$,]/g, '') : "")}
             onConfirm={(result: number) => {
               setAmount(result.toFixed(2));
               setShowCalculator(false);
+              setCalculatorExpression("");
             }}
             onExpressionChange={(expr: string) => {
               setCalculatorExpression(expr);
