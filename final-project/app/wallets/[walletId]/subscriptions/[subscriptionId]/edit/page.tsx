@@ -10,8 +10,6 @@ import { SubscriptionFormFields } from "@/ui/components/subscription/Subscriptio
 import { useSubscriptionForm } from "@/hooks/subscription/useSubscriptionForm";
 import { useAmountCalculation } from "@/hooks/subscription/useAmountCalculation";
 import { useSubscriptionDropdowns } from "@/hooks/subscription/useSubscriptionDropdowns";
-import type { TagWithIcon } from "@/hooks/subscription/useSubscriptionForm";
-import { calculateIntervalMonths } from "@/ui/utils/subscription-utils";
 
 /**
  * Edit Subscription page
