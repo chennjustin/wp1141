@@ -309,14 +309,23 @@ export default function EditWalletPage() {
   return (
     <div className="flex h-full flex-col gap-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="text-sm text-black hover:text-black/70"
-        >
-          ← 返回
-        </button>
+      <div className="flex items-center justify-between px-4 pt-2">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="text-sm text-black hover:text-black/70"
+          >
+            ← 返回
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push(`/wallets/${walletId}/history`)}
+            className="text-sm font-medium text-black hover:text-black/80"
+          >
+            明細
+          </button>
+        </div>
         {isCreator && !isDefaultWallet ? (
           <button
             type="button"
