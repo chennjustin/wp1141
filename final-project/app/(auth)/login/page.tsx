@@ -1,4 +1,5 @@
 import { AuthProviders } from "@/ui/components/auth/AuthProviders";
+import { TestLoginButton } from "@/ui/components/auth/TestLoginButton";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -11,7 +12,8 @@ export default async function LoginPage() {
   }
 
   return (
-    <div className="w-full max-w-md space-y-8 rounded-lg bg-white dark:bg-gray-800 p-8 shadow-lg">
+    <div className="relative w-full max-w-md space-y-8 rounded-lg bg-white dark:bg-gray-800 p-8 shadow-lg">
+      <TestLoginButton />
       <div>
         <h1 className="text-center text-2xl font-bold text-gray-900 dark:text-white">Welcome</h1>
         <p className="mt-2 text-center text-gray-600 dark:text-gray-300">
