@@ -261,10 +261,8 @@ export default function NewTransactionPage() {
     );
   }
 
-  // Use CSS variables for income/expense colors
-  const headerBgColor = transactionType === "INCOME" 
-    ? "bg-[var(--income-color)]" 
-    : "bg-[var(--expense-color)]";
+  // Use tag background color for header
+  const headerBgColor = selectedTag ? getTagColor(selectedTag.iconKey) : "bg-gray-100";
 
   return (
     <div className="flex h-full flex-col relative -mx-4">

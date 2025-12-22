@@ -199,17 +199,6 @@ export default function SelectTagPage() {
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => handleTypeToggle("INCOME")}
-            className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${
-              transactionType === "INCOME"
-                ? "bg-gray-900 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            收入
-          </button>
-          <button
-            type="button"
             onClick={() => handleTypeToggle("EXPENSE")}
             className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${
               transactionType === "EXPENSE"
@@ -218,6 +207,17 @@ export default function SelectTagPage() {
             }`}
           >
             支出
+          </button>
+          <button
+            type="button"
+            onClick={() => handleTypeToggle("INCOME")}
+            className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${
+              transactionType === "INCOME"
+                ? "bg-gray-900 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            收入
           </button>
         </div>
       </div>
