@@ -62,11 +62,6 @@ export interface Wallet {
 }
 
 /**
- * Wallet type for creation
- */
-export type WalletType = "PERSONAL" | "GROUP";
-
-/**
  * Create wallet data
  */
 export interface CreateWalletData {
@@ -75,7 +70,6 @@ export interface CreateWalletData {
   description?: string;
   note?: string;
   setAsDefault?: boolean;
-  walletType?: WalletType;
   invitedUserIds?: string[];
 }
 

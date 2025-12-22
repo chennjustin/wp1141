@@ -10,7 +10,6 @@
 import { useMemo } from "react";
 import { useSession } from "next-auth/react";
 import type { Wallet, WalletMember } from "@/modules/wallet/domain/wallet.types";
-import { WalletRole } from "@/modules/wallet/domain/wallet.types";
 import type { UserProfile } from "@/modules/user/domain/user.types";
 
 interface UseWalletDisplayParams {
@@ -44,29 +43,14 @@ export function useWalletDisplay({
     return member?.role ?? null;
   }, [currentWallet, profile]);
 
-  // Check if current wallet is a personal wallet
-  const isPersonalWallet = useMemo(() => {
-    if (!currentWallet || !profile) return false;
-    return (
-      currentWallet.name === "錢包" ||
-      (currentWallet.members.length === 1 &&
-        currentWallet.members[0].userId === profile.id &&
-        currentWallet.members[0].role === WalletRole.OWNER)
-    );
-  }, [currentWallet, profile]);
-
   // Display name for navbar right side
-  // Personal wallet: show user name (fallback to session name/email)
-  // Shared wallet: show role
+  // Show role if available, otherwise show user name
   const displayName = useMemo(() => {
-    if (isPersonalWallet) {
-      return userName || session?.user?.name || session?.user?.email || "User";
-    }
     if (currentRole) {
       return currentRole.charAt(0) + currentRole.slice(1).toLowerCase();
     }
     return userName || session?.user?.name || session?.user?.email || "User";
-  }, [isPersonalWallet, currentRole, userName, session]);
+  }, [currentRole, userName, session]);
 
   // Wallet name display
   const walletDisplayName = useMemo(() => {
@@ -95,7 +79,6 @@ export function useWalletDisplay({
     walletDisplayName,
     displayName,
     currentRole,
-    isPersonalWallet,
     userName,
   };
 }

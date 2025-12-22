@@ -3,7 +3,6 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { walletService } from "@/modules/wallet/services/wallet.service";
 import { prisma } from "@/lib/prisma";
-import { WalletRole } from "@/modules/wallet/domain/wallet.types";
 
 /**
  * Wallets home page redirect
@@ -13,7 +12,7 @@ import { WalletRole } from "@/modules/wallet/domain/wallet.types";
  * 
  * Priority order:
  * 1. Session's defaultWalletId (if exists and user has access)
- * 2. "我的錢包" (My Wallet) - wallet named "我的錢包" or personal wallet with single owner
+ * 2. "我的錢包" (My Wallet) - wallet named "我的錢包"
  * 3. First available wallet
  * 4. /wallets/new if no wallets exist
  */
@@ -53,14 +52,7 @@ export default async function WalletsPage() {
   }
 
   // Priority 2: Find "我的錢包" (My Wallet)
-  // A personal wallet typically has name "我的錢包" or has only one member who is the owner
-  const myWallet = wallets.find((w) => {
-    const isNamedMyWallet = w.name === "我的錢包";
-    const isPersonalWallet = w.members.length === 1 &&
-      w.members[0].userId === session.user.id &&
-      w.members[0].role === WalletRole.OWNER;
-    return isNamedMyWallet || isPersonalWallet;
-  });
+  const myWallet = wallets.find((w) => w.name === "我的錢包");
 
   if (myWallet) {
     redirect(`/wallets/${myWallet.id}`);

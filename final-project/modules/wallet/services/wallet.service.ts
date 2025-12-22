@@ -55,7 +55,6 @@ export const walletService = {
 
   /**
    * Create wallet for user
-   * Supports both PERSONAL and GROUP wallet types
    */
   async createWallet(
     userId: string,
@@ -73,7 +72,6 @@ export const walletService = {
     const defaultCurrency = data.defaultCurrency || DEFAULT_CURRENCY;
     const description = data.description?.trim() || null;
     const note = data.note?.trim() || null;
-    const walletType = data.walletType || "PERSONAL";
     const invitedUserIds = data.invitedUserIds || [];
 
     // Validate note length if provided
@@ -84,16 +82,8 @@ export const walletService = {
       };
     }
 
-    // Validate wallet type
-    if (walletType !== "PERSONAL" && walletType !== "GROUP") {
-      return {
-        success: false,
-        error: "Invalid wallet type. Must be PERSONAL or GROUP",
-      };
-    }
-
-    // For GROUP wallets, validate invited users
-    if (walletType === "GROUP" && invitedUserIds.length > 0) {
+    // Validate invited users if provided
+    if (invitedUserIds.length > 0) {
       // Verify all invited users exist
       for (const invitedUserId of invitedUserIds) {
         const user = await userRepository.findById(invitedUserId);
@@ -145,8 +135,8 @@ export const walletService = {
           },
         });
 
-        // For GROUP wallets, invite users if provided
-        if (walletType === "GROUP" && invitedUserIds.length > 0) {
+        // Invite users if provided
+        if (invitedUserIds.length > 0) {
           for (const invitedUserId of invitedUserIds) {
             // Check if user is already in the wallet
             const existingMembership = await tx.walletUser.findUnique({

@@ -6,7 +6,6 @@ import { useSession } from "next-auth/react";
 import { useWallets } from "@/hooks/useWallet";
 import { useUser } from "@/hooks/useUser";
 import type { Wallet } from "@/modules/wallet/domain/wallet.types";
-import { WalletRole } from "@/modules/wallet/domain/wallet.types";
 import { Loading } from "@/ui/components/common/Loading";
 
 /**
@@ -50,19 +49,6 @@ function PinIconOutline() {
 }
 
 /**
- * Check if wallet is a personal wallet
- */
-function isPersonalWallet(wallet: Wallet, currentUserId: string | undefined): boolean {
-  if (!currentUserId) return false;
-  return (
-    wallet.name === "我的錢包" ||
-    (wallet.members.length === 1 &&
-     wallet.members[0].userId === currentUserId &&
-     wallet.members[0].role === WalletRole.OWNER)
-  );
-}
-
-/**
  * Wallet card component
  */
 interface WalletCardProps {
@@ -83,7 +69,6 @@ function WalletCard({
   onCardClick,
 }: WalletCardProps) {
   const [isToggling, setIsToggling] = useState(false);
-  const isPersonal = isPersonalWallet(wallet, currentUserId);
 
   const handlePinClick = async (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click
@@ -125,19 +110,19 @@ function WalletCard({
         {wallet.name}
       </h3>
 
-      {/* Wallet type */}
-      <div className="mb-2">
-        <span className="text-xs text-black/70">
-          {isPersonal ? "個人錢包" : "團體錢包"}
-        </span>
-      </div>
-
       {/* Description */}
       {wallet.description && (
         <div className="mt-2">
           <p className="text-sm text-black/80 line-clamp-2">{wallet.description}</p>
         </div>
       )}
+
+      {/* Member count */}
+      <div className="mt-2">
+        <span className="text-xs text-gray-500">
+          成員：{wallet.members.length}
+        </span>
+      </div>
     </div>
   );
 }
