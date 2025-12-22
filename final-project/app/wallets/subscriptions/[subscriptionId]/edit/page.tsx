@@ -117,15 +117,16 @@ export default function EditSubscriptionPage() {
           setTagId(sub.tagId);
           setCurrency(sub.currency);
           setMonthlyAmount(sub.amount.toString());
-          
+          setName(sub.name || "");
+           
           // Determine interval type
-          if (sub.intervalMonths === 0.033) {
+          if (Math.abs(sub.intervalMonths - 0.033) < 0.001) {
             setIntervalType("day");
-          } else if (sub.intervalMonths === 0.25) {
+          } else if (Math.abs(sub.intervalMonths - 0.25) < 0.001) {
             setIntervalType("week");
-          } else if (sub.intervalMonths === 1) {
+          } else if (Math.abs(sub.intervalMonths - 1) < 0.001) {
             setIntervalType("month");
-          } else if (sub.intervalMonths === 12) {
+          } else if (Math.abs(sub.intervalMonths - 12) < 0.001) {
             setIntervalType("year");
           } else {
             setIntervalType("custom");
@@ -319,6 +320,7 @@ export default function EditSubscriptionPage() {
         endDate: endDate ? new Date(endDate) : null,
         intervalMonths: intervalMonths,
         nextBilling: new Date(startDate), // Update nextBilling to startDate
+        name: name || null,
       });
 
       console.log("[EditSubscription] Update result:", result);

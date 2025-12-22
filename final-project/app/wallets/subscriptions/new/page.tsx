@@ -295,7 +295,8 @@ export default function NewSubscriptionPage() {
         currency,
         startDate: new Date(startDate),
         endDate: endDate ? new Date(endDate) : null,
-        intervalMonths,
+        intervalMonths: intervalMonths,
+        name: name || null,
       });
 
       if (result.success) {

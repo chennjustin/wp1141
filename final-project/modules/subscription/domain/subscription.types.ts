@@ -33,6 +33,7 @@ export interface Subscription {
   endDate: Date | null;
   type: TransactionType;
   tagId: string;
+  name: string | null;
   tag: SubscriptionTag;
   isDeleted: boolean;
   createdAt: Date;
@@ -52,6 +53,7 @@ export interface CreateSubscriptionData {
   endDate?: Date | string | null; // Optional, null means permanent
   intervalMonths?: number; // Default 1
   nextBilling?: Date | string; // Calculated from startDate if not provided
+  name?: string | null; // Optional description
 }
 
 /**
@@ -66,6 +68,7 @@ export interface UpdateSubscriptionData {
   endDate?: Date | string | null;
   intervalMonths?: number;
   nextBilling?: Date | string;
+  name?: string | null;
 }
 
 /**

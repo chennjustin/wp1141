@@ -149,6 +149,7 @@ export const subscriptionRepository = {
         endDate: data.endDate ? new Date(data.endDate) : null,
         intervalMonths: data.intervalMonths ?? 1,
         nextBilling: data.nextBilling ? new Date(data.nextBilling) : new Date(data.startDate),
+        name: data.name || null,
       },
       include: {
         tag: true,
@@ -185,6 +186,9 @@ export const subscriptionRepository = {
     }
     if (data.nextBilling !== undefined) {
       updateData.nextBilling = new Date(data.nextBilling);
+    }
+    if (data.name !== undefined) {
+      updateData.name = data.name;
     }
 
     return prisma.subscription.update({

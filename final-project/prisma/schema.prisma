@@ -247,16 +247,18 @@ model Subscription {
   id       String @id @default(cuid())
   walletId String
   userId   String
+  
 
   amount         Float
   currency       String
   nextBilling    DateTime
-  intervalMonths Int      @default(1)
+  intervalMonths Float    @default(1)
 
   startDate DateTime
   endDate   DateTime?
   type      TransactionType @default(EXPENSE)
   tagId     String
+  name      String?
 
   // Soft delete flag for subscriptions
   isDeleted Boolean @default(false)
