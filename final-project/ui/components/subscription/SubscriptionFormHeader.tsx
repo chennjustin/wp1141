@@ -123,7 +123,19 @@ export function SubscriptionFormHeader({
                   className="text-black text-4xl font-semibold hover:opacity-80 transition-opacity text-left relative"
                 >
                   <span>
-                    {calculatorExpression || formatAmountString(totalAmount)}
+                    {calculatorExpression || (() => {
+                      // Use originalTotalAmount if available, otherwise use totalAmount
+                      const amountToShow = originalTotalAmount || totalAmount;
+                      if (!amountToShow) return formatAmountString("0");
+                      
+                      // If the amount has decimal places, round to integer
+                      const num = parseFloat(amountToShow);
+                      if (!isNaN(num)) {
+                        const rounded = Math.round(num);
+                        return formatAmountString(rounded.toString());
+                      }
+                      return formatAmountString(amountToShow);
+                    })()}
                   </span>
                   {showCalculator && calculatorFor === "total" && (
                     <span className="inline-block w-0.5 h-8 bg-black ml-1 animate-pulse" />

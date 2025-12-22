@@ -191,7 +191,8 @@ export default function SubscriptionHistoryPage() {
                         const diffDays = diffTime / (1000 * 60 * 60 * 24);
                         const totalMonths = diffDays / (30 * subscription.intervalMonths);
                         const totalAmount = subscription.amount * totalMonths;
-                        const roundedTotal = Math.round(totalAmount * 100) / 100;
+                        // Round to integer for total amount display
+                        const roundedTotal = Math.round(totalAmount);
                         return (
                           <>
                             <div className="font-semibold text-black">

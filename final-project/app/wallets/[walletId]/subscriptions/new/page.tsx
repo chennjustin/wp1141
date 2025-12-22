@@ -158,7 +158,11 @@ export default function NewSubscriptionPage() {
           actions.setTotalAmount(state.originalTotalAmount);
         } else if (state.monthlyAmount && state.endDate && state.startDate) {
           if (calculatedTotalAmount !== null) {
-            actions.setTotalAmount(calculatedTotalAmount.toFixed(2));
+            // Round to integer if there are decimal places
+            const roundedTotal = Math.round(calculatedTotalAmount);
+            actions.setTotalAmount(roundedTotal.toString());
+            // Save as original when switching from monthly to total
+            actions.setOriginalTotalAmount(roundedTotal.toString());
           }
         }
       }
@@ -168,7 +172,10 @@ export default function NewSubscriptionPage() {
       // When switching to monthly mode, save current total amount as original
       // and calculate monthly from total
       if (state.amountMode === "total" && state.totalAmount) {
-        actions.setOriginalTotalAmount(state.totalAmount);
+        // Only save as original if it's a user input (not calculated)
+        if (!state.originalTotalAmount) {
+          actions.setOriginalTotalAmount(state.totalAmount);
+        }
         if (state.endDate && state.startDate) {
           if (calculatedMonthlyAmount !== null) {
             actions.setMonthlyAmount(calculatedMonthlyAmount.toFixed(2));
@@ -267,7 +274,10 @@ export default function NewSubscriptionPage() {
         const result = evaluate(state.calculatorExpression);
         if (!isNaN(result) && isFinite(result)) {
           if (calculatorFor === "total") {
-            actions.setTotalAmount(result.toFixed(2));
+            const roundedResult = Math.round(result * 100) / 100;
+            actions.setTotalAmount(roundedResult.toFixed(2));
+            // Save original total amount when user inputs it
+            actions.setOriginalTotalAmount(roundedResult.toFixed(2));
           } else {
             actions.setMonthlyAmount(result.toFixed(2));
           }

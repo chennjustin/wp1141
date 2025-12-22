@@ -264,7 +264,7 @@ export async function addTransactionFromSubscriptions() {
         const transactionDate = new Date(sub.nextBilling);
         transactionDate.setHours(0, 0, 0, 0);
 
-        await transactionRepository.create(userId, {
+        const transaction = await transactionRepository.create(userId, {
           walletId: sub.walletId,
           date: transactionDate,
           amount: sub.amount,
