@@ -209,7 +209,12 @@ export default function EditWalletPage() {
         router.push("/wallets");
       } else {
         const data = await response.json();
-        alert(data.error || "刪除錢包失敗");
+        const errorMessage = data.error || "刪除錢包失敗";
+        if (errorMessage === "Cannot delete default wallet") {
+          alert("無法刪除預設錢包");
+        } else {
+          alert(errorMessage);
+        }
       }
     } catch (err) {
       alert("網路錯誤，請稍後再試");
@@ -349,9 +354,9 @@ export default function EditWalletPage() {
               </button>
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   setShowDeleteConfirm(false);
-                  handleDeleteWallet();
+                  await handleDeleteWallet();
                 }}
                 className="rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-red-600"
               >
@@ -521,6 +526,7 @@ export default function EditWalletPage() {
                           退出
                         </button>
                       )}
+                      {/* Creator cannot leave wallet - no button shown */}
                     </div>
                   </div>
                 );

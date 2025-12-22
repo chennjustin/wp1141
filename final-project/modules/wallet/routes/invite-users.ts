@@ -1,7 +1,7 @@
 /**
  * Server Action: Invite users to wallet
  * 
- * This action allows wallet owners to invite other users to join their wallet.
+ * This action allows wallet members to invite other users to join their wallet.
  * Invited users will receive a notification and their status will be set to PENDING.
  */
 

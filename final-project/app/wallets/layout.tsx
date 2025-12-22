@@ -36,7 +36,7 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Use hooks for wallet state management
-  const pinnedWalletIds = usePinnedWallets(isAuthenticated);
+  const { pinnedWalletIds, pinnedWalletIdsArray } = usePinnedWallets(isAuthenticated);
   const { currentWalletId, setCurrentWalletId } = useWalletFromPath();
   const currentWallet = useCurrentWallet({ wallets, currentWalletId });
   const {

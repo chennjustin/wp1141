@@ -325,6 +325,7 @@ export const walletService = {
 
   /**
    * Delete wallet (only owner can delete)
+   * Default wallet cannot be deleted
    */
   async deleteWallet(
     walletId: string,
@@ -345,6 +346,15 @@ export const walletService = {
       return {
         success: false,
         error: "Wallet not found or already deleted",
+      };
+    }
+
+    // Check if this is the user's default wallet - cannot delete default wallet
+    const user = await userRepository.findById(userId);
+    if (user?.defaultWalletId === walletId) {
+      return {
+        success: false,
+        error: "Cannot delete default wallet",
       };
     }
 
@@ -379,28 +389,19 @@ export const walletService = {
 
   /**
    * Invite users to an existing wallet
-   * Only wallet owner can invite users
+   * All wallet members can invite users
    */
   async inviteUsersToWallet(
     walletId: string,
     userId: string,
     invitedUserIds: string[]
   ): Promise<WalletServiceResult<Wallet>> {
-    // Check authorization - only owner can invite
-    const isOwner = await walletRepository.isOwner(walletId, userId);
-    if (!isOwner) {
-      return {
-        success: false,
-        error: "Only wallet owner can invite users",
-      };
-    }
-
-    // Check wallet exists
-    const wallet = await walletRepository.findById(walletId);
+    // Check authorization - user must be a member of the wallet
+    const wallet = await walletRepository.findById(walletId, userId);
     if (!wallet) {
       return {
         success: false,
-        error: "Wallet not found",
+        error: "Wallet not found or access denied",
       };
     }
 

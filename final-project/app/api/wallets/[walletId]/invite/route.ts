@@ -12,7 +12,7 @@ interface RouteContext {
  * /api/wallets/{walletId}/invite:
  *   post:
  *     summary: Invite users to wallet
- *     description: Invite one or more users to join a wallet. Only wallet owner can invite users.
+ *     description: Invite one or more users to join a wallet. All wallet members can invite users.
  *     tags:
  *       - Wallets
  *     security:
@@ -58,7 +58,7 @@ interface RouteContext {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  *       403:
- *         description: Forbidden - Only wallet owner can invite users
+ *         description: Forbidden - User must be a member of the wallet
  *         content:
  *           application/json:
  *             schema:
@@ -100,7 +100,7 @@ export async function POST(req: Request, context: RouteContext) {
       const status =
         result.error === "Unauthorized"
           ? 401
-          : result.error === "Only wallet owner can invite users"
+          : result.error === "Wallet not found or access denied"
           ? 403
           : result.error === "Wallet not found"
           ? 404
