@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { listSubscriptionsAction } from "@/modules/subscription/routes/list-subscriptions";
 import { TagIcon } from "@/ui/utils/tag-icon";
 import { FloatingAddButton } from "@/ui/components/wallet/FloatingAddButton";
-import { useCurrentWallet } from "@/hooks/useCurrentWallet";
-import { useWallets } from "@/hooks/useWallet";
+import { getTagColor, formatDate, formatAmount } from "@/ui/utils/subscription-utils";
 
 /**
  * Subscription with tag
@@ -31,69 +30,14 @@ interface SubscriptionWithTag {
 }
 
 /**
- * Get tag background color based on iconKey
- */
-function getTagColor(iconKey: string): string {
-  const colorMap: Record<string, string> = {
-    food: "bg-orange-100",
-    drinks: "bg-amber-100",
-    entertainment: "bg-purple-100",
-    transportation: "bg-blue-100",
-    shopping: "bg-sky-100",
-    bills: "bg-amber-100",
-    healthcare: "bg-red-100",
-    education: "bg-indigo-100",
-    travel: "bg-cyan-100",
-    other: "bg-slate-200",
-    salary: "bg-green-100",
-    bonus: "bg-emerald-100",
-    investment: "bg-teal-100",
-    gift: "bg-pink-100",
-    freelance: "bg-lime-100",
-    interest: "bg-blue-100",
-    refund: "bg-rose-100",
-    dividend: "bg-violet-100",
-    tag: "bg-gray-100",
-  };
-  return colorMap[iconKey] || "bg-gray-100";
-}
-
-/**
- * Format date for display
- */
-function formatDate(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date;
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}/${month}/${day}`;
-}
-
-/**
- * Format amount for display
- */
-function formatAmount(amount: number, currency: string): string {
-  const rounded = Math.round(amount * 100) / 100;
-  return `${currency} ${rounded.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-}
-
-/**
  * Subscriptions list page
  * 
  * Displays all active subscriptions for the current wallet.
  */
 export default function SubscriptionsPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const { wallets } = useWallets();
-  
-  // Get walletId from search params or use current wallet
-  const walletIdParam = searchParams.get("walletId");
-  const currentWallet = useCurrentWallet({ 
-    wallets, 
-    currentWalletId: walletIdParam || null 
-  });
-  const walletId = walletIdParam || currentWallet?.id;
+  const params = useParams();
+  const walletId = params.walletId as string;
 
   const [subscriptions, setSubscriptions] = useState<SubscriptionWithTag[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,15 +77,15 @@ export default function SubscriptionsPage() {
 
   const handleAddSubscription = () => {
     if (!walletId) return;
-    router.push(`/wallets/subscriptions/new/tag?walletId=${walletId}`);
+    router.push(`/wallets/${walletId}/subscriptions/new/tag`);
   };
 
   const handleViewHistory = () => {
-    router.push(`/wallets/subscriptions/history${walletId ? `?walletId=${walletId}` : ""}`);
+    router.push(`/wallets/${walletId}/subscriptions/history`);
   };
 
   const handleSubscriptionClick = (subscriptionId: string) => {
-    router.push(`/wallets/subscriptions/${subscriptionId}/edit${walletId ? `?walletId=${walletId}` : ""}`);
+    router.push(`/wallets/${walletId}/subscriptions/${subscriptionId}/edit`);
   };
 
   if (!walletId) {
@@ -259,3 +203,4 @@ export default function SubscriptionsPage() {
     </div>
   );
 }
+

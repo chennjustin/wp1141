@@ -140,28 +140,6 @@ export default function NewSubscriptionPage() {
     fetchTag();
   }, [tagId]);
 
-  // Close dropdowns when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (
-        !target.closest('[data-dropdown="currency"]') &&
-        !target.closest('[data-dropdown="startDate"]') &&
-        !target.closest('[data-dropdown="endDate"]')
-      ) {
-        setShowCurrencyDropdown(false);
-        setShowStartDatePicker(false);
-        setShowEndDatePicker(false);
-      }
-    };
-
-    if (showCurrencyDropdown || showStartDatePicker || showEndDatePicker) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => {
-        document.removeEventListener("mousedown", handleClickOutside);
-      };
-    }
-  }, [showCurrencyDropdown, showStartDatePicker, showEndDatePicker]);
 
   // Calculate monthly amount from total amount
   const calculatedMonthlyAmount = useMemo(() => {
@@ -301,15 +279,94 @@ export default function NewSubscriptionPage() {
 
   // Hide calculator when other fields are focused
   const handleHideCalculator = () => {
+    // Auto-save calculator expression before hiding
+    if (calculatorExpression) {
+      try {
+        const { evaluate } = require("@/lib/calculator");
+        const result = evaluate(calculatorExpression);
+        if (!isNaN(result) && isFinite(result)) {
+          if (calculatorFor === "total") {
+            setTotalAmount(result.toFixed(2));
+          } else {
+            setMonthlyAmount(result.toFixed(2));
+          }
+          setCalculatorExpression("");
+        }
+      } catch {
+        // If expression is invalid, just clear it
+        setCalculatorExpression("");
+      }
+    }
     setShowCalculator(false);
     setShowStartDatePicker(false);
     setShowEndDatePicker(false);
     setShowCurrencyDropdown(false);
   };
 
+  // Auto-save calculator expression when clicking outside calculator
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      
+      // If calculator is open and user clicks outside, save the expression
+      if (showCalculator && calculatorExpression) {
+        if (!target.closest('[data-calculator]')) {
+          try {
+            const { evaluate } = require("@/lib/calculator");
+            const result = evaluate(calculatorExpression);
+            if (!isNaN(result) && isFinite(result)) {
+              const roundedResult = Math.round(result * 100) / 100;
+              if (calculatorFor === "total") {
+                setTotalAmount(roundedResult.toFixed(2));
+              } else {
+                setMonthlyAmount(roundedResult.toFixed(2));
+              }
+              setCalculatorExpression("");
+            }
+          } catch {
+            // If expression is invalid, just clear it
+            setCalculatorExpression("");
+          }
+          setShowCalculator(false);
+        }
+      }
+      
+      // Close dropdowns when clicking outside (but not inside the dropdown itself)
+      if (
+        !target.closest('[data-dropdown="currency"]') &&
+        !target.closest('[data-dropdown="startDate"]') &&
+        !target.closest('[data-dropdown="endDate"]')
+      ) {
+        setShowCurrencyDropdown(false);
+        // Only close date pickers if clicking outside, not when interacting with date inputs
+        if (!target.closest('input[type="date"]')) {
+          setShowStartDatePicker(false);
+          setShowEndDatePicker(false);
+        }
+      }
+    };
+
+    if (showCalculator || showCurrencyDropdown || showStartDatePicker || showEndDatePicker) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  }, [showCalculator, showCurrencyDropdown, showStartDatePicker, showEndDatePicker, calculatorExpression, calculatorFor]);
+
   // Show calculator for amount input
   const handleAmountClick = (forWhat: "total" | "monthly") => {
     setCalculatorFor(forWhat);
+    // 如果有已有金額，將其設置為計算器表達式，以便繼續編輯
+    if (forWhat === "total" && totalAmount && !calculatorExpression) {
+      // 移除格式化符號（$ 和逗號），只保留數字
+      const cleanAmount = totalAmount.replace(/[$,]/g, '');
+      setCalculatorExpression(cleanAmount);
+    } else if (forWhat === "monthly" && monthlyAmount && !calculatorExpression) {
+      // 移除格式化符號（$ 和逗號），只保留數字
+      const cleanAmount = monthlyAmount.replace(/[$,]/g, '');
+      setCalculatorExpression(cleanAmount);
+    }
     setShowCalculator(true);
     setShowStartDatePicker(false);
     setShowEndDatePicker(false);
@@ -490,18 +547,28 @@ export default function NewSubscriptionPage() {
                     <button
                       type="button"
                       onClick={() => handleAmountClick("monthly")}
-                      className="text-black text-4xl font-semibold hover:opacity-80 transition-opacity text-left"
+                      className="text-black text-4xl font-semibold hover:opacity-80 transition-opacity text-left relative"
                     >
-                      {calculatorExpression || formatAmount(monthlyAmount)}
+                      <span>
+                        {calculatorExpression || formatAmount(monthlyAmount)}
+                      </span>
+                      {showCalculator && calculatorFor === "monthly" && (
+                        <span className="inline-block w-0.5 h-8 bg-black ml-1 animate-pulse" />
+                      )}
                     </button>
                   ) : (
                     <div>
                       <button
                         type="button"
                         onClick={() => handleAmountClick("total")}
-                        className="text-black text-4xl font-semibold hover:opacity-80 transition-opacity text-left"
+                        className="text-black text-4xl font-semibold hover:opacity-80 transition-opacity text-left relative"
                       >
-                        {calculatorExpression || formatAmount(totalAmount)}
+                        <span>
+                          {calculatorExpression || formatAmount(totalAmount)}
+                        </span>
+                        {showCalculator && calculatorFor === "total" && (
+                          <span className="inline-block w-0.5 h-8 bg-black ml-1 animate-pulse" />
+                        )}
                       </button>
                       {calculatedMonthlyAmount !== null && (
                         <div className="text-black text-sm mt-1">
@@ -631,13 +698,13 @@ export default function NewSubscriptionPage() {
                   </svg>
                 </button>
                 {showStartDatePicker && (
-                  <div className="absolute z-[60] mt-1 w-full bg-white border border-gray-200 p-3 shadow-lg">
+                  <div className="absolute z-[60] mt-1 w-full bg-white border border-gray-200 p-3 shadow-lg" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="date"
                       value={startDate}
                       onChange={(e) => {
                         setStartDate(e.target.value);
-                        setShowStartDatePicker(false);
+                        // Don't close immediately - let user continue selecting
                       }}
                       className="w-full h-9 px-2 border border-gray-200 text-sm text-black focus:outline-none focus:border-gray-400"
                     />
@@ -668,32 +735,32 @@ export default function NewSubscriptionPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
-              {showEndDatePicker && (
-                <div className="absolute z-[60] mt-1 w-full bg-white border border-gray-200 p-3 shadow-lg">
-                  <div className="space-y-3">
-                    <input
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => {
-                        setEndDate(e.target.value);
-                        setShowEndDatePicker(false);
-                      }}
-                      min={startDate}
-                      className="w-full h-9 px-2 border border-gray-200 text-sm text-black focus:outline-none focus:border-gray-400"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEndDate("");
-                        setShowEndDatePicker(false);
-                      }}
-                      className="w-full h-9 bg-gray-100 text-black text-sm font-medium hover:bg-gray-200 transition-colors"
-                    >
-                      設為永久
-                    </button>
+                {showEndDatePicker && (
+                  <div className="absolute z-[60] mt-1 w-full bg-white border border-gray-200 p-3 shadow-lg" onClick={(e) => e.stopPropagation()}>
+                    <div className="space-y-3">
+                      <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => {
+                          setEndDate(e.target.value);
+                          // Don't close immediately - let user continue selecting
+                        }}
+                        min={startDate}
+                        className="w-full h-9 px-2 border border-gray-200 text-sm text-black focus:outline-none focus:border-gray-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEndDate("");
+                          setShowEndDatePicker(false);
+                        }}
+                        className="w-full h-9 bg-gray-100 text-black text-sm font-medium hover:bg-gray-200 transition-colors"
+                      >
+                        設為永久
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
               </div>
             </div>
 
@@ -814,8 +881,10 @@ export default function NewSubscriptionPage() {
 
       {/* Calculator */}
       {showCalculator && (
-        <div className="absolute bottom-0 left-0 right-0 z-50 bg-white transition-transform duration-200">
+        <div className="absolute bottom-0 left-0 right-0 z-50 bg-white transition-transform duration-200" data-calculator onClick={(e) => e.stopPropagation()}>
           <CalculatorKeypad
+            key={`calc-${showCalculator}-${calculatorFor}-${calculatorFor === "total" ? totalAmount : monthlyAmount}`} // 使用 key 確保每次打開時正確初始化
+            initialValue={calculatorExpression || (calculatorFor === "total" && totalAmount ? totalAmount.replace(/[$,]/g, '') : calculatorFor === "monthly" && monthlyAmount ? monthlyAmount.replace(/[$,]/g, '') : "")}
             onConfirm={(result: number) => {
               const roundedResult = Math.round(result * 100) / 100;
               if (calculatorFor === "total") {

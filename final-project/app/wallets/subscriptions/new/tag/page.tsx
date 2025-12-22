@@ -175,7 +175,7 @@ export default function SelectSubscriptionTagPage() {
         <button
           type="button"
           onClick={() => router.back()}
-          className="flex h-9 w-9 items-center justify-center hover:bg-black/10 transition-colors"
+          className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/10 transition-colors"
           aria-label="返回"
         >
           <svg

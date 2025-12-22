@@ -24,7 +24,7 @@ export function WalletHeader({
   walletButtonRef,
 }: WalletHeaderProps) {
   return (
-    <header className="relative mb-4 flex items-center justify-between px-4 py-3" style={{ backgroundColor: 'var(--wallet-bg)' }}>
+    <header className="relative mb-1 flex items-center justify-between px-4 py-3" style={{ backgroundColor: 'var(--wallet-bg)' }}>
       {/* Left: main menu toggle */}
       <button
         type="button"

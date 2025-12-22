@@ -1,13 +1,11 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useRouter, useParams, useSearchParams } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { updateSubscriptionAction } from "@/modules/subscription/routes/update-subscription";
 import { getSubscriptionAction } from "@/modules/subscription/routes/get-subscription";
 import { CalculatorKeypad } from "@/ui/components/CalculatorKeypad";
 import { TagIcon } from "@/ui/utils/tag-icon";
-import { useCurrentWallet } from "@/hooks/useCurrentWallet";
-import { useWallets } from "@/hooks/useWallet";
 
 /**
  * Tag with iconKey
@@ -67,18 +65,8 @@ type IntervalType = "day" | "week" | "month" | "year" | "custom";
 export default function EditSubscriptionPage() {
   const router = useRouter();
   const params = useParams();
-  const searchParams = useSearchParams();
-  const { wallets } = useWallets();
-  
+  const walletId = params.walletId as string;
   const subscriptionId = params.subscriptionId as string;
-  
-  // Get walletId from search params or use current wallet
-  const walletIdParam = searchParams.get("walletId");
-  const currentWallet = useCurrentWallet({ 
-    wallets, 
-    currentWalletId: walletIdParam || null 
-  });
-  const walletId = walletIdParam || currentWallet?.id;
 
   const [transactionType, setTransactionType] = useState<"INCOME" | "EXPENSE">("EXPENSE");
   const [startDate, setStartDate] = useState<string>("");
@@ -212,28 +200,56 @@ export default function EditSubscriptionPage() {
     fetchSubscription();
   }, [subscriptionId]);
 
-  // Close dropdowns when clicking outside
+  // Auto-save calculator expression when clicking outside calculator
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
+      
+      // If calculator is open and user clicks outside, save the expression
+      if (showCalculator && calculatorExpression) {
+        if (!target.closest('[data-calculator]')) {
+          try {
+            const { evaluate } = require("@/lib/calculator");
+            const result = evaluate(calculatorExpression);
+            if (!isNaN(result) && isFinite(result)) {
+              const roundedResult = Math.round(result * 100) / 100;
+              if (calculatorFor === "total") {
+                setTotalAmount(roundedResult.toFixed(2));
+              } else {
+                setMonthlyAmount(roundedResult.toFixed(2));
+              }
+              setCalculatorExpression("");
+            }
+          } catch {
+            // If expression is invalid, just clear it
+            setCalculatorExpression("");
+          }
+          setShowCalculator(false);
+        }
+      }
+      
+      // Close dropdowns when clicking outside (but not inside the dropdown itself)
       if (
         !target.closest('[data-dropdown="currency"]') &&
         !target.closest('[data-dropdown="startDate"]') &&
         !target.closest('[data-dropdown="endDate"]')
       ) {
         setShowCurrencyDropdown(false);
-        setShowStartDatePicker(false);
-        setShowEndDatePicker(false);
+        // Only close date pickers if clicking outside, not when interacting with date inputs
+        if (!target.closest('input[type="date"]')) {
+          setShowStartDatePicker(false);
+          setShowEndDatePicker(false);
+        }
       }
     };
 
-    if (showCurrencyDropdown || showStartDatePicker || showEndDatePicker) {
+    if (showCalculator || showCurrencyDropdown || showStartDatePicker || showEndDatePicker) {
       document.addEventListener("mousedown", handleClickOutside);
       return () => {
         document.removeEventListener("mousedown", handleClickOutside);
       };
     }
-  }, [showCurrencyDropdown, showStartDatePicker, showEndDatePicker]);
+  }, [showCalculator, showCurrencyDropdown, showStartDatePicker, showEndDatePicker, calculatorExpression, calculatorFor]);
 
   // Calculate monthly amount from total amount
   const calculatedMonthlyAmount = useMemo(() => {
@@ -373,6 +389,25 @@ export default function EditSubscriptionPage() {
 
   // Hide calculator when other fields are focused
   const handleHideCalculator = () => {
+    // Auto-save calculator expression before hiding
+    if (calculatorExpression) {
+      try {
+        const { evaluate } = require("@/lib/calculator");
+        const result = evaluate(calculatorExpression);
+        if (!isNaN(result) && isFinite(result)) {
+          const roundedResult = Math.round(result * 100) / 100;
+          if (calculatorFor === "total") {
+            setTotalAmount(roundedResult.toFixed(2));
+          } else {
+            setMonthlyAmount(roundedResult.toFixed(2));
+          }
+          setCalculatorExpression("");
+        }
+      } catch {
+        // If expression is invalid, just clear it
+        setCalculatorExpression("");
+      }
+    }
     setShowCalculator(false);
     setShowStartDatePicker(false);
     setShowEndDatePicker(false);
@@ -382,6 +417,16 @@ export default function EditSubscriptionPage() {
   // Show calculator for amount input
   const handleAmountClick = (forWhat: "total" | "monthly") => {
     setCalculatorFor(forWhat);
+    // 如果有已有金額，將其設置為計算器表達式，以便繼續編輯
+    if (forWhat === "total" && totalAmount && !calculatorExpression) {
+      // 移除格式化符號（$ 和逗號），只保留數字
+      const cleanAmount = totalAmount.replace(/[$,]/g, '');
+      setCalculatorExpression(cleanAmount);
+    } else if (forWhat === "monthly" && monthlyAmount && !calculatorExpression) {
+      // 移除格式化符號（$ 和逗號），只保留數字
+      const cleanAmount = monthlyAmount.replace(/[$,]/g, '');
+      setCalculatorExpression(cleanAmount);
+    }
     setShowCalculator(true);
     setShowStartDatePicker(false);
     setShowEndDatePicker(false);
@@ -455,7 +500,7 @@ export default function EditSubscriptionPage() {
       console.log("[EditSubscription] Update result:", result);
 
       if (result.success) {
-        router.push(`/wallets/subscriptions${walletId ? `?walletId=${walletId}` : ""}`);
+        router.push(`/wallets/${walletId}/subscriptions`);
         setTimeout(() => {
           router.refresh();
         }, 100);
@@ -569,9 +614,14 @@ export default function EditSubscriptionPage() {
                       <button
                         type="button"
                         onClick={() => handleAmountClick("monthly")}
-                        className="text-black text-4xl font-semibold hover:opacity-80 transition-opacity text-left"
+                        className="text-black text-4xl font-semibold hover:opacity-80 transition-opacity text-left relative"
                       >
-                        {calculatorExpression || formatAmount(monthlyAmount)}
+                        <span>
+                          {calculatorExpression || formatAmount(monthlyAmount)}
+                        </span>
+                        {showCalculator && calculatorFor === "monthly" && (
+                          <span className="inline-block w-0.5 h-8 bg-black ml-1 animate-pulse" />
+                        )}
                       </button>
                     </div>
                   ) : (
@@ -579,9 +629,14 @@ export default function EditSubscriptionPage() {
                       <button
                         type="button"
                         onClick={() => handleAmountClick("total")}
-                        className="text-black text-4xl font-semibold hover:opacity-80 transition-opacity text-left"
+                        className="text-black text-4xl font-semibold hover:opacity-80 transition-opacity text-left relative"
                       >
-                        {calculatorExpression || formatAmount(totalAmount)}
+                        <span>
+                          {calculatorExpression || formatAmount(totalAmount)}
+                        </span>
+                        {showCalculator && calculatorFor === "total" && (
+                          <span className="inline-block w-0.5 h-8 bg-black ml-1 animate-pulse" />
+                        )}
                       </button>
                       {calculatedMonthlyAmount !== null && (
                         <div className="text-black text-sm mt-1">
@@ -711,13 +766,13 @@ export default function EditSubscriptionPage() {
                   </svg>
                 </button>
                 {showStartDatePicker && (
-                  <div className="absolute z-[60] mt-1 w-full bg-white border border-gray-200 p-3 shadow-lg">
+                  <div className="absolute z-[60] mt-1 w-full bg-white border border-gray-200 p-3 shadow-lg" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="date"
                       value={startDate}
                       onChange={(e) => {
                         setStartDate(e.target.value);
-                        setShowStartDatePicker(false);
+                        // Don't close immediately - let user continue selecting
                       }}
                       className="w-full h-9 px-2 border border-gray-200 text-sm text-black focus:outline-none focus:border-gray-400"
                     />
@@ -749,14 +804,14 @@ export default function EditSubscriptionPage() {
                   </svg>
                 </button>
                 {showEndDatePicker && (
-                  <div className="absolute z-[60] mt-1 w-full bg-white border border-gray-200 p-3 shadow-lg">
+                  <div className="absolute z-[60] mt-1 w-full bg-white border border-gray-200 p-3 shadow-lg" onClick={(e) => e.stopPropagation()}>
                     <div className="space-y-3">
                       <input
                         type="date"
                         value={endDate}
                         onChange={(e) => {
                           setEndDate(e.target.value);
-                          setShowEndDatePicker(false);
+                          // Don't close immediately - let user continue selecting
                         }}
                         min={startDate}
                         className="w-full h-9 px-2 border border-gray-200 text-sm text-black focus:outline-none focus:border-gray-400"
@@ -894,8 +949,10 @@ export default function EditSubscriptionPage() {
 
       {/* Calculator */}
       {showCalculator && (
-        <div className="absolute bottom-0 left-0 right-0 z-50 bg-white transition-transform duration-200">
+        <div className="absolute bottom-0 left-0 right-0 z-50 bg-white transition-transform duration-200" data-calculator onClick={(e) => e.stopPropagation()}>
           <CalculatorKeypad
+            key={`calc-${showCalculator}-${calculatorFor}-${calculatorFor === "total" ? totalAmount : monthlyAmount}`} // 使用 key 確保每次打開時正確初始化
+            initialValue={calculatorExpression || (calculatorFor === "total" && totalAmount ? totalAmount.replace(/[$,]/g, '') : calculatorFor === "monthly" && monthlyAmount ? monthlyAmount.replace(/[$,]/g, '') : "")}
             onConfirm={(result: number) => {
               const roundedResult = Math.round(result * 100) / 100;
               if (calculatorFor === "total") {
