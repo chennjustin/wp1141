@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useWalletHome } from "@/hooks/useWalletHome";
 import { MonthlySummarySection } from "@/ui/components/wallet/MonthlySummarySection";
 import { CarrierSection } from "@/ui/components/wallet/CarrierSection";
@@ -10,6 +10,7 @@ import { Loading } from "@/ui/components/common/Loading";
 
 export default function WalletDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const walletId = (params?.walletId as string) ?? "";
   
 

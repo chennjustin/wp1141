@@ -15,6 +15,7 @@ interface WalletSelectorDropdownProps {
   dropdownPosition: { top: number; left: number } | null;
   wallets: Wallet[];
   pinnedWalletIds: Set<string>;
+  pinnedWalletIdsArray: string[];
   onClose: () => void;
   onWalletChange: (walletId: string) => void;
 }
@@ -24,6 +25,7 @@ export function WalletSelectorDropdown({
   dropdownPosition,
   wallets,
   pinnedWalletIds,
+  pinnedWalletIdsArray,
   onClose,
   onWalletChange,
 }: WalletSelectorDropdownProps) {
@@ -43,6 +45,14 @@ export function WalletSelectorDropdown({
     router.push("/wallets/new");
   };
 
+  // Create a map for quick wallet lookup
+  const walletMap = new Map(wallets.map((wallet) => [wallet.id, wallet]));
+
+  // Get pinned wallets in order, filtering out any that don't exist in wallets list
+  const orderedPinnedWallets = pinnedWalletIdsArray
+    .map((walletId) => walletMap.get(walletId))
+    .filter((wallet): wallet is Wallet => wallet !== undefined);
+
   return (
     <>
       <div
@@ -60,20 +70,18 @@ export function WalletSelectorDropdown({
         }}
       >
         <div className="py-2">
-          {/* Show all pinned wallets (max 5) */}
-          {wallets
-            .filter((wallet) => pinnedWalletIds.has(wallet.id))
-            .map((wallet) => (
-              <button
-                key={wallet.id}
-                type="button"
-                className="w-full px-4 py-2 text-left text-sm hover:opacity-80 transition-opacity"
-                style={{ color: 'var(--card-text)' }}
-                onClick={() => onWalletChange(wallet.id)}
-              >
-                {wallet.name}
-              </button>
-            ))}
+          {/* Show all pinned wallets in order (max 5) */}
+          {orderedPinnedWallets.map((wallet) => (
+            <button
+              key={wallet.id}
+              type="button"
+              className="w-full px-4 py-2 text-left text-sm hover:opacity-80 transition-opacity"
+              style={{ color: 'var(--card-text)' }}
+              onClick={() => onWalletChange(wallet.id)}
+            >
+              {wallet.name}
+            </button>
+          ))}
           <div className="border-t border-gray-200 my-1" />
           <button
             type="button"

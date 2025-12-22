@@ -109,7 +109,6 @@ export async function POST(req: Request) {
       description,
       note,
       setAsDefault,
-      walletType,
       invitedUserIds,
     }: {
       name?: string;
@@ -117,7 +116,6 @@ export async function POST(req: Request) {
       description?: string;
       note?: string;
       setAsDefault?: boolean;
-      walletType?: "PERSONAL" | "GROUP";
       invitedUserIds?: string[];
     } = body;
 
@@ -127,7 +125,6 @@ export async function POST(req: Request) {
       description,
       note,
       setAsDefault,
-      walletType,
       invitedUserIds,
     });
 

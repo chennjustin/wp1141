@@ -55,7 +55,6 @@ export const walletService = {
 
   /**
    * Create wallet for user
-   * Supports both PERSONAL and GROUP wallet types
    */
   async createWallet(
     userId: string,
@@ -73,7 +72,6 @@ export const walletService = {
     const defaultCurrency = data.defaultCurrency || DEFAULT_CURRENCY;
     const description = data.description?.trim() || null;
     const note = data.note?.trim() || null;
-    const walletType = data.walletType || "PERSONAL";
     const invitedUserIds = data.invitedUserIds || [];
 
     // Validate note length if provided
@@ -84,16 +82,8 @@ export const walletService = {
       };
     }
 
-    // Validate wallet type
-    if (walletType !== "PERSONAL" && walletType !== "GROUP") {
-      return {
-        success: false,
-        error: "Invalid wallet type. Must be PERSONAL or GROUP",
-      };
-    }
-
-    // For GROUP wallets, validate invited users
-    if (walletType === "GROUP" && invitedUserIds.length > 0) {
+    // Validate invited users if provided
+    if (invitedUserIds.length > 0) {
       // Verify all invited users exist
       for (const invitedUserId of invitedUserIds) {
         const user = await userRepository.findById(invitedUserId);
@@ -145,8 +135,8 @@ export const walletService = {
           },
         });
 
-        // For GROUP wallets, invite users if provided
-        if (walletType === "GROUP" && invitedUserIds.length > 0) {
+        // Invite users if provided
+        if (invitedUserIds.length > 0) {
           for (const invitedUserId of invitedUserIds) {
             // Check if user is already in the wallet
             const existingMembership = await tx.walletUser.findUnique({
@@ -232,19 +222,28 @@ export const walletService = {
   },
 
   /**
-   * Update wallet (only owner can update)
+   * Update wallet (all members can update, but default wallet cannot change name)
    */
   async updateWallet(
     walletId: string,
     userId: string,
     data: UpdateWalletData
   ): Promise<WalletServiceResult<Wallet>> {
-    // Check authorization
-    const isOwner = await walletRepository.isOwner(walletId, userId);
-    if (!isOwner) {
+    // Check wallet exists and user is a member
+    const wallet = await walletRepository.findById(walletId, userId);
+    if (!wallet) {
       return {
         success: false,
-        error: "Only wallet owner can update this wallet",
+        error: "Wallet not found or access denied",
+      };
+    }
+
+    // Check if user is trying to update name of default wallet
+    const user = await userRepository.findById(userId);
+    if (user?.defaultWalletId === walletId && data.name !== undefined && data.name !== null) {
+      return {
+        success: false,
+        error: "Cannot change name of default wallet",
       };
     }
 
@@ -316,6 +315,7 @@ export const walletService = {
 
   /**
    * Delete wallet (only owner can delete)
+   * Default wallet cannot be deleted
    */
   async deleteWallet(
     walletId: string,
@@ -336,6 +336,15 @@ export const walletService = {
       return {
         success: false,
         error: "Wallet not found or already deleted",
+      };
+    }
+
+    // Check if this is the user's default wallet - cannot delete default wallet
+    const user = await userRepository.findById(userId);
+    if (user?.defaultWalletId === walletId) {
+      return {
+        success: false,
+        error: "Cannot delete default wallet",
       };
     }
 
@@ -370,28 +379,19 @@ export const walletService = {
 
   /**
    * Invite users to an existing wallet
-   * Only wallet owner can invite users
+   * All wallet members can invite users
    */
   async inviteUsersToWallet(
     walletId: string,
     userId: string,
     invitedUserIds: string[]
   ): Promise<WalletServiceResult<Wallet>> {
-    // Check authorization - only owner can invite
-    const isOwner = await walletRepository.isOwner(walletId, userId);
-    if (!isOwner) {
-      return {
-        success: false,
-        error: "Only wallet owner can invite users",
-      };
-    }
-
-    // Check wallet exists
-    const wallet = await walletRepository.findById(walletId);
+    // Check authorization - user must be a member of the wallet
+    const wallet = await walletRepository.findById(walletId, userId);
     if (!wallet) {
       return {
         success: false,
-        error: "Wallet not found",
+        error: "Wallet not found or access denied",
       };
     }
 
@@ -612,6 +612,113 @@ export const walletService = {
       return {
         success: false,
         error: "Failed to reject wallet invitation",
+      };
+    }
+  },
+
+  /**
+   * Remove member from wallet (only creator can remove members)
+   */
+  async removeMemberFromWallet(
+    walletId: string,
+    userId: string,
+    targetUserId: string
+  ): Promise<WalletServiceResult<void>> {
+    // Check authorization - only creator can remove members
+    const isOwner = await walletRepository.isOwner(walletId, userId);
+    if (!isOwner) {
+      return {
+        success: false,
+        error: "Only wallet creator can remove members",
+      };
+    }
+
+    // Check wallet exists
+    const wallet = await walletRepository.findById(walletId);
+    if (!wallet) {
+      return {
+        success: false,
+        error: "Wallet not found",
+      };
+    }
+
+    // Check target user is not the creator
+    const targetMembership = await walletRepository.findMembershipByWalletAndUser(
+      walletId,
+      targetUserId
+    );
+    if (!targetMembership || targetMembership.isDeleted) {
+      return {
+        success: false,
+        error: "Member not found",
+      };
+    }
+
+    // Cannot remove the creator
+    if (targetMembership.status === WalletUserStatus.OWNER && targetMembership.role === "OWNER") {
+      return {
+        success: false,
+        error: "Cannot remove wallet creator",
+      };
+    }
+
+    try {
+      await walletRepository.removeMembership(walletId, targetUserId);
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error("Error removing member from wallet:", error);
+      return {
+        success: false,
+        error: "Failed to remove member",
+      };
+    }
+  },
+
+  /**
+   * Leave wallet (members can leave, but creator cannot)
+   */
+  async leaveWallet(
+    walletId: string,
+    userId: string
+  ): Promise<WalletServiceResult<void>> {
+    // Check wallet exists
+    const wallet = await walletRepository.findById(walletId);
+    if (!wallet) {
+      return {
+        success: false,
+        error: "Wallet not found",
+      };
+    }
+
+    // Check user is a member
+    const membership = await walletRepository.findMembershipByWalletAndUser(walletId, userId);
+    if (!membership || membership.isDeleted) {
+      return {
+        success: false,
+        error: "You are not a member of this wallet",
+      };
+    }
+
+    // Creator cannot leave
+    if (membership.status === WalletUserStatus.OWNER && membership.role === "OWNER") {
+      return {
+        success: false,
+        error: "Wallet creator cannot leave the wallet",
+      };
+    }
+
+    try {
+      await walletRepository.removeMembership(walletId, userId);
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error("Error leaving wallet:", error);
+      return {
+        success: false,
+        error: "Failed to leave wallet",
       };
     }
   },

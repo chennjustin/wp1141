@@ -88,7 +88,8 @@ async function handleRequest(req: Request) {
 
     // Check limit (max 5 pinned wallets, but My Wallet doesn't count toward limit)
     if (!isMyWallet) {
-      const count = await walletRepository.countPinnedWallets(session.user.id);
+      // Exclude "我的錢包" from count when checking limit
+      const count = await walletRepository.countPinnedWallets(session.user.id, true);
       if (count >= 5) {
         return NextResponse.json(
           { error: "Maximum 5 pinned wallets allowed" },
@@ -97,11 +98,11 @@ async function handleRequest(req: Request) {
       }
     }
 
-    // Pin wallet
-    const success = await walletRepository.pinWallet(session.user.id, walletId);
+    // Pin wallet (exclude "我的錢包" from limit check)
+    const success = await walletRepository.pinWallet(session.user.id, walletId, true);
     if (!success) {
       return NextResponse.json(
-        { error: "Failed to pin wallet. Maximum 5 pinned wallets allowed." },
+        { error: "Maximum 5 pinned wallets allowed (excluding My Wallet)" },
         { status: 400 }
       );
     }

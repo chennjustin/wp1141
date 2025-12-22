@@ -1,8 +1,7 @@
 /**
- * Server Action: Invite users to wallet
+ * Server Action: Remove member from wallet
  * 
- * This action allows wallet members to invite other users to join their wallet.
- * Invited users will receive a notification and their status will be set to PENDING.
+ * This action allows wallet creator to remove other members from the wallet.
  */
 
 "use server";
@@ -12,11 +11,11 @@ import { authOptions } from "@/lib/auth";
 import { walletService } from "../services/wallet.service";
 
 /**
- * Invite users to a wallet
+ * Remove member from wallet
  */
-export async function inviteUsersToWalletAction(
+export async function removeMemberAction(
   walletId: string,
-  userIds: string[]
+  targetUserId: string
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -25,7 +24,6 @@ export async function inviteUsersToWalletAction(
       return {
         success: false,
         error: "Unauthorized",
-        data: null,
       };
     }
 
@@ -34,29 +32,26 @@ export async function inviteUsersToWalletAction(
       return {
         success: false,
         error: "Wallet ID is required",
-        data: null,
       };
     }
 
-    if (!Array.isArray(userIds) || userIds.length === 0) {
+    if (!targetUserId || typeof targetUserId !== "string") {
       return {
         success: false,
-        error: "At least one user ID is required",
-        data: null,
+        error: "Target user ID is required",
       };
     }
 
-    return await walletService.inviteUsersToWallet(
+    return await walletService.removeMemberFromWallet(
       walletId,
       session.user.id,
-      userIds
+      targetUserId
     );
   } catch (error) {
-    console.error("[inviteUsersToWalletAction] Unexpected error", error);
+    console.error("[removeMemberAction] Unexpected error", error);
     return {
       success: false,
       error: "Internal server error",
-      data: null,
     };
   }
 }

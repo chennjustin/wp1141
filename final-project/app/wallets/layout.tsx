@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useUser } from "@/hooks/useUser";
@@ -36,7 +36,7 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Use hooks for wallet state management
-  const pinnedWalletIds = usePinnedWallets(isAuthenticated);
+  const { pinnedWalletIds, pinnedWalletIdsArray } = usePinnedWallets(isAuthenticated);
   const { currentWalletId, setCurrentWalletId } = useWalletFromPath();
   const currentWallet = useCurrentWallet({ wallets, currentWalletId });
   const {
@@ -58,9 +58,15 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
     profile,
   });
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated (use useEffect to avoid render-time navigation)
+  useEffect(() => {
+    if (!isAuthenticated || sessionStatus === "unauthenticated") {
+      router.push("/login");
+    }
+  }, [isAuthenticated, sessionStatus, router]);
+
+  // Don't render content if not authenticated
   if (!isAuthenticated || sessionStatus === "unauthenticated") {
-    router.push("/login");
     return null;
   }
 
@@ -108,6 +114,7 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
               dropdownPosition={dropdownPosition}
               wallets={wallets}
               pinnedWalletIds={pinnedWalletIds}
+              pinnedWalletIdsArray={pinnedWalletIdsArray}
               onClose={() => setIsWalletSelectorOpen(false)}
               onWalletChange={handleWalletChange}
             />
@@ -129,7 +136,9 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
         />
 
         {/* Main content area */}
-        <main className="flex min-h-0 flex-1 flex-col overflow-hidden pb-16 px-4">
+        <main className={`flex min-h-0 flex-1 flex-col pb-16 px-4 ${
+          pathname === "/wallets/all" ? "overflow-y-auto" : "overflow-hidden"
+        }`}>
           {/* Don't show loading for /wallets page - it handles its own loading */}
           {walletsLoading && pathname !== "/wallets/new" && pathname !== "/wallets" && (
             <Loading message="Loading wallets..." />
