@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import JsBarcode from "jsbarcode";
+import { Sun, Copy } from "lucide-react";
 import { BARCODE_HEIGHT, BARCODE_WIDTH } from "@/ui/utils/barcode";
 
 interface CarrierSectionProps {
@@ -123,24 +124,18 @@ export function CarrierSection({
         </div>
       )}
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-sm font-medium">載具</span>
+        <span className="text-sm font-normal text-gray-600">載具</span>
         <button
           type="button"
-          className="flex items-center gap-2 text-xs"
+          className="flex items-center justify-center transition-opacity hover:opacity-70"
           onClick={onToggleBrightness}
+          aria-label="Toggle brightness"
         >
-          <span>亮度調整</span>
-          <span
-            className={`flex h-4 w-8 items-center rounded-full p-0.5 transition-colors ${
-              brightCarrier ? "bg-gray-300" : "bg-gray-600"
-            }`}
-          >
-            <span
-              className={`h-3 w-3 rounded-full bg-white transition-transform ${
-                brightCarrier ? "translate-x-3.5" : "translate-x-0"
-              }`}
-            />
-          </span>
+          <Sun
+            className="text-gray-500 transition-colors"
+            size={20}
+            strokeWidth={2}
+          />
         </button>
       </div>
 
@@ -176,23 +171,23 @@ export function CarrierSection({
         {/* Carrier code and copy icon - only show when carrier exists */}
         {hasRealCarrier && !carrierLoading && (
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className={`inline-flex h-4 w-4 items-center justify-center rounded border hover:opacity-70 ${
-                brightCarrier ? "border-black" : "border-white"
-              }`}
-              onClick={handleCopyCarrierCode}
-              aria-label="Copy carrier code"
-            >
-              <span
-                className={`h-2 w-2 border ${
-                  brightCarrier ? "border-black" : "border-white"
-                }`}
-              />
-            </button>
             <span className={`text-sm font-mono ${
               brightCarrier ? "text-black" : "text-white"
             }`}>{carrierCode}</span>
+            <button
+              type="button"
+              className="flex items-center justify-center transition-opacity hover:opacity-70"
+              onClick={handleCopyCarrierCode}
+              aria-label="Copy carrier code"
+            >
+              <Copy
+                className={`transition-colors ${
+                  brightCarrier ? "text-black" : "text-white"
+                }`}
+                size={16}
+                strokeWidth={2}
+              />
+            </button>
           </div>
         )}
       </div>

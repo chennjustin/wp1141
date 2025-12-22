@@ -7,6 +7,8 @@
 
 "use client";
 
+import { Eye, EyeOff } from "lucide-react";
+
 interface MonthlySummarySectionProps {
   year: number;
   month: number;
@@ -31,27 +33,20 @@ export function MonthlySummarySection({
   return (
     <section className="rounded-xl p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}>
       <div className="mb-4 flex items-center justify-between">
-        <div className="text-sm font-medium text-black">
+        <span className="text-sm font-normal text-gray-500">
           {year} 年 {month.toString().padStart(2, "0")} 月
-        </div>
+        </span>
         <button
           type="button"
-          className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-black/5"
+          className="flex items-center justify-center transition-opacity hover:opacity-70"
           onClick={onToggleAmounts}
           aria-label="Toggle amounts visibility"
         >
-          <span className="text-lg text-black relative inline-block">
-            {showAmounts ? (
-              "👁"
-            ) : (
-              <span className="relative inline-block">
-                <span>👁</span>
-                <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <span className="text-black text-xl leading-none" style={{ transform: 'rotate(-45deg)' }}>/</span>
-                </span>
-              </span>
-            )}
-          </span>
+          {showAmounts ? (
+            <Eye className="text-gray-500 transition-colors" size={20} strokeWidth={2} />
+          ) : (
+            <EyeOff className="text-gray-500 transition-colors" size={20} strokeWidth={2} />
+          )}
         </button>
       </div>
 

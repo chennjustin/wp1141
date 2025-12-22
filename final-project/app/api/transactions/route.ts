@@ -32,7 +32,7 @@ import type {
  *         schema:
  *           type: string
  *           format: date-time
- *           example: "2024-11-01T00:00:00Z"
+ *           example: "2025-12-01T00:00:00Z"
  *         description: Start date filter (ISO 8601)
  *       - in: query
  *         name: endDate
@@ -40,7 +40,7 @@ import type {
  *         schema:
  *           type: string
  *           format: date-time
- *           example: "2024-11-30T23:59:59Z"
+ *           example: "2025-12-30T23:59:59Z"
  *         description: End date filter (ISO 8601)
  *       - in: query
  *         name: tagId

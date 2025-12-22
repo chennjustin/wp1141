@@ -40,7 +40,7 @@ interface UseMonthlySummaryResult {
  * ```tsx
  * const { data, loading, error } = useMonthlySummary({
  *   walletId: activeWallet?.id ?? null,
- *   year: 2024,
+ *   year: 2025,
  *   month: 12,
  * });
  * ```
