@@ -44,7 +44,7 @@ export const subscriptionService = {
         return {
           success: false,
           error: new SubscriptionNotFoundError("Subscription not found"),
-          data: null,
+          data: undefined,
         };
       }
 
@@ -60,21 +60,21 @@ export const subscriptionService = {
           error: new UnauthorizedSubscriptionAccessError(
             "You don't have access to this subscription"
           ),
-          data: null,
+          data: undefined,
         };
       }
 
       return {
         success: true,
         data: subscription as Subscription,
-        error: null,
+        error: undefined,
       };
     } catch (error) {
       console.error("[getSubscriptionById] Error:", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
-        data: null,
+        data: undefined,
       };
     }
   },
@@ -99,7 +99,7 @@ export const subscriptionService = {
           error: new UnauthorizedSubscriptionAccessError(
             "You don't have access to this wallet"
           ),
-          data: null,
+          data: undefined,
         };
       }
 
@@ -111,14 +111,14 @@ export const subscriptionService = {
       return {
         success: true,
         data: subscriptions as Subscription[],
-        error: null,
+        error: undefined,
       };
     } catch (error) {
       console.error("[listSubscriptions] Error:", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
-        data: null,
+        data: undefined,
       };
     }
   },
@@ -140,7 +140,7 @@ export const subscriptionService = {
           error: new UnauthorizedSubscriptionAccessError(
             "You don't have access to this wallet"
           ),
-          data: null,
+          data: undefined,
         };
       }
 
@@ -152,14 +152,14 @@ export const subscriptionService = {
       return {
         success: true,
         data: subscriptions as Subscription[],
-        error: null,
+        error: undefined,
       };
     } catch (error) {
       console.error("[listSubscriptionHistory] Error:", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
-        data: null,
+        data: undefined,
       };
     }
   },
@@ -177,7 +177,7 @@ export const subscriptionService = {
         return {
           success: false,
           error: new InvalidSubscriptionDataError("Wallet ID is required"),
-          data: null,
+          data: undefined,
         };
       }
 
@@ -185,7 +185,7 @@ export const subscriptionService = {
         return {
           success: false,
           error: new InvalidSubscriptionDataError("Tag ID is required"),
-          data: null,
+          data: undefined,
         };
       }
 
@@ -193,7 +193,7 @@ export const subscriptionService = {
         return {
           success: false,
           error: new InvalidSubscriptionDataError("Amount must be greater than 0"),
-          data: null,
+          data: undefined,
         };
       }
 
@@ -201,7 +201,7 @@ export const subscriptionService = {
         return {
           success: false,
           error: new InvalidSubscriptionDataError("Start date is required"),
-          data: null,
+          data: undefined,
         };
       }
 
@@ -217,7 +217,7 @@ export const subscriptionService = {
           error: new UnauthorizedSubscriptionAccessError(
             "You don't have access to this wallet"
           ),
-          data: null,
+          data: undefined,
         };
       }
 
@@ -234,14 +234,14 @@ export const subscriptionService = {
       return {
         success: true,
         data: subscription as Subscription,
-        error: null,
+        error: undefined,
       };
     } catch (error) {
       console.error("[createSubscription] Error:", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
-        data: null,
+        data: undefined,
       };
     }
   },
@@ -265,7 +265,7 @@ export const subscriptionService = {
         return {
           success: false,
           error: new SubscriptionNotFoundError("Subscription not found"),
-          data: null,
+          data: undefined,
         };
       }
 
@@ -281,7 +281,7 @@ export const subscriptionService = {
           error: new UnauthorizedSubscriptionAccessError(
             "You don't have access to this subscription"
           ),
-          data: null,
+          data: undefined,
         };
       }
 
@@ -290,7 +290,7 @@ export const subscriptionService = {
         return {
           success: false,
           error: new InvalidSubscriptionDataError("Amount must be greater than 0"),
-          data: null,
+          data: undefined,
         };
       }
 
@@ -365,7 +365,7 @@ export const subscriptionService = {
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
-        data: null,
+        data: undefined,
       };
     }
   },
@@ -388,7 +388,7 @@ export const subscriptionService = {
         return {
           success: false,
           error: new SubscriptionNotFoundError("Subscription not found"),
-          data: null,
+          data: undefined,
         };
       }
 
@@ -404,7 +404,7 @@ export const subscriptionService = {
           error: new UnauthorizedSubscriptionAccessError(
             "You don't have access to this subscription"
           ),
-          data: null,
+          data: undefined,
         };
       }
 
@@ -413,14 +413,14 @@ export const subscriptionService = {
       return {
         success: true,
         data: undefined,
-        error: null,
+        error: undefined,
       };
     } catch (error) {
       console.error("[deleteSubscription] Error:", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
-        data: null,
+        data: undefined,
       };
     }
   },

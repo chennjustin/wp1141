@@ -6,14 +6,7 @@
  * These errors extend the base AppError classes from lib/errors.
  */
 
-import {
-  AppError,
-  ValidationError as BaseValidationError,
-  NotFoundError as BaseNotFoundError,
-  UnauthorizedError as BaseUnauthorizedError,
-  InternalServerError as BaseInternalServerError,
-  BadRequestError as BaseBadRequestError,
-} from "@/lib/errors";
+import { AppError } from "@/lib/errors";
 
 /**
  * Base error class for subscription operations
@@ -33,7 +26,8 @@ export class SubscriptionValidationError extends AppError {
  * Subscription not found error
  * Used when subscription doesn't exist
  */
-export class SubscriptionNotFoundError extends BaseNotFoundError {
+export class SubscriptionNotFoundError extends AppError {
+  readonly statusCode = 404;
   readonly code = "SUBSCRIPTION_NOT_FOUND";
 }
 
@@ -41,7 +35,8 @@ export class SubscriptionNotFoundError extends BaseNotFoundError {
  * Unauthorized subscription access error
  * Used when user doesn't have permission to access the subscription
  */
-export class UnauthorizedSubscriptionAccessError extends BaseUnauthorizedError {
+export class UnauthorizedSubscriptionAccessError extends AppError {
+  readonly statusCode = 401;
   readonly code = "UNAUTHORIZED_SUBSCRIPTION_ACCESS";
 }
 
@@ -49,7 +44,8 @@ export class UnauthorizedSubscriptionAccessError extends BaseUnauthorizedError {
  * Invalid subscription data error
  * Used when subscription data is invalid
  */
-export class InvalidSubscriptionDataError extends BaseBadRequestError {
+export class InvalidSubscriptionDataError extends AppError {
+  readonly statusCode = 400;
   readonly code = "INVALID_SUBSCRIPTION_DATA";
 }
 

@@ -312,10 +312,7 @@ export default function AllWalletsPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto">
-      <h1 className="text-xl font-semibold text-black mb-2">所有錢包</h1>
-      <div className="grid grid-cols-1 gap-4 pb-4">
-    <div className="flex h-full min-h-0 flex-col gap-4 relative z-0">
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto relative z-0">
       <h1 className="text-xl font-semibold text-black mb-2 flex-shrink-0">所有錢包</h1>
       <div className="grid grid-cols-1 gap-4 pb-4">
         {wallets.map((wallet) => {
