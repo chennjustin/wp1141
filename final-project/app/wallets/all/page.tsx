@@ -144,30 +144,39 @@ export default function AllWalletsPage() {
 
   const currentUserId = profile?.id;
 
-  // Fetch pinned wallets on mount and when pathname changes (user returns to this page)
-  useEffect(() => {
-    async function fetchPinnedWallets() {
-      try {
-        const response = await fetch("/api/users/default-wallet");
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.pinnedWalletIds) {
-            setPinnedWalletIds(new Set(data.pinnedWalletIds));
-          }
+  // Fetch pinned wallets on mount and when page becomes visible
+  const fetchPinnedWallets = async () => {
+    try {
+      const response = await fetch("/api/users/default-wallet");
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.pinnedWalletIds) {
+          setPinnedWalletIds(new Set(data.pinnedWalletIds));
         }
-      } catch (error) {
-        console.error("Error fetching pinned wallets:", error);
       }
+    } catch (error) {
+      console.error("Error fetching pinned wallets:", error);
     }
-    fetchPinnedWallets();
-  }, [pathname]);
+  };
 
-  // Refetch wallets when pathname changes (user returns to this page after creating/deleting wallets)
   useEffect(() => {
-    if (pathname === "/wallets/all") {
-      refetch();
-    }
-  }, [pathname, refetch]);
+    fetchPinnedWallets();
+  }, []);
+
+  // Refetch wallets and pinned wallets when page becomes visible (e.g., user returns from another page)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refetch();
+        fetchPinnedWallets();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [refetch]);
 
   // Handle pin toggle
   const handlePinToggle = async (walletId: string, isPinned: boolean) => {
@@ -187,7 +196,18 @@ export default function AllWalletsPage() {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
-          throw new Error(errorData.error || "Failed to unpin wallet");
+          const errorMessage = errorData.error || "Failed to unpin wallet";
+          
+          // Map backend error messages to user-friendly messages
+          if (errorMessage === "Cannot unpin My Wallet") {
+            throw new Error("無法取消釘選「我的錢包」");
+          } else if (errorMessage === "Wallet is not pinned") {
+            throw new Error("此錢包尚未釘選");
+          } else if (errorMessage === "Wallet not found or access denied") {
+            throw new Error("錢包不存在或無權限存取");
+          }
+          
+          throw new Error(errorMessage);
         }
 
         const data = await response.json();
@@ -195,6 +215,26 @@ export default function AllWalletsPage() {
           setPinnedWalletIds(new Set(data.pinnedWalletIds));
         }
       } else {
+        // Pin wallet - check limit before attempting (excluding My Wallet)
+        const wallet = wallets.find((w) => w.id === walletId);
+        if (!wallet) {
+          throw new Error("錢包不存在");
+        }
+        
+        const myWallet = isMyWallet(wallet);
+        
+        if (!myWallet) {
+          // Count pinned wallets (excluding My Wallet)
+          const pinnedCount = Array.from(pinnedWalletIds).filter((id) => {
+            const w = wallets.find((w) => w.id === id);
+            return w && !isMyWallet(w);
+          }).length;
+          
+          if (pinnedCount >= 5) {
+            throw new Error("最多只能釘選 5 個錢包（「我的錢包」不計入限制）");
+          }
+        }
+
         // Pin wallet
         const response = await fetch("/api/users/default-wallet", {
           method: "PUT",
@@ -206,7 +246,16 @@ export default function AllWalletsPage() {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
-          throw new Error(errorData.error || "Failed to pin wallet");
+          const errorMessage = errorData.error || "Failed to pin wallet";
+          
+          // Map backend error messages to user-friendly messages
+          if (errorMessage === "Maximum 5 pinned wallets allowed") {
+            throw new Error("最多只能釘選 5 個錢包（「我的錢包」不計入限制）");
+          } else if (errorMessage === "Wallet not found or access denied") {
+            throw new Error("錢包不存在或無權限存取");
+          }
+          
+          throw new Error(errorMessage);
         }
 
         const data = await response.json();
@@ -231,6 +280,7 @@ export default function AllWalletsPage() {
     }
   };
 
+  // Handle card click - navigate to wallet detail page
   // Handle card click - navigate to wallet detail page
   const handleCardClick = (walletId: string) => {
     router.push(`/wallets/${walletId}`);
@@ -262,9 +312,9 @@ export default function AllWalletsPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto">
+    <div className="flex flex-col gap-4 relative z-0">
       <h1 className="text-xl font-semibold text-black mb-2">所有錢包</h1>
-      <div className="grid grid-cols-1 gap-4 pb-4">
+      <div className="grid grid-cols-1 gap-4">
         {wallets.map((wallet) => {
           const isPinned = pinnedWalletIds.has(wallet.id);
           const myWallet = isMyWallet(wallet);

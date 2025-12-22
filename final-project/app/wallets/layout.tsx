@@ -36,7 +36,7 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Use hooks for wallet state management
-  const pinnedWalletIds = usePinnedWallets(isAuthenticated);
+  const { pinnedWalletIds, pinnedWalletIdsArray } = usePinnedWallets(isAuthenticated);
   const { currentWalletId, setCurrentWalletId } = useWalletFromPath();
   const currentWallet = useCurrentWallet({ wallets, currentWalletId });
   const {
@@ -107,6 +107,7 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
               dropdownPosition={dropdownPosition}
               wallets={wallets}
               pinnedWalletIds={pinnedWalletIds}
+              pinnedWalletIdsArray={pinnedWalletIdsArray}
               onClose={() => setIsWalletSelectorOpen(false)}
               onWalletChange={handleWalletChange}
             />
@@ -128,7 +129,9 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
         />
 
         {/* Main content area */}
-        <main className="flex min-h-0 flex-1 flex-col overflow-hidden pb-16 px-4">
+        <main className={`flex min-h-0 flex-1 flex-col pb-16 px-4 ${
+          pathname === "/wallets/all" ? "overflow-y-auto" : "overflow-hidden"
+        }`}>
           {/* Don't show loading for /wallets page - it handles its own loading */}
           {walletsLoading && pathname !== "/wallets/new" && pathname !== "/wallets" && (
             <Loading message="Loading wallets..." />

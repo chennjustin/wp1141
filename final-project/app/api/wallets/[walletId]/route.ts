@@ -191,7 +191,7 @@ export async function PATCH(req: Request, context: RouteContext) {
  * /api/wallets/{walletId}:
  *   delete:
  *     summary: Delete wallet
- *     description: Soft delete a wallet and its membership records. Only wallet owner can delete. Wallets with active transactions cannot be deleted.
+ *     description: Soft delete a wallet and its membership records. Only wallet owner can delete. Default wallet cannot be deleted. Wallets with active transactions cannot be deleted.
  *     tags:
  *       - Wallets
  *     security:
@@ -255,7 +255,8 @@ export async function DELETE(_req: Request, context: RouteContext) {
           ? 403
           : result.error === "Wallet not found or already deleted"
           ? 404
-          : result.error === "Cannot delete wallet with existing transactions"
+          : result.error === "Cannot delete wallet with existing transactions" ||
+            result.error === "Cannot delete default wallet"
           ? 400
           : 500;
       return NextResponse.json({ error: result.error }, { status });
