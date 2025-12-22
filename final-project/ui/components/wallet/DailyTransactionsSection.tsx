@@ -1,44 +1,173 @@
 /**
  * Daily transactions section component
  * 
- * Displays a list of transactions for the current day.
+ * Displays a list of transactions for a specific date with day navigation.
+ * Users can navigate to previous/next day to view transactions.
  */
 
 "use client";
 
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { History } from "lucide-react";
+import { useDailyTransactions } from "@/hooks/useDailyTransactions";
 import type { DisplayTransaction } from "@/hooks/useWalletHome";
+import type { Transaction } from "@/modules/transaction/domain/transaction.types";
 
 interface DailyTransactionsSectionProps {
-  transactions: DisplayTransaction[];
-  loading: boolean;
-  error: string | null;
   walletId: string;
 }
 
+/**
+ * Convert Transaction to DisplayTransaction format
+ * 
+ * Transforms the Transaction entity from the API into the display format
+ * used by the UI component, including title, amount, and time formatting.
+ */
+function transformTransactionToDisplay(tx: Transaction): DisplayTransaction {
+  // Use transaction name or tag name as title
+  const title = tx.name || tx.tag.name || "未命名交易";
+
+  // Calculate display amount based on transaction type
+  // INCOME transactions are positive, EXPENSE transactions are negative
+  const displayAmount = tx.type === "INCOME" ? tx.amount : -tx.amount;
+
+  // Format time from transaction date (HH:mm format)
+  const transactionDate = new Date(tx.date);
+  const hours = transactionDate.getHours().toString().padStart(2, "0");
+  const minutes = transactionDate.getMinutes().toString().padStart(2, "0");
+  const time = `${hours}:${minutes}`;
+
+  return {
+    id: tx.id,
+    title,
+    amount: displayAmount,
+    time,
+  };
+}
+
 export function DailyTransactionsSection({
-  transactions,
-  loading,
-  error,
   walletId,
 }: DailyTransactionsSectionProps) {
   const router = useRouter();
+  
+  // Get current date for default selection and comparison
+  const today = useMemo(() => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }, []);
 
+  // State for selected date (defaults to today)
+  const [selectedDate, setSelectedDate] = useState<Date>(today);
+
+  // Fetch transactions for selected date
+  const {
+    data: dailyTransactions,
+    loading,
+    error,
+  } = useDailyTransactions({
+    walletId,
+    date: selectedDate,
+    enabled: !!walletId,
+  });
+
+  // Transform transactions for display
+  const displayTransactions = useMemo(() => {
+    return dailyTransactions.map(transformTransactionToDisplay);
+  }, [dailyTransactions]);
+
+  // Check if selected date is today
+  const isToday = useMemo(() => {
+    return selectedDate.getTime() === today.getTime();
+  }, [selectedDate, today]);
+
+  // Format date label (month and day only)
+  const dateLabel = useMemo(() => {
+    const month = selectedDate.getMonth() + 1;
+    const day = selectedDate.getDate();
+    return `${month} 月 ${day} 日`;
+  }, [selectedDate]);
+
+  // Handle previous day navigation
+  const handlePreviousDay = () => {
+    const previousDate = new Date(selectedDate);
+    previousDate.setDate(previousDate.getDate() - 1);
+    setSelectedDate(previousDate);
+  };
+
+  // Handle next day navigation
+  const handleNextDay = () => {
+    if (isToday) {
+      return; // Disabled when at today
+    }
+    
+    const nextDate = new Date(selectedDate);
+    nextDate.setDate(nextDate.getDate() + 1);
+    
+    // Don't allow navigating to future dates
+    // Only allow if nextDate is today or in the past
+    if (nextDate.getTime() <= today.getTime()) {
+      setSelectedDate(nextDate);
+    }
+  };
+
+  // Handle view history button click
   const handleViewHistory = () => {
     router.push(`/wallets/${walletId}/history`);
   };
 
+  // Get empty state message based on selected date
+  const getEmptyMessage = () => {
+    if (isToday) {
+      return "今天還沒有交易記錄";
+    }
+    return "當天還沒有交易記錄";
+  };
+
   return (
     <section className="flex min-h-0 flex-1 flex-col rounded-xl pl-4 pr-2 pt-4 pb-4 text-sm" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}>
+      {/* Header with title, date navigation, and history button */}
       <div className="mb-2 flex items-center justify-between pr-2">
-        <h2 className="text-sm font-medium text-black">當天款項</h2>
+        <span className="text-sm font-normal text-gray-500">明細</span>
+        <div className="flex items-center gap-3">
+          {/* Previous day button */}
+          <button
+            type="button"
+            onClick={handlePreviousDay}
+            className="flex items-center justify-center text-sm font-medium text-black hover:bg-black/5 rounded transition-colors"
+            aria-label="Previous day"
+          >
+            ◀
+          </button>
+
+          {/* Date label */}
+          <h2 className="text-sm font-medium text-black">
+            {dateLabel}
+          </h2>
+
+          {/* Next day button */}
+          <button
+            type="button"
+            onClick={handleNextDay}
+            disabled={isToday}
+            className={`flex items-center justify-center text-sm font-medium rounded transition-colors ${
+              isToday
+                ? "text-black/30 cursor-not-allowed"
+                : "text-black hover:bg-black/5"
+            }`}
+            aria-label="Next day"
+          >
+            ▶
+          </button>
+        </div>
         <button
           type="button"
           onClick={handleViewHistory}
-          className="text-xs text-black/70 hover:text-black transition-colors"
+          className="flex items-center justify-center transition-opacity hover:opacity-70"
           aria-label="View transaction history"
         >
-          查看歷史
+          <History className="text-gray-500 transition-colors" size={20} strokeWidth={2} />
         </button>
       </div>
       <div className="mt-1 min-h-0 flex-1 overflow-y-auto pr-0">
@@ -52,13 +181,13 @@ export function DailyTransactionsSection({
               載入失敗
             </span>
           </div>
-        ) : transactions.length === 0 ? (
+        ) : displayTransactions.length === 0 ? (
           <div className="flex items-center justify-center py-8">
-            <span className="text-sm text-black/50">今天還沒有交易記錄</span>
+            <span className="text-sm text-black/50">{getEmptyMessage()}</span>
           </div>
         ) : (
           <ul className="pr-2">
-            {transactions.map((tx, index) => (
+            {displayTransactions.map((tx, index) => (
               <li key={tx.id}>
                 <div className="flex items-center justify-between py-3">
                   <div className="flex flex-col gap-0.5">
@@ -74,7 +203,7 @@ export function DailyTransactionsSection({
                     {Math.abs(tx.amount).toLocaleString()}
                   </span>
                 </div>
-                {index < transactions.length - 1 && (
+                {index < displayTransactions.length - 1 && (
                   <div className="border-b border-[#E8E8E8]" />
                 )}
               </li>

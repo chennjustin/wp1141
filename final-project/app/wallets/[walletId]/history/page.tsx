@@ -55,7 +55,7 @@ export default function WalletHistoryPage() {
 
   // Format month label
   const monthLabel = useMemo(() => {
-    return `${selectedYear} 年 ${selectedMonth} 月收支明細`;
+    return `${selectedYear} 年 ${selectedMonth} 月`;
   }, [selectedYear, selectedMonth]);
 
   // Handle previous month navigation

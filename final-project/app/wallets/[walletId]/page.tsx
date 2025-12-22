@@ -84,9 +84,6 @@ export default function WalletDetailPage() {
       />
 
       <DailyTransactionsSection
-        transactions={displayTransactions}
-        loading={transactionsLoading}
-        error={transactionsError}
         walletId={activeWallet.id}
       />
 
