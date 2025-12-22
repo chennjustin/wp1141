@@ -157,7 +157,7 @@ export async function addTransactionFromSubscriptions() {
         const transactionDate = new Date(sub.nextBilling);
         transactionDate.setHours(0, 0, 0, 0);
 
-        await transactionRepository.create(userId, {
+        const transaction = await transactionRepository.create(userId, {
           walletId: sub.walletId,
           date: transactionDate,
           amount: sub.amount,
@@ -165,6 +165,15 @@ export async function addTransactionFromSubscriptions() {
           name: sub.name || sub.tag.name,
           type: sub.type,
           tagId: sub.tagId,
+        });
+
+        // Create SubscriptionHistory to link transaction with subscription
+        await prisma.subscriptionHistory.create({
+          data: {
+            subscriptionId: sub.id,
+            transactionId: transaction.id,
+            status: "SUCCESS",
+          },
         });
 
         // Calculate next billing date
