@@ -82,9 +82,11 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
     pathname.includes("/transactions/new");
   
   // 是否為「新增/編輯訂閱」頁面：/wallets/subscriptions/new 或 /wallets/subscriptions/[id]/edit
+  // 或訂閱歷史頁面：/wallets/subscriptions/history
   const isSubscriptionPage =
     pathname?.startsWith("/wallets/subscriptions/new") ||
-    pathname?.includes("/subscriptions/") && pathname.includes("/edit");
+    (pathname?.includes("/subscriptions/") && pathname.includes("/edit")) ||
+    pathname?.startsWith("/wallets/subscriptions/history");
 
   return (
     <div className="h-screen overflow-hidden flex justify-center px-4 py-4" style={{ backgroundColor: 'var(--wallet-bg)' }}>

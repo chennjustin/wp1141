@@ -21,6 +21,7 @@ interface SubscriptionWithTag {
   endDate: Date | string | null;
   type: "INCOME" | "EXPENSE";
   tagId: string;
+  name: string | null;
   isDeleted: boolean;
   tag: {
     id: string;
@@ -140,7 +141,7 @@ export default function SubscriptionHistoryPage() {
   }
 
   return (
-    <div className="flex h-full flex-col" style={{ backgroundColor: 'var(--wallet-bg)' }}>
+    <div className="flex h-full flex-col -mx-4" style={{ backgroundColor: 'var(--wallet-bg)' }}>
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3">
         <button
@@ -214,7 +215,7 @@ export default function SubscriptionHistoryPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-sm font-medium text-black">
-                        {subscription.tag.name}
+                        {subscription.name || subscription.tag.name}
                       </span>
                       {isDeleted && (
                         <span className="text-xs text-red-500 bg-red-50 px-2 py-0.5 rounded">
@@ -222,10 +223,14 @@ export default function SubscriptionHistoryPage() {
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-black/50 space-y-0.5">
-                      <div>開始: {formatDate(subscription.startDate)}</div>
-                      <div>
-                        結束: {subscription.endDate ? formatDate(subscription.endDate) : "永久"}
+                    <div className="text-xs text-black/50">
+                      <div className="flex items-start gap-2">
+                        <span className="w-8 text-left">開始:</span>
+                        <span>{formatDate(subscription.startDate)}</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="w-8 text-left">結束:</span>
+                        <span>{subscription.endDate ? formatDate(subscription.endDate) : "永久"}</span>
                       </div>
                     </div>
                   </div>

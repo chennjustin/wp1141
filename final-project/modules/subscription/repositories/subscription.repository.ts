@@ -92,7 +92,7 @@ export const subscriptionRepository = {
         },
       },
       orderBy: {
-        nextBilling: "asc",
+        createdAt: "desc",
       },
     });
   },

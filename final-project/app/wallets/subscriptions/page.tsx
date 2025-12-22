@@ -22,6 +22,7 @@ interface SubscriptionWithTag {
   endDate: Date | string | null;
   type: "INCOME" | "EXPENSE";
   tagId: string;
+  name: string | null;
   tag: {
     id: string;
     name: string;
@@ -202,11 +203,11 @@ export default function SubscriptionsPage() {
                   </div>
 
                   {/* Subscription Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-black mb-1">
-                      {subscription.tag.name}
+                  <div className="flex-1 min-w-0 text-left">
+                    <div className="text-sm font-medium text-black mb-1 text-left">
+                      {subscription.name || subscription.tag.name}
                     </div>
-                    <div className="text-xs text-black/50">
+                    <div className="text-xs text-black/50 text-left">
                       下次扣款: {formatDate(subscription.nextBilling)}
                     </div>
                   </div>
