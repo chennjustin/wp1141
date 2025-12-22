@@ -32,8 +32,8 @@ export const dynamic = 'force-dynamic';
  *           type: integer
  *           minimum: 2000
  *           maximum: 2100
- *           example: 2024
- *         description: Year (e.g., 2024)
+ *           example: 2025
+ *         description: Year (e.g., 2025)
  *       - in: query
  *         name: month
  *         required: true

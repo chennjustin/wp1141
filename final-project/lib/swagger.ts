@@ -119,13 +119,13 @@ const swaggerDefinition = {
             type: "string",
             format: "date-time",
             description: "Creation timestamp",
-            example: "2024-11-01T00:00:00Z",
+            example: "2025-12-01T00:00:00Z",
           },
           updatedAt: {
             type: "string",
             format: "date-time",
             description: "Last update timestamp",
-            example: "2024-11-01T00:00:00Z",
+            example: "2025-12-01T00:00:00Z",
           },
           isDeleted: {
             type: "boolean",
@@ -273,7 +273,7 @@ const swaggerDefinition = {
             type: "string",
             format: "date-time",
             description: "Transaction date",
-            example: "2024-11-15T10:00:00Z",
+            example: "2025-12-15T10:00:00Z",
           },
           amount: {
             type: "number",
@@ -344,13 +344,13 @@ const swaggerDefinition = {
             type: "string",
             format: "date-time",
             description: "Creation timestamp",
-            example: "2024-11-15T10:00:00Z",
+            example: "2025-12-15T10:00:00Z",
           },
           updatedAt: {
             type: "string",
             format: "date-time",
             description: "Last update timestamp",
-            example: "2024-11-15T10:00:00Z",
+            example: "2025-12-15T10:00:00Z",
           },
           payers: {
             type: "array",
@@ -483,7 +483,7 @@ const swaggerDefinition = {
             type: "string",
             format: "date-time",
             description: "Transaction date (ISO 8601)",
-            example: "2024-11-15T10:00:00Z",
+            example: "2025-12-15T10:00:00Z",
           },
           amount: {
             type: "number",
@@ -582,7 +582,7 @@ const swaggerDefinition = {
             type: "string",
             format: "date-time",
             description: "Transaction date (ISO 8601)",
-            example: "2024-11-20T14:30:00Z",
+            example: "2025-12-20T14:30:00Z",
           },
           amount: {
             type: "number",
@@ -706,7 +706,7 @@ const swaggerDefinition = {
             type: "string",
             format: "date-time",
             description: "Creation timestamp",
-            example: "2024-11-01T00:00:00Z",
+            example: "2025-12-01T00:00:00Z",
           },
           isDeleted: {
             type: "boolean",
@@ -776,7 +776,7 @@ const swaggerDefinition = {
             type: "string",
             format: "date-time",
             description: "Transaction date",
-            example: "2024-11-15T10:00:00Z",
+            example: "2025-12-15T10:00:00Z",
           },
           amount: {
             type: "number",
@@ -832,7 +832,7 @@ const swaggerDefinition = {
           year: {
             type: "integer",
             description: "Year",
-            example: 2024,
+            example: 2025,
           },
           month: {
             type: "integer",
@@ -878,7 +878,7 @@ const swaggerDefinition = {
             example: [
               {
                 id: "3",
-                date: "2024-11-25T09:00:00Z",
+                date: "2025-12-25T09:00:00Z",
                 amount: 50000,
                 currency: "TWD",
                 name: "Salary",
@@ -900,7 +900,7 @@ const swaggerDefinition = {
             example: [
               {
                 id: "1",
-                date: "2024-11-15T10:00:00Z",
+                date: "2025-12-15T10:00:00Z",
                 amount: 5000,
                 currency: "TWD",
                 name: "Lunch with team",

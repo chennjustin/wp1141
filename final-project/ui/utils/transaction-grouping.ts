@@ -51,7 +51,7 @@ export function formatDateLabel(date: Date): string {
  * Get date key in YYYY-MM-DD format
  * 
  * @param date - Date object
- * @returns Date key string (e.g., "2025-11-12")
+ * @returns Date key string (e.g., "2025-12-12")
  */
 function getDateKey(date: Date): string {
   const year = date.getFullYear();
@@ -77,7 +77,7 @@ function getDateKey(date: Date): string {
  * // Returns: [
  * //   {
  * //     date: Date,
- * //     dateKey: "2025-11-12",
+ * //     dateKey: "2025-12-12",
  * //     dateLabel: "2025/11/12 (三)",
  * //     totalIncome: 1000,
  * //     totalExpense: 155,
