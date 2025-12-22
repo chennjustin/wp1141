@@ -9,7 +9,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { History } from "lucide-react";
+import { History, Calendar } from "lucide-react";
 import { useDailyTransactions } from "@/hooks/useDailyTransactions";
 import type { DisplayTransaction } from "@/hooks/useWalletHome";
 import type { Transaction } from "@/modules/transaction/domain/transaction.types";
@@ -117,6 +117,11 @@ export function DailyTransactionsSection({
     router.push(`/wallets/${walletId}/history`);
   };
 
+  // Handle back to today button click
+  const handleBackToToday = () => {
+    setSelectedDate(today);
+  };
+
   // Get empty state message based on selected date
   const getEmptyMessage = () => {
     if (isToday) {
@@ -126,11 +131,10 @@ export function DailyTransactionsSection({
   };
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col rounded-xl pl-4 pr-2 pt-4 pb-4 text-sm" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}>
-      {/* Header with title, date navigation, and history button */}
+    <section className="relative flex min-h-0 flex-1 flex-col rounded-xl pl-4 pr-2 pt-4 pb-4 text-sm" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}>
       <div className="mb-2 flex items-center justify-between pr-2">
-        <span className="text-sm font-normal text-gray-500">明細</span>
-        <div className="flex items-center gap-3">
+        <span className="text-sm font-normal text-gray-600">明細</span>
+        <div className="relative flex items-center gap-3">
           {/* Previous day button */}
           <button
             type="button"
@@ -142,7 +146,9 @@ export function DailyTransactionsSection({
           </button>
 
           {/* Date label */}
-          <h2 className="text-sm font-medium text-black">
+          <h2 className={`text-sm font-medium transition-colors ${
+            isToday ? "text-black" : "text-blue-600"
+          }`}>
             {dateLabel}
           </h2>
 
@@ -160,6 +166,18 @@ export function DailyTransactionsSection({
           >
             ▶
           </button>
+          
+          {/* Back to today button - only show when not on today, absolute positioned */}
+          {!isToday && (
+            <button
+              type="button"
+              className="absolute left-full ml-5 flex items-center justify-center transition-opacity hover:opacity-70"
+              onClick={handleBackToToday}
+              aria-label="Return to today"
+            >
+              <Calendar className="text-gray-500 transition-colors" size={16} strokeWidth={2} />
+            </button>
+          )}
         </div>
         <button
           type="button"

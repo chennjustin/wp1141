@@ -124,7 +124,7 @@ export function CarrierSection({
         </div>
       )}
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-sm font-normal text-gray-500">載具</span>
+        <span className="text-sm font-normal text-gray-600">載具</span>
         <button
           type="button"
           className="flex items-center justify-center transition-opacity hover:opacity-70"
