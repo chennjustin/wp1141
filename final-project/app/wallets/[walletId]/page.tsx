@@ -65,17 +65,6 @@ export default function WalletDetailPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
-      {/* Action buttons */}
-      <div className="flex justify-start items-center px-4">
-        <button
-          type="button"
-          onClick={() => router.push(`/wallets/${walletId}/history`)}
-          className="text-xs text-black/60 hover:text-black/80 transition-colors"
-        >
-          收支明細
-        </button>
-      </div>
-
       <MonthlySummarySection
         year={year}
         month={month}
