@@ -73,7 +73,8 @@ function formatDate(date: Date | string): string {
  * Format amount for display
  */
 function formatAmount(amount: number, currency: string): string {
-  return `${currency} ${amount.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+  const rounded = Math.round(amount * 100) / 100;
+  return `${currency} ${rounded.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
 
 /**
@@ -233,16 +234,16 @@ export default function SubscriptionsPage() {
                           return formatAmount(Math.round(totalAmount * 100) / 100, subscription.currency);
                         })()
                       ) : (
-                        formatAmount(subscription.amount, subscription.currency)
+                        formatAmount(Math.round(subscription.amount * 100) / 100, subscription.currency)
                       )}
                     </div>
                     <div className="text-xs text-black/50 text-left space-y-0.5">
                       <div>下次付款: {formatDate(subscription.nextBilling)}</div>
                       {subscription.endDate && (
-                        <div>每月要繳: {formatAmount(subscription.amount, subscription.currency)}</div>
+                        <div>每月要繳: {formatAmount(Math.round(subscription.amount * 100) / 100, subscription.currency)}</div>
                       )}
                       {!subscription.endDate && (
-                        <div>下次要繳: {formatAmount(subscription.amount, subscription.currency)}</div>
+                        <div>下次要繳: {formatAmount(Math.round(subscription.amount * 100) / 100, subscription.currency)}</div>
                       )}
                     </div>
                   </div>

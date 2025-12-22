@@ -134,14 +134,17 @@ export default function EditSubscriptionPage() {
             const totalMonths = diffDays / (30 * sub.intervalMonths);
             if (totalMonths > 0) {
               const calculatedTotal = sub.amount * totalMonths;
-              const totalAmountStr = calculatedTotal.toFixed(2);
+              const roundedTotal = Math.round(calculatedTotal * 100) / 100;
+              const totalAmountStr = roundedTotal.toFixed(2);
               setTotalAmount(totalAmountStr);
               setOriginalTotalAmount(totalAmountStr); // Save as original total amount (calculated from monthly)
             }
-            setMonthlyAmount(sub.amount.toString());
+            const roundedMonthly = Math.round(sub.amount * 100) / 100;
+            setMonthlyAmount(roundedMonthly.toFixed(2));
           } else {
             setAmountMode("monthly");
-            setMonthlyAmount(sub.amount.toString());
+            const roundedAmount = Math.round(sub.amount * 100) / 100;
+            setMonthlyAmount(roundedAmount.toFixed(2));
           }
            
           // Determine interval type
@@ -364,7 +367,8 @@ export default function EditSubscriptionPage() {
     if (!amountString) return "$0";
     const num = parseFloat(amountString);
     if (isNaN(num)) return "$0";
-    return `$${num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+    const rounded = Math.round(num * 100) / 100;
+    return `$${rounded.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
   };
 
   // Hide calculator when other fields are focused

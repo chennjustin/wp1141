@@ -295,7 +295,8 @@ export default function NewSubscriptionPage() {
     if (!amountString) return "$0";
     const num = parseFloat(amountString);
     if (isNaN(num)) return "$0";
-    return `$${num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+    const rounded = Math.round(num * 100) / 100;
+    return `$${rounded.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
   };
 
   // Hide calculator when other fields are focused

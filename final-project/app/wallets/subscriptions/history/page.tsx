@@ -73,7 +73,8 @@ function formatDate(date: Date | string): string {
  * Format amount for display
  */
 function formatAmount(amount: number, currency: string): string {
-  return `${currency} ${amount.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+  const rounded = Math.round(amount * 100) / 100;
+  return `${currency} ${rounded.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
 
 /**
@@ -261,10 +262,10 @@ export default function SubscriptionHistoryPage() {
                     ) : (
                       <>
                         <div className="font-semibold text-black">
-                          {formatAmount(subscription.amount, subscription.currency)}
+                          {formatAmount(Math.round(subscription.amount * 100) / 100, subscription.currency)}
                         </div>
                         <div className="text-xs text-black/50 mt-0.5">
-                          每月 {formatAmount(subscription.amount, subscription.currency)}
+                          每月 {formatAmount(Math.round(subscription.amount * 100) / 100, subscription.currency)}
                         </div>
                       </>
                     )}
