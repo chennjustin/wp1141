@@ -104,8 +104,11 @@ export default function NewSubscriptionPage() {
   const [amountMode, setAmountMode] = useState<AmountMode>("monthly");
   const [totalAmount, setTotalAmount] = useState<string>("");
   const [monthlyAmount, setMonthlyAmount] = useState<string>("");
+  const [originalTotalAmount, setOriginalTotalAmount] = useState<string>(""); // Store original total amount input
   const [intervalType, setIntervalType] = useState<IntervalType>("month");
+  const [selectedUnit, setSelectedUnit] = useState<"day" | "week" | "month" | "year">("month");
   const [customIntervalMonths, setCustomIntervalMonths] = useState<string>("1");
+  const [customIntervalUnit, setCustomIntervalUnit] = useState<"day" | "week" | "month" | "year">("month");
   const [calculatorExpression, setCalculatorExpression] = useState<string>("");
   const [selectedTag, setSelectedTag] = useState<TagWithIcon | null>(null);
   const [loading, setLoading] = useState(false);
@@ -184,7 +187,19 @@ export default function NewSubscriptionPage() {
     } else if (intervalType === "year") {
       intervalMonths = 12;
     } else if (intervalType === "custom") {
-      intervalMonths = parseFloat(customIntervalMonths) || 1;
+      const value = parseFloat(customIntervalMonths) || 1;
+      // Convert custom value to months based on selected unit
+      if (customIntervalUnit === "day") {
+        intervalMonths = value * 0.033;
+      } else if (customIntervalUnit === "week") {
+        intervalMonths = value * 0.25;
+      } else if (customIntervalUnit === "month") {
+        intervalMonths = value;
+      } else if (customIntervalUnit === "year") {
+        intervalMonths = value * 12;
+      } else {
+        intervalMonths = value;
+      }
     }
 
     // Calculate total months
@@ -195,8 +210,57 @@ export default function NewSubscriptionPage() {
     if (totalMonths <= 0) return null;
 
     const monthly = total / totalMonths;
-    return monthly;
-  }, [amountMode, totalAmount, startDate, endDate, intervalType, customIntervalMonths]);
+    return Math.round(monthly * 100) / 100; // Round to 2 decimal places
+  }, [amountMode, totalAmount, startDate, endDate, intervalType, customIntervalMonths, customIntervalUnit]);
+
+  // Calculate total amount from monthly amount
+  const calculatedTotalAmount = useMemo(() => {
+    if (amountMode !== "monthly" || !monthlyAmount || !endDate || !startDate) {
+      return null;
+    }
+
+    const monthly = parseFloat(monthlyAmount);
+    if (isNaN(monthly) || monthly <= 0) return null;
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (end <= start) return null;
+
+    // Calculate interval months
+    let intervalMonths = 1;
+    if (intervalType === "day") {
+      intervalMonths = 0.033;
+    } else if (intervalType === "week") {
+      intervalMonths = 0.25;
+    } else if (intervalType === "month") {
+      intervalMonths = 1;
+    } else if (intervalType === "year") {
+      intervalMonths = 12;
+    } else if (intervalType === "custom") {
+      const value = parseFloat(customIntervalMonths) || 1;
+      // Convert custom value to months based on selected unit
+      if (customIntervalUnit === "day") {
+        intervalMonths = value * 0.033;
+      } else if (customIntervalUnit === "week") {
+        intervalMonths = value * 0.25;
+      } else if (customIntervalUnit === "month") {
+        intervalMonths = value;
+      } else if (customIntervalUnit === "year") {
+        intervalMonths = value * 12;
+      } else {
+        intervalMonths = value;
+      }
+    }
+
+    const diffTime = end.getTime() - start.getTime();
+    const diffDays = diffTime / (1000 * 60 * 60 * 24);
+    const totalMonths = diffDays / (30 * intervalMonths);
+
+    if (totalMonths <= 0) return null;
+
+    const total = monthly * totalMonths;
+    return Math.round(total * 100) / 100; // Round to 2 decimal places
+  }, [amountMode, monthlyAmount, startDate, endDate, intervalType, customIntervalMonths, customIntervalUnit]);
 
   // Get interval months value
   const intervalMonths = useMemo(() => {
@@ -204,9 +268,17 @@ export default function NewSubscriptionPage() {
     if (intervalType === "week") return 0.25;
     if (intervalType === "month") return 1;
     if (intervalType === "year") return 12;
-    if (intervalType === "custom") return parseFloat(customIntervalMonths) || 1;
+    if (intervalType === "custom") {
+      const value = parseFloat(customIntervalMonths) || 1;
+      // Convert custom value to months based on selected unit
+      if (customIntervalUnit === "day") return value * 0.033;
+      if (customIntervalUnit === "week") return value * 0.25;
+      if (customIntervalUnit === "month") return value;
+      if (customIntervalUnit === "year") return value * 12;
+      return value;
+    }
     return 1;
-  }, [intervalType, customIntervalMonths]);
+  }, [intervalType, customIntervalMonths, customIntervalUnit]);
 
   // Format date for display
   const formatDate = (dateString: string) => {
@@ -284,8 +356,20 @@ export default function NewSubscriptionPage() {
 
     try {
       const finalAmount = amountMode === "total" 
-        ? (calculatedMonthlyAmount || 0)
-        : parseFloat(monthlyAmount);
+        ? Math.round((calculatedMonthlyAmount || 0) * 100) / 100
+        : Math.round(parseFloat(monthlyAmount) * 100) / 100;
+
+      console.log("[NewSubscription] Creating subscription:", {
+        walletId,
+        tagId,
+        type: transactionType,
+        amount: finalAmount,
+        currency,
+        startDate,
+        endDate,
+        intervalMonths,
+        name,
+      });
 
       const result = await createSubscriptionAction({
         walletId,
@@ -298,6 +382,8 @@ export default function NewSubscriptionPage() {
         intervalMonths: intervalMonths,
         name: name || null,
       });
+
+      console.log("[NewSubscription] Create result:", result);
 
       if (result.success) {
         router.push(`/wallets/subscriptions`);
@@ -409,11 +495,10 @@ export default function NewSubscriptionPage() {
                     </button>
                   ) : (
                     <div>
-                      <div className="text-black text-xs mb-1">總金額</div>
                       <button
                         type="button"
                         onClick={() => handleAmountClick("total")}
-                        className="text-black text-2xl font-semibold hover:opacity-80 transition-opacity text-left"
+                        className="text-black text-4xl font-semibold hover:opacity-80 transition-opacity text-left"
                       >
                         {calculatorExpression || formatAmount(totalAmount)}
                       </button>
@@ -427,37 +512,65 @@ export default function NewSubscriptionPage() {
                 </div>
               </div>
               
-              {/* Amount Mode Selection in Header */}
-              <div className="mt-4 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAmountMode("total");
-                    setCalculatorExpression("");
-                  }}
-                  className={`flex-1 py-2 px-3 text-sm font-medium transition-colors rounded ${
-                    amountMode === "total"
-                      ? "bg-black/20 text-black"
-                      : "bg-white/50 text-black/70 hover:bg-white/70"
-                  }`}
-                >
-                  填寫總金額
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAmountMode("monthly");
-                    setCalculatorExpression("");
-                  }}
-                  className={`flex-1 py-2 px-3 text-sm font-medium transition-colors rounded ${
-                    amountMode === "monthly"
-                      ? "bg-black/20 text-black"
-                      : "bg-white/50 text-black/70 hover:bg-white/70"
-                  }`}
-                >
-                  填寫每月金額
-                </button>
-              </div>
+               {/* Amount Mode Selection in Header */}
+               <div className="mt-4 flex gap-2">
+                 <button
+                   type="button"
+                   onClick={() => {
+                     // When switching to total mode:
+                     // If we have an original total amount (user previously input total), restore it
+                     // Otherwise, calculate from monthly amount
+                     if (amountMode === "monthly") {
+                       if (originalTotalAmount) {
+                         // Restore original total amount that user input
+                         setTotalAmount(originalTotalAmount);
+                       } else if (monthlyAmount && endDate && startDate) {
+                         // Calculate total from monthly if no original total exists
+                         const calculatedTotal = calculatedTotalAmount;
+                         if (calculatedTotal !== null) {
+                           setTotalAmount(calculatedTotal.toFixed(2));
+                         }
+                       }
+                     }
+                     setAmountMode("total");
+                     setCalculatorExpression("");
+                   }}
+                   className={`flex-1 py-2 px-3 text-sm font-medium transition-colors rounded ${
+                     amountMode === "total"
+                       ? "bg-black/20 text-black"
+                       : "bg-white/50 text-black/70 hover:bg-white/70"
+                   }`}
+                 >
+                   填寫總金額
+                 </button>
+                 <button
+                   type="button"
+                   onClick={() => {
+                     // When switching to monthly mode, save current total amount as original
+                     // and calculate monthly from total
+                     if (amountMode === "total" && totalAmount) {
+                       // Save the current total amount as original (user's input)
+                       setOriginalTotalAmount(totalAmount);
+                       // Calculate monthly from total
+                       if (endDate && startDate) {
+                         const calculatedMonthly = calculatedMonthlyAmount;
+                         if (calculatedMonthly !== null) {
+                           setMonthlyAmount(calculatedMonthly.toFixed(2));
+                         }
+                       }
+                     }
+                     setAmountMode("monthly");
+                     setCalculatorExpression("");
+                   }}
+                   className={`flex-1 py-2 px-3 text-sm font-medium transition-colors rounded ${
+                     amountMode === "monthly"
+                       ? "bg-black/20 text-black"
+                       : "bg-white/50 text-black/70 hover:bg-white/70"
+                   }`}
+                 >
+                   填寫每月金額
+                 </button>
+               </div>
             </div>
           </div>
 
@@ -495,41 +608,41 @@ export default function NewSubscriptionPage() {
             <div className="grid grid-cols-2 gap-3">
               {/* Start Date */}
               <div className="relative" data-dropdown="startDate">
-              <div className="flex items-center gap-2 mb-2">
-                <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <label className="text-xs text-gray-600">開始扣款日期</label>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowStartDatePicker(!showStartDatePicker);
-                  setShowEndDatePicker(false);
-                  setShowCurrencyDropdown(false);
-                  setShowCalculator(false);
-                }}
-                className="flex h-10 w-full items-center justify-between px-3 bg-white border-b border-gray-200 text-left hover:border-gray-400 transition-colors"
-              >
-                <span className="text-sm text-black">{formatDate(startDate)}</span>
-                <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              {showStartDatePicker && (
-                <div className="absolute z-[60] mt-1 w-full bg-white border border-gray-200 p-3 shadow-lg">
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => {
-                      setStartDate(e.target.value);
-                      setShowStartDatePicker(false);
-                    }}
-                    className="w-full h-9 px-2 border border-gray-200 text-sm text-black focus:outline-none focus:border-gray-400"
-                  />
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <label className="text-xs text-gray-600">開始扣款日期</label>
                 </div>
-              )}
-            </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowStartDatePicker(!showStartDatePicker);
+                    setShowEndDatePicker(false);
+                    setShowCurrencyDropdown(false);
+                    setShowCalculator(false);
+                  }}
+                  className="flex h-10 w-full items-center justify-between px-3 bg-white border-b border-gray-200 text-left hover:border-gray-400 transition-colors"
+                >
+                  <span className="text-sm text-black">{formatDate(startDate)}</span>
+                  <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {showStartDatePicker && (
+                  <div className="absolute z-[60] mt-1 w-full bg-white border border-gray-200 p-3 shadow-lg">
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => {
+                        setStartDate(e.target.value);
+                        setShowStartDatePicker(false);
+                      }}
+                      className="w-full h-9 px-2 border border-gray-200 text-sm text-black focus:outline-none focus:border-gray-400"
+                    />
+                  </div>
+                )}
+              </div>
 
               {/* End Date */}
               <div className="relative" data-dropdown="endDate">
@@ -628,56 +741,65 @@ export default function NewSubscriptionPage() {
             </div>
 
 
-            {/* Interval Type */}
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <label className="text-xs text-gray-600">扣款週期</label>
-              </div>
-              <div className="space-y-2">
-                <div className="flex gap-2 flex-wrap">
-                  {(["day", "week", "month", "year"] as IntervalType[]).map((type) => (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() => setIntervalType(type)}
-                      className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                        intervalType === type
-                          ? "bg-gray-900 text-white"
-                          : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
-                      }`}
-                    >
-                      {type === "day" ? "日" : type === "week" ? "週" : type === "month" ? "月" : "年"}
-                    </button>
-                  ))}
-                </div>
-                {intervalType === "custom" && (
-                  <input
-                    type="number"
-                    value={customIntervalMonths}
-                    onChange={(e) => setCustomIntervalMonths(e.target.value)}
-                    onFocus={handleHideCalculator}
-                    placeholder="月數"
-                    min="0.1"
-                    step="0.1"
-                    className="w-full h-10 px-3 bg-white border-b border-gray-200 text-sm text-black placeholder:text-gray-400 focus:outline-none focus:border-gray-400"
-                  />
-                )}
-                <button
-                  type="button"
-                  onClick={() => setIntervalType("custom")}
-                  className={`w-full px-3 py-1.5 text-sm font-medium transition-colors ${
-                    intervalType === "custom"
-                      ? "bg-gray-900 text-white"
-                      : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  自訂
-                </button>
-              </div>
-            </div>
+             {/* Interval Type */}
+             <div>
+               <div className="flex items-center gap-2 mb-2">
+                 <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                 </svg>
+                 <label className="text-xs text-gray-600">扣款週期</label>
+               </div>
+               <div className="space-y-2">
+                 <div className="flex gap-2 flex-wrap">
+                   {(["day", "week", "month", "year"] as const).map((unit) => (
+                     <button
+                       key={unit}
+                       type="button"
+                       onClick={() => {
+                         setSelectedUnit(unit);
+                         setIntervalType(unit);
+                         setCustomIntervalUnit(unit);
+                       }}
+                       className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                         intervalType !== "custom" && selectedUnit === unit
+                           ? "bg-gray-900 text-white"
+                           : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+                       }`}
+                     >
+                       {unit === "day" ? "日" : unit === "week" ? "週" : unit === "month" ? "月" : "年"}
+                     </button>
+                   ))}
+                 </div>
+                 {intervalType === "custom" && (
+                   <div className="space-y-2">
+                     <input
+                       type="number"
+                       value={customIntervalMonths}
+                       onChange={(e) => setCustomIntervalMonths(e.target.value)}
+                       onFocus={handleHideCalculator}
+                       placeholder={customIntervalUnit === "day" ? "天數" : customIntervalUnit === "week" ? "週數" : customIntervalUnit === "month" ? "月數" : "年數"}
+                       min="0.1"
+                       step="0.1"
+                       className="w-full h-10 px-3 bg-white border-b border-gray-200 text-sm text-black placeholder:text-gray-400 focus:outline-none focus:border-gray-400"
+                     />
+                   </div>
+                 )}
+                 <button
+                   type="button"
+                   onClick={() => {
+                     setIntervalType("custom");
+                     setCustomIntervalUnit(selectedUnit);
+                   }}
+                   className={`w-full px-3 py-1.5 text-sm font-medium transition-colors ${
+                     intervalType === "custom"
+                       ? "bg-gray-900 text-white"
+                       : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+                   }`}
+                 >
+                   自訂
+                 </button>
+               </div>
+             </div>
 
             {/* Error message */}
             {error && (
@@ -694,10 +816,11 @@ export default function NewSubscriptionPage() {
         <div className="absolute bottom-0 left-0 right-0 z-50 bg-white transition-transform duration-200">
           <CalculatorKeypad
             onConfirm={(result: number) => {
+              const roundedResult = Math.round(result * 100) / 100;
               if (calculatorFor === "total") {
-                setTotalAmount(result.toFixed(2));
+                setTotalAmount(roundedResult.toFixed(2));
               } else {
-                setMonthlyAmount(result.toFixed(2));
+                setMonthlyAmount(roundedResult.toFixed(2));
               }
               setShowCalculator(false);
               setCalculatorExpression("");

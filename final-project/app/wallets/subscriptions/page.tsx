@@ -204,17 +204,47 @@ export default function SubscriptionsPage() {
 
                   {/* Subscription Info */}
                   <div className="flex-1 min-w-0 text-left">
-                    <div className="text-sm font-medium text-black mb-1 text-left">
-                      {subscription.name || subscription.tag.name}
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="text-sm font-medium text-black text-left">
+                        {subscription.name || subscription.tag.name}
+                      </div>
+                      {/* Amount Mode Label */}
+                      {subscription.endDate ? (
+                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                          總金額
+                        </span>
+                      ) : (
+                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                          每月金額
+                        </span>
+                      )}
                     </div>
-                    <div className="text-xs text-black/50 text-left">
-                      下次扣款: {formatDate(subscription.nextBilling)}
+                    {/* Display amount based on mode */}
+                    <div className="text-xs font-medium text-black mb-1">
+                      {subscription.endDate ? (
+                        (() => {
+                          // Calculate total amount from monthly amount
+                          const start = new Date(subscription.startDate);
+                          const end = new Date(subscription.endDate);
+                          const diffTime = end.getTime() - start.getTime();
+                          const diffDays = diffTime / (1000 * 60 * 60 * 24);
+                          const totalMonths = diffDays / (30 * subscription.intervalMonths);
+                          const totalAmount = subscription.amount * totalMonths;
+                          return formatAmount(Math.round(totalAmount * 100) / 100, subscription.currency);
+                        })()
+                      ) : (
+                        formatAmount(subscription.amount, subscription.currency)
+                      )}
                     </div>
-                  </div>
-
-                  {/* Amount */}
-                  <div className="text-sm font-semibold text-black flex-shrink-0">
-                    {formatAmount(subscription.amount, subscription.currency)}
+                    <div className="text-xs text-black/50 text-left space-y-0.5">
+                      <div>下次付款: {formatDate(subscription.nextBilling)}</div>
+                      {subscription.endDate && (
+                        <div>每月要繳: {formatAmount(subscription.amount, subscription.currency)}</div>
+                      )}
+                      {!subscription.endDate && (
+                        <div>下次要繳: {formatAmount(subscription.amount, subscription.currency)}</div>
+                      )}
+                    </div>
                   </div>
                 </button>
               );

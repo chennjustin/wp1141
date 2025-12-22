@@ -1,0 +1,207 @@
+/**
+ * Add Transaction Service
+ * 
+ * This service handles automatic transaction creation from subscriptions.
+ * It checks for subscriptions that are due and creates transactions accordingly.
+ */
+
+import { prisma } from "@/lib/prisma";
+import { transactionRepository } from "@/modules/transaction/repositories/transaction.repository";
+import { subscriptionRepository } from "../repositories/subscription.repository";
+import type { Subscription } from "../domain/subscription.types";
+
+/**
+ * Calculate the next billing date based on intervalMonths
+ */
+function calculateNextBilling(currentBilling: Date, intervalMonths: number): Date {
+  const next = new Date(currentBilling);
+  
+  // Handle different interval types
+  if (Math.abs(intervalMonths - 0.033) < 0.001) {
+    // Daily: add 1 day
+    next.setDate(next.getDate() + 1);
+  } else if (Math.abs(intervalMonths - 0.25) < 0.001) {
+    // Weekly: add 7 days
+    next.setDate(next.getDate() + 7);
+  } else if (Math.abs(intervalMonths - 1) < 0.001) {
+    // Monthly: add 1 month
+    next.setMonth(next.getMonth() + 1);
+  } else if (Math.abs(intervalMonths - 12) < 0.001) {
+    // Yearly: add 1 year
+    next.setFullYear(next.getFullYear() + 1);
+  } else {
+    // Custom: add the specified number of months
+    // intervalMonths is stored as Float, so we can use it directly
+    const monthsToAdd = Math.floor(intervalMonths);
+    const daysToAdd = Math.round((intervalMonths - monthsToAdd) * 30);
+    next.setMonth(next.getMonth() + monthsToAdd);
+    if (daysToAdd > 0) {
+      next.setDate(next.getDate() + daysToAdd);
+    }
+  }
+  
+  return next;
+}
+
+/**
+ * Check if subscription should create a transaction today
+ */
+function shouldCreateTransaction(subscription: Subscription): boolean {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const nextBilling = new Date(subscription.nextBilling);
+  nextBilling.setHours(0, 0, 0, 0);
+  
+  // Check if nextBilling is today or in the past
+  if (nextBilling > today) {
+    return false;
+  }
+  
+  // Check if subscription has expired
+  if (subscription.endDate) {
+    const endDate = new Date(subscription.endDate);
+    endDate.setHours(0, 0, 0, 0);
+    if (today > endDate) {
+      return false;
+    }
+  }
+  
+  return true;
+}
+
+/**
+ * Process subscriptions and create transactions for those that are due
+ */
+export async function addTransactionFromSubscriptions() {
+  const results = {
+    processed: 0,
+    created: 0,
+    skipped: 0,
+    errors: [] as string[],
+  };
+
+  try {
+    // Get all active subscriptions
+    // We need to get subscriptions without userId filter to process all
+    const subscriptions = await prisma.subscription.findMany({
+      where: {
+        isDeleted: false,
+      },
+      include: {
+        tag: true,
+        wallet: {
+          select: {
+            id: true,
+            members: {
+              where: {
+                isDeleted: false,
+              },
+              select: {
+                userId: true,
+              },
+            },
+          },
+        },
+      },
+    } as any);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (const subscription of subscriptions) {
+      results.processed++;
+
+      try {
+        // Type assertion to access all fields
+        const sub = subscription as any;
+        
+        // Check if subscription should create a transaction
+        const subscriptionTyped: Subscription = {
+          id: sub.id,
+          walletId: sub.walletId,
+          userId: sub.userId,
+          amount: sub.amount,
+          currency: sub.currency,
+          nextBilling: new Date(sub.nextBilling),
+          intervalMonths: sub.intervalMonths,
+          startDate: new Date(sub.startDate),
+          endDate: sub.endDate ? new Date(sub.endDate) : null,
+          type: sub.type,
+          tagId: sub.tagId,
+          name: sub.name,
+          tag: {
+            id: sub.tag.id,
+            name: sub.tag.name,
+            iconKey: sub.tag.iconKey,
+          },
+          isDeleted: sub.isDeleted,
+          createdAt: new Date(sub.createdAt),
+          updatedAt: new Date(sub.updatedAt),
+        };
+
+        if (!shouldCreateTransaction(subscriptionTyped)) {
+          results.skipped++;
+          continue;
+        }
+
+        // Get the subscription owner (userId)
+        const userId = sub.userId;
+        if (!userId) {
+          results.errors.push(`Subscription ${sub.id} has no userId`);
+          results.skipped++;
+          continue;
+        }
+
+        // Create transaction
+        const transactionDate = new Date(sub.nextBilling);
+        transactionDate.setHours(0, 0, 0, 0);
+
+        await transactionRepository.create(userId, {
+          walletId: sub.walletId,
+          date: transactionDate,
+          amount: sub.amount,
+          currency: sub.currency,
+          name: sub.name || sub.tag.name,
+          type: sub.type,
+          tagId: sub.tagId,
+        });
+
+        // Calculate next billing date
+        const nextBilling = calculateNextBilling(
+          new Date(sub.nextBilling),
+          sub.intervalMonths
+        );
+
+        // Check if next billing exceeds endDate
+        let finalNextBilling = nextBilling;
+        if (sub.endDate) {
+          const endDate = new Date(sub.endDate);
+          if (nextBilling > endDate) {
+            // Don't update nextBilling if it exceeds endDate
+            // The subscription will naturally expire
+            results.created++;
+            continue;
+          }
+        }
+
+        // Update subscription's nextBilling
+        await subscriptionRepository.update(sub.id, {
+          nextBilling: finalNextBilling,
+        });
+
+        results.created++;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        results.errors.push(`Subscription ${subscription.id}: ${errorMessage}`);
+        console.error(`Error processing subscription ${subscription.id}:`, error);
+      }
+    }
+
+    return results;
+  } catch (error) {
+    console.error("[addTransactionFromSubscriptions] Unexpected error:", error);
+    throw error;
+  }
+}
+

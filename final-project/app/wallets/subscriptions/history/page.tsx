@@ -236,8 +236,38 @@ export default function SubscriptionHistoryPage() {
                   </div>
 
                   {/* Amount */}
-                  <div className="text-sm font-semibold text-black flex-shrink-0">
-                    {formatAmount(subscription.amount, subscription.currency)}
+                  <div className="text-sm flex-shrink-0 text-right">
+                    {subscription.endDate ? (
+                      (() => {
+                        // Calculate total amount from monthly amount
+                        const start = new Date(subscription.startDate);
+                        const end = new Date(subscription.endDate);
+                        const diffTime = end.getTime() - start.getTime();
+                        const diffDays = diffTime / (1000 * 60 * 60 * 24);
+                        const totalMonths = diffDays / (30 * subscription.intervalMonths);
+                        const totalAmount = subscription.amount * totalMonths;
+                        const roundedTotal = Math.round(totalAmount * 100) / 100;
+                        return (
+                          <>
+                            <div className="font-semibold text-black">
+                              {formatAmount(roundedTotal, subscription.currency)}
+                            </div>
+                            <div className="text-xs text-black/50 mt-0.5">
+                              總共 {formatAmount(roundedTotal, subscription.currency)}
+                            </div>
+                          </>
+                        );
+                      })()
+                    ) : (
+                      <>
+                        <div className="font-semibold text-black">
+                          {formatAmount(subscription.amount, subscription.currency)}
+                        </div>
+                        <div className="text-xs text-black/50 mt-0.5">
+                          每月 {formatAmount(subscription.amount, subscription.currency)}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </button>
               );

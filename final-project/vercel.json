@@ -1,5 +1,8 @@
 {
-  "buildCommand": "npx prisma generate && npx prisma migrate deploy && npm run build",
-  "installCommand": "npm install"
+  "crons": [
+    {
+      "path": "/api/cron/add-transaction",
+      "schedule": "0 0 * * *"
+    }
+  ]
 }
-
