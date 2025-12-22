@@ -118,6 +118,14 @@ export function SideMenu({
           type="button"
           className="rounded-lg border border-gray-300 px-3 py-2 text-left hover:opacity-80 transition-opacity"
           style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}
+          onClick={() => onNavigate("/wallets/statistics")}
+        >
+          統計
+        </button>
+        <button
+          type="button"
+          className="rounded-lg border border-gray-300 px-3 py-2 text-left hover:opacity-80 transition-opacity"
+          style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}
           onClick={() => onNavigate("/wallets/subscriptions")}
         >
           訂閱清單

@@ -10,7 +10,7 @@
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 
-const SPECIAL_PATHS = ["new", "all", "history", "notifications", "settings", "subscriptions"];
+const SPECIAL_PATHS = ["new", "all", "history", "notifications", "settings", "subscriptions", "statistics"];
 
 export function useWalletFromPath() {
   const pathname = usePathname();

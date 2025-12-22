@@ -280,11 +280,11 @@ export default function NewTransactionPage() {
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/20 transition-colors"
+                className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/10 transition-colors"
                 aria-label="返回"
               >
                 <svg
-                  className="h-5 w-5 text-white"
+                  className="h-5 w-5 text-black"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth={2}
@@ -303,11 +303,11 @@ export default function NewTransactionPage() {
                 type="button"
                 onClick={handleSubmit}
                 disabled={loading}
-                className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="完成"
               >
                 <svg
-                  className="h-5 w-5 text-white"
+                  className="h-5 w-5 text-black"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth={2}
@@ -325,8 +325,8 @@ export default function NewTransactionPage() {
             {/* Amount Section - Compact */}
             <div className="px-4 pb-4">
               <div className="flex items-center gap-3">
-                {/* Tag Icon - Circular background with tag color */}
-                <div className={`flex h-12 w-12 items-center justify-center rounded-full ${getTagColor(selectedTag.iconKey)}`}>
+                {/* Tag Icon - Circular background white (temporarily) */}
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white">
                   <TagIcon
                     iconKey={selectedTag.iconKey}
                     size={24}
@@ -337,12 +337,12 @@ export default function NewTransactionPage() {
 
                 {/* Tag Name and Amount */}
                 <div className="flex-1">
-                  <div className="text-white text-sm mb-1">{selectedTag.name}</div>
+                  <div className="text-black text-sm mb-1">{selectedTag.name}</div>
                   {/* Clickable Amount */}
                   <button
                     type="button"
                     onClick={handleAmountClick}
-                    className="text-white text-4xl font-semibold hover:opacity-80 transition-opacity text-left"
+                    className="text-black text-4xl font-semibold hover:opacity-80 transition-opacity text-left"
                   >
                     {calculatorExpression || formatAmount(amount)}
                   </button>
