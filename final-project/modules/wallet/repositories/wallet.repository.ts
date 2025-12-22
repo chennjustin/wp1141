@@ -381,7 +381,7 @@ export const walletRepository = {
     }
     
     return prisma.userPinnedWallet.count({
-      where,
+      where: { userId },
     });
   },
 
