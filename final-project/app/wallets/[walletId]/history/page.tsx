@@ -222,7 +222,6 @@ function DailyTransactionCard({
   walletId: string;
 }) {
   const router = useRouter();
-  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   
   // Calculate daily net amount and determine color
   const netAmount = group.netAmount;
@@ -235,38 +234,6 @@ function DailyTransactionCard({
   // Handle transaction click - navigate to edit page
   const handleTransactionClick = (transactionId: string) => {
     router.push(`/wallets/${walletId}/transactions/${transactionId}/edit?from=history`);
-  };
-
-  const handleDeleteTransaction = async (e: React.MouseEvent, transactionId: string) => {
-    e.stopPropagation();
-    
-    if (!confirm("確定要刪除此交易嗎？")) {
-      return;
-    }
-
-    try {
-      setDeletingIds((prev) => new Set(prev).add(transactionId));
-      const response = await fetch(`/api/transactions/${transactionId}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "刪除失敗");
-      }
-
-      // Reload page to refresh transaction list
-      router.refresh();
-    } catch (err) {
-      console.error("Failed to delete transaction", err);
-      alert(err instanceof Error ? err.message : "刪除失敗");
-    } finally {
-      setDeletingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(transactionId);
-        return next;
-      });
-    }
   };
 
   return (
@@ -290,8 +257,6 @@ function DailyTransactionCard({
           
           // Get iconKey with fallback
           const iconKey = transaction.tag?.iconKey || "tag";
-
-          const isDeleting = deletingIds.has(transaction.id);
 
           return (
             <div key={transaction.id}>
@@ -317,17 +282,6 @@ function DailyTransactionCard({
                       ${sign}{formatted}
                     </span>
                   </div>
-                </button>
-
-                {/* Delete Button */}
-                <button
-                  type="button"
-                  onClick={(e) => handleDeleteTransaction(e, transaction.id)}
-                  disabled={isDeleting}
-                  className="flex-shrink-0 px-2 py-1 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="刪除交易"
-                >
-                  {isDeleting ? "刪除中" : "刪除"}
                 </button>
               </div>
 

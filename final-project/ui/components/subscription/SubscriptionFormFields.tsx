@@ -74,7 +74,7 @@ export function SubscriptionFormFields({
               d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
             />
           </svg>
-          <label className="text-xs text-gray-600">明細描述</label>
+          <label className="text-xs text-gray-600">款項</label>
         </div>
         <input
           type="text"

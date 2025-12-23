@@ -358,12 +358,12 @@ export default function EditTransactionPage() {
           router.refresh();
         }, 100);
       } else {
-        const errorMessage = result.error?.toString() || "刪除交易失敗";
+        const errorMessage = result.error?.toString() || "刪除款項失敗";
         setError(errorMessage);
         setShowDeleteConfirm(false);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "刪除交易失敗");
+      setError(err instanceof Error ? err.message : "刪除款項失敗");
       setShowDeleteConfirm(false);
     } finally {
       setDeleting(false);
@@ -475,21 +475,13 @@ export default function EditTransactionPage() {
 
                 {/* Tag Name and Amount */}
                 <div className="flex-1">
-                  {/* Tag name - clickable to change tag */}
-                  <button
-                    type="button"
-                    onClick={handleTagClick}
-                    className="text-black text-sm mb-1 hover:opacity-80 transition-opacity text-left block w-full"
-                  >
-                    {selectedTag.name}
-                  </button>
-                  {/* Clickable Amount */}
+                  <div className="text-black text-sm mb-1">{selectedTag.name}</div>
                   <button
                     type="button"
                     onClick={handleAmountClick}
-                    className="text-black text-4xl font-semibold hover:opacity-80 transition-opacity text-left relative block w-full"
+                    className="text-black text-4xl font-semibold hover:opacity-80 transition-opacity text-left relative"
                   >
-                    <span className={showCalculator ? "" : ""}>
+                    <span>
                       {calculatorExpression || formatAmount(amount)}
                     </span>
                     {showCalculator && (
@@ -503,7 +495,7 @@ export default function EditTransactionPage() {
 
           {/* Form Fields Section - Middle (區塊 B) */}
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4" style={{ backgroundColor: 'var(--wallet-bg)' }}>
-            {/* 1. Description - 明細描述 */}
+            {/* 1. Description - 款項 */}
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <svg
@@ -519,7 +511,7 @@ export default function EditTransactionPage() {
                     d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
                   />
                 </svg>
-                <label className="text-xs text-gray-600">明細描述</label>
+                <label className="text-xs text-gray-600">款項</label>
               </div>
               <input
                 type="text"
@@ -701,14 +693,14 @@ export default function EditTransactionPage() {
             )}
 
             {/* Delete Button */}
-            <div className="pt-4 pb-4">
+            <div className="px-4 py-4 border-t border-gray-200">
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(true)}
                 disabled={deleting}
-                className="w-full h-12 bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded"
+                className="w-full py-3 px-4 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                刪除
+                {deleting ? "刪除中..." : "刪除款項"}
               </button>
             </div>
           </div>

@@ -138,7 +138,7 @@ export function DailyTransactionsSection({
   return (
     <section className="relative flex min-h-0 flex-1 flex-col rounded-xl pl-4 pr-2 pt-4 pb-4 text-sm" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}>
       <div className="mb-2 flex items-center justify-between pr-2">
-        <span className="text-sm font-normal text-gray-600">明細</span>
+        <span className="text-sm font-normal text-gray-600">款項</span>
         <div className="relative flex items-center gap-3">
           {/* Previous day button */}
           <button

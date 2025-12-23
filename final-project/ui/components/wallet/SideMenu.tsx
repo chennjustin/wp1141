@@ -118,7 +118,7 @@ export function SideMenu({
           {
             id: "history",
             path: currentWalletId ? `/wallets/${currentWalletId}/history` : "/wallets/history",
-            label: "收支明細",
+            label: "款項明細",
             icon: FileText,
           },
           {
