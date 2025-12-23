@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { removeMemberAction } from "@/modules/wallet/routes/remove-member";
 import { updateMemberRoleAction } from "@/modules/wallet/routes/update-member-role";
+import { WalletRole } from "@/modules/wallet/domain/wallet.types";
 
 interface RouteContext {
   params: {
@@ -103,14 +104,14 @@ export async function PATCH(req: Request, context: RouteContext) {
 
     const { role }: { role?: string } = body;
 
-    if (!role || (role !== "MEMBER" && role !== "VIEWER")) {
+    if (!role || (role !== WalletRole.MEMBER && role !== WalletRole.VIEWER)) {
       return NextResponse.json(
         { error: "Role must be either MEMBER or VIEWER" },
         { status: 400 }
       );
     }
 
-    const result = await updateMemberRoleAction(walletId, userId, role as "MEMBER" | "VIEWER");
+    const result = await updateMemberRoleAction(walletId, userId, role as WalletRole);
 
     if (!result.success) {
       const status =
