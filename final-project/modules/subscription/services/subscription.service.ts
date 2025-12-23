@@ -4,11 +4,20 @@
  * This module contains business logic for Subscription operations.
  * It orchestrates repository calls and implements domain rules
  * such as authorization, validation, and data transformation.
+ * It also handles all notification-related operations for subscriptions.
  */
 
+import { prisma } from "@/lib/prisma";
 import { subscriptionRepository } from "../repositories/subscription.repository";
-import { walletRepository } from "@/modules/wallet/repositories/wallet.repository";
+import { transactionRepository } from "@/modules/transaction/repositories/transaction.repository";
 import { syncSubscriptionTransactions } from "./sync-subscription-transactions.service";
+import {
+  createTransactionNotification,
+  createReminderNotification,
+  deleteSubscriptionNotifications,
+  updateReminderNotification,
+} from "./subscription-notification.service";
+import { BillingStatus } from "@prisma/client";
 import type {
   Subscription,
   CreateSubscriptionData,
@@ -20,8 +29,11 @@ import {
   SubscriptionNotFoundError,
   UnauthorizedSubscriptionAccessError,
   InvalidSubscriptionDataError,
-  ValidationError,
 } from "../domain/subscription.errors";
+import {
+  calculateNextBilling,
+  shouldCreateTransaction,
+} from "../utils/subscription-utils";
 
 /**
  * Subscription service interface
@@ -166,6 +178,10 @@ export const subscriptionService = {
 
   /**
    * Create subscription
+   * Handles:
+   * - Creating the subscription
+   * - Creating transaction if startDate is today or in the past
+   * - Creating reminder notification if nextBilling is in two days
    */
   async createSubscription(
     userId: string,
@@ -222,18 +238,120 @@ export const subscriptionService = {
       }
 
       // Calculate nextBilling if not provided
+      const startDate = new Date(data.startDate);
       const nextBilling = data.nextBilling
         ? new Date(data.nextBilling)
-        : new Date(data.startDate);
+        : new Date(startDate);
 
+      // Create subscription
       const subscription = await subscriptionRepository.create(userId, {
         ...data,
         nextBilling,
       });
 
+      const subscriptionTyped: Subscription = {
+        id: subscription.id,
+        walletId: subscription.walletId,
+        userId: subscription.userId,
+        amount: subscription.amount,
+        currency: subscription.currency,
+        nextBilling: new Date(subscription.nextBilling),
+        intervalMonths: subscription.intervalMonths,
+        startDate: new Date(subscription.startDate),
+        endDate: subscription.endDate ? new Date(subscription.endDate) : null,
+        type: subscription.type,
+        tagId: subscription.tagId,
+        name: subscription.name,
+        tag: {
+          id: subscription.tag.id,
+          name: subscription.tag.name,
+          iconKey: subscription.tag.iconKey,
+        },
+        isDeleted: subscription.isDeleted,
+        createdAt: new Date(subscription.createdAt),
+        updatedAt: new Date(subscription.updatedAt),
+      };
+
+      // Get wallet name for notifications
+      const wallet = await prisma.wallet.findUnique({
+        where: { id: subscription.walletId },
+        select: { name: true },
+      });
+      const walletName = wallet?.name || "未知錢包";
+
+      // Check if we need to create a transaction immediately
+      // (if startDate is today or in the past)
+      if (shouldCreateTransaction(subscriptionTyped)) {
+        try {
+          const transactionDate = new Date(subscriptionTyped.nextBilling);
+          transactionDate.setHours(0, 0, 0, 0);
+
+          // Create transaction
+          const transaction = await transactionRepository.create(userId, {
+            walletId: subscription.walletId,
+            date: transactionDate,
+            amount: subscription.amount,
+            currency: subscription.currency,
+            name: subscription.name || subscription.tag.name,
+            type: subscription.type,
+            tagId: subscription.tagId,
+          });
+
+          // Create SubscriptionHistory
+          await prisma.subscriptionHistory.create({
+            data: {
+              subscriptionId: subscription.id,
+              transactionId: transaction.id,
+              status: BillingStatus.SUCCESS,
+              message: `Transaction created for ${transactionDate.toISOString().split("T")[0]}`,
+            },
+          });
+
+          // Create transaction notification
+          await createTransactionNotification(subscriptionTyped, walletName);
+
+          // Calculate next billing date
+          const newNextBilling = calculateNextBilling(
+            new Date(subscriptionTyped.nextBilling),
+            subscriptionTyped.intervalMonths
+          );
+
+          // Check if next billing exceeds endDate
+          let finalNextBilling = newNextBilling;
+          if (subscriptionTyped.endDate) {
+            const endDate = new Date(subscriptionTyped.endDate);
+            if (newNextBilling > endDate) {
+              // Don't update nextBilling if it exceeds endDate
+              // The subscription will naturally expire
+            } else {
+              // Update subscription's nextBilling
+              await subscriptionRepository.update(subscription.id, {
+                nextBilling: finalNextBilling,
+              });
+              subscriptionTyped.nextBilling = finalNextBilling;
+            }
+          } else {
+            // Update subscription's nextBilling
+            await subscriptionRepository.update(subscription.id, {
+              nextBilling: finalNextBilling,
+            });
+            subscriptionTyped.nextBilling = finalNextBilling;
+          }
+        } catch (error) {
+          // Log error but don't fail subscription creation
+          console.error(
+            `[createSubscription] Error creating transaction for subscription ${subscription.id}:`,
+            error
+          );
+        }
+      }
+
+      // Create reminder notification if nextBilling is in two days
+      await createReminderNotification(subscriptionTyped, walletName);
+
       return {
         success: true,
-        data: subscription as Subscription,
+        data: subscriptionTyped,
         error: undefined,
       };
     } catch (error) {
@@ -248,6 +366,10 @@ export const subscriptionService = {
 
   /**
    * Update subscription
+   * Handles:
+   * - Updating the subscription
+   * - Syncing transactions if startDate, endDate, intervalMonths, or amount changed
+   * - Updating reminder notifications if nextBilling changed
    */
   async updateSubscription(
     subscriptionId: string,
@@ -348,17 +470,35 @@ export const subscriptionService = {
         updatedAt: new Date(updated.updatedAt),
       };
 
-      // Sync transactions if startDate or amount changed
+      // Get wallet name for notifications
+      const wallet = await prisma.wallet.findUnique({
+        where: { id: updated.walletId },
+        select: { name: true },
+      });
+      const walletName = wallet?.name || "未知錢包";
+
+      // Sync transactions if startDate, endDate, intervalMonths, or amount changed
       await syncSubscriptionTransactions(
         subscriptionId,
         oldSubscription,
         newSubscription
       );
 
+      // Update reminder notification if nextBilling changed
+      const nextBillingChanged =
+        oldSubscription.nextBilling.getTime() !== newSubscription.nextBilling.getTime();
+      if (nextBillingChanged) {
+        await updateReminderNotification(
+          newSubscription,
+          oldSubscription.nextBilling,
+          walletName
+        );
+      }
+
       return {
         success: true,
         data: newSubscription,
-        error: null,
+        error: undefined,
       };
     } catch (error) {
       console.error("[updateSubscription] Error:", error);
@@ -372,6 +512,9 @@ export const subscriptionService = {
 
   /**
    * Delete subscription (soft delete)
+   * Handles:
+   * - Deleting all related notifications (reminder and transaction notifications)
+   * - Soft deleting the subscription
    */
   async deleteSubscription(
     subscriptionId: string,
@@ -408,6 +551,10 @@ export const subscriptionService = {
         };
       }
 
+      // Delete all related notifications
+      await deleteSubscriptionNotifications(subscriptionId, existing.userId);
+
+      // Soft delete subscription
       await subscriptionRepository.softDelete(subscriptionId);
 
       return {
@@ -425,4 +572,3 @@ export const subscriptionService = {
     }
   },
 };
-

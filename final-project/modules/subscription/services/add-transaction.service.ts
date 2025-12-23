@@ -12,104 +12,13 @@ import { notificationRepository } from "@/modules/notification/repositories/noti
 import { sendPusherNotification } from "@/modules/notification/services/pusher-notification.service";
 import { NotificationType } from "@prisma/client";
 import type { Subscription } from "../domain/subscription.types";
-
-/**
- * Calculate the next billing date based on intervalMonths
- */
-function calculateNextBilling(currentBilling: Date, intervalMonths: number): Date {
-  const next = new Date(currentBilling);
-  
-  // Handle different interval types
-  if (Math.abs(intervalMonths - 0.033) < 0.001) {
-    // Daily: add 1 day
-    next.setDate(next.getDate() + 1);
-  } else if (Math.abs(intervalMonths - 0.25) < 0.001) {
-    // Weekly: add 7 days
-    next.setDate(next.getDate() + 7);
-  } else if (Math.abs(intervalMonths - 1) < 0.001) {
-    // Monthly: add 1 month
-    next.setMonth(next.getMonth() + 1);
-  } else if (Math.abs(intervalMonths - 12) < 0.001) {
-    // Yearly: add 1 year
-    next.setFullYear(next.getFullYear() + 1);
-  } else {
-    // Custom: add the specified number of months
-    // intervalMonths is stored as Float, so we can use it directly
-    const monthsToAdd = Math.floor(intervalMonths);
-    const daysToAdd = Math.round((intervalMonths - monthsToAdd) * 30);
-    next.setMonth(next.getMonth() + monthsToAdd);
-    if (daysToAdd > 0) {
-      next.setDate(next.getDate() + daysToAdd);
-    }
-  }
-  
-  return next;
-}
-
-/**
- * Check if subscription should create a transaction today
- */
-function shouldCreateTransaction(subscription: Subscription): boolean {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  const nextBilling = new Date(subscription.nextBilling);
-  nextBilling.setHours(0, 0, 0, 0);
-  
-  // Check if nextBilling is today or in the past
-  if (nextBilling > today) {
-    return false;
-  }
-  
-  // Check if subscription has expired
-  if (subscription.endDate) {
-    const endDate = new Date(subscription.endDate);
-    endDate.setHours(0, 0, 0, 0);
-    if (today > endDate) {
-      return false;
-    }
-  }
-  
-  return true;
-}
-
-/**
- * Check if subscription billing is in two days (for reminder notification)
- */
-function isBillingInTwoDays(subscription: Subscription): boolean {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  const twoDaysLater = new Date(today);
-  twoDaysLater.setDate(twoDaysLater.getDate() + 2);
-  
-  const nextBilling = new Date(subscription.nextBilling);
-  nextBilling.setHours(0, 0, 0, 0);
-  
-  // Check if nextBilling is in two days
-  return (
-    nextBilling.getTime() === twoDaysLater.getTime() &&
-    (!subscription.endDate || nextBilling <= new Date(subscription.endDate))
-  );
-}
-
-/**
- * Format date for display (YYYY/MM/DD)
- */
-function formatDate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}/${month}/${day}`;
-}
-
-/**
- * Format amount for display
- */
-function formatAmount(amount: number, currency: string): string {
-  const rounded = Math.round(amount * 100) / 100;
-  return `${currency} ${rounded.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-}
+import {
+  calculateNextBilling,
+  shouldCreateTransaction,
+  isBillingInTwoDays,
+  formatDate,
+  formatAmount,
+} from "../utils/subscription-utils";
 
 /**
  * Create subscription reminder notification if needed

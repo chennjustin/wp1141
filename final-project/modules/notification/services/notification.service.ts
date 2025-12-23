@@ -6,6 +6,7 @@
  */
 
 import { notificationRepository } from "../repositories/notification.repository";
+import { sendPusherNotification } from "./pusher-notification.service";
 import { NotificationType } from "@prisma/client";
 import type { Notification } from "@prisma/client";
 
@@ -197,6 +198,111 @@ export const notificationService = {
       return {
         success: false,
         error: "Failed to delete notification",
+      };
+    }
+  },
+
+  /**
+   * Hard delete multiple notifications by IDs
+   */
+  async hardDeleteNotifications(
+    ids: string[],
+    userId: string
+  ): Promise<NotificationServiceResult<number>> {
+    try {
+      if (ids.length === 0) {
+        return {
+          success: true,
+          data: 0,
+        };
+      }
+
+      const result = await notificationRepository.hardDeleteMany(ids, userId);
+      return {
+        success: true,
+        data: result.count,
+      };
+    } catch (error) {
+      console.error("Error hard deleting notifications:", error);
+      return {
+        success: false,
+        error: "Failed to hard delete notifications",
+      };
+    }
+  },
+
+  /**
+   * Delete all notifications related to a subscription (hard delete)
+   */
+  async deleteSubscriptionNotifications(
+    subscriptionId: string,
+    userId: string
+  ): Promise<NotificationServiceResult<number>> {
+    try {
+      const result = await notificationRepository.deleteBySubscription(
+        subscriptionId,
+        userId
+      );
+      return {
+        success: true,
+        data: result.count,
+      };
+    } catch (error) {
+      console.error("Error deleting subscription notifications:", error);
+      return {
+        success: false,
+        error: "Failed to delete subscription notifications",
+      };
+    }
+  },
+
+  /**
+   * Create a subscription notification with Pusher notification
+   * This is a convenience method that creates a notification and sends Pusher notification
+   */
+  async createSubscriptionNotification(
+    userId: string,
+    type: NotificationType,
+    message: string
+  ): Promise<NotificationServiceResult<Notification>> {
+    try {
+      // Validate message
+      if (!message || message.trim().length === 0) {
+        return {
+          success: false,
+          error: "Message is required",
+        };
+      }
+
+      // Create notification
+      const notification = await notificationRepository.create(
+        userId,
+        type,
+        message.trim()
+      );
+
+      // Send Pusher notification
+      try {
+        await sendPusherNotification(
+          userId,
+          type,
+          message.trim(),
+          notification.id
+        );
+      } catch (pusherError) {
+        // Log Pusher error but don't fail the notification creation
+        console.error("Error sending Pusher notification:", pusherError);
+      }
+
+      return {
+        success: true,
+        data: notification,
+      };
+    } catch (error) {
+      console.error("Error creating subscription notification:", error);
+      return {
+        success: false,
+        error: "Failed to create subscription notification",
       };
     }
   },
