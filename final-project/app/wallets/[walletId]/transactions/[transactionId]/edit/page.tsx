@@ -479,7 +479,7 @@ export default function EditTransactionPage() {
                   <button
                     type="button"
                     onClick={handleTagClick}
-                    className="text-black text-sm mb-1 hover:opacity-80 transition-opacity text-left"
+                    className="text-black text-sm mb-1 hover:opacity-80 transition-opacity text-left block w-full"
                   >
                     {selectedTag.name}
                   </button>
@@ -487,7 +487,7 @@ export default function EditTransactionPage() {
                   <button
                     type="button"
                     onClick={handleAmountClick}
-                    className="text-black text-4xl font-semibold hover:opacity-80 transition-opacity text-left relative"
+                    className="text-black text-4xl font-semibold hover:opacity-80 transition-opacity text-left relative block w-full"
                   >
                     <span className={showCalculator ? "" : ""}>
                       {calculatorExpression || formatAmount(amount)}
