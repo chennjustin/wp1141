@@ -11,6 +11,7 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { History, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { useDailyTransactions } from "@/hooks/useDailyTransactions";
+import { TagIcon } from "@/ui/utils/tag-icon";
 import type { DisplayTransaction } from "@/hooks/useWalletHome";
 import type { Transaction } from "@/modules/transaction/domain/transaction.types";
 
@@ -38,12 +39,16 @@ function transformTransactionToDisplay(tx: Transaction): DisplayTransaction {
   const minutes = transactionDate.getMinutes().toString().padStart(2, "0");
   const time = `${hours}:${minutes}`;
 
+  // Get iconKey from tag with fallback to default "tag"
+  const iconKey = tx.tag?.iconKey || "tag";
+
   return {
     id: tx.id,
     title,
     amount: displayAmount,
     currency: tx.currency,
     time,
+    iconKey,
   };
 }
 

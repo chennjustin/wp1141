@@ -23,6 +23,7 @@ export interface DisplayTransaction {
   amount: number;
   currency: string;
   time: string;
+  iconKey: string;
 }
 
 /**
@@ -103,12 +104,16 @@ export function useWalletHome(walletId: string) {
       const minutes = transactionDate.getMinutes().toString().padStart(2, "0");
       const time = `${hours}:${minutes}`;
 
+      // Get iconKey from tag with fallback to default "tag"
+      const iconKey = tx.tag?.iconKey || "tag";
+
       return {
         id: tx.id,
         title,
         amount: displayAmount,
         currency: tx.currency,
         time,
+        iconKey,
       };
     });
   }, [dailyTransactions]);
