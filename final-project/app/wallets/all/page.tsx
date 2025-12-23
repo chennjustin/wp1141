@@ -3,50 +3,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { Pin } from "lucide-react";
 import { useWallets } from "@/hooks/useWallet";
 import { useUser } from "@/hooks/useUser";
 import type { Wallet } from "@/modules/wallet/domain/wallet.types";
 import { Loading } from "@/ui/components/common/Loading";
-
-/**
- * Pin icon component - filled (pinned)
- */
-function PinIconFilled() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 20 20"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      {/* Pin head (circle) */}
-      <circle cx="10" cy="6" r="4.5" fill="currentColor" />
-      {/* Pin body (triangle pointing down) */}
-      <path d="M10 10.5 L7 18 L13 18 Z" fill="currentColor" />
-    </svg>
-  );
-}
-
-/**
- * Pin icon component - outline (unpinned)
- */
-function PinIconOutline() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 20 20"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      {/* Pin head (circle outline) */}
-      <circle cx="10" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
-      {/* Pin body (triangle outline) */}
-      <path d="M10 10.5 L7 18 L13 18 Z" stroke="currentColor" strokeWidth="1.5" fill="none" />
-    </svg>
-  );
-}
 
 /**
  * Wallet card component
@@ -98,11 +59,11 @@ function WalletCard({
         disabled={isToggling || (isMyWallet && isPinned)}
         aria-label={isPinned ? "Unpin wallet" : "Pin wallet"}
       >
-        {isPinned ? (
-          <PinIconFilled />
-        ) : (
-          <PinIconOutline />
-        )}
+        <Pin
+          size={16}
+          fill={isPinned ? "currentColor" : "none"}
+          className={isPinned ? "" : "opacity-60"}
+        />
       </button>
 
       {/* Wallet name */}
