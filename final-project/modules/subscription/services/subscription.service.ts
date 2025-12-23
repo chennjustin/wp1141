@@ -21,4 +21,4 @@ export const subscriptionService = {
   // Lifecycle operations
   createSubscription: subscriptionLifecycleService.createSubscription,
   updateSubscription: subscriptionLifecycleService.updateSubscription,
-};
+        };

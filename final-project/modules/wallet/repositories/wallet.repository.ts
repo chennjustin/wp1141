@@ -361,10 +361,27 @@ export const walletRepository = {
 
   /**
    * Get user's pinned wallets
+   * Only returns wallets that:
+   * 1. Are not deleted
+   * 2. User has access to (is a member with OWNER or ACCEPTED status)
    */
   async getPinnedWallets(userId: string) {
     return prisma.userPinnedWallet.findMany({
-      where: { userId },
+      where: {
+        userId,
+        wallet: {
+          isDeleted: false,
+          members: {
+            some: {
+              userId,
+              isDeleted: false,
+              status: {
+                in: ["OWNER", "ACCEPTED"],
+              },
+            },
+          },
+        },
+      },
       include: {
         wallet: {
           include: {

@@ -215,6 +215,9 @@ export const walletService = {
           });
         }
 
+        // Note: Pin/unpin state can only be changed by user manual operation
+        // System will NOT automatically pin newly created wallets
+
         return createdWallet;
       });
 
@@ -234,7 +237,9 @@ export const walletService = {
   },
 
   /**
-   * Update wallet (all members can update, but default wallet cannot change name)
+   * Update wallet (all members can update)
+   * Default wallet ("我的錢包") cannot change name or currency
+   * Regular wallets cannot change currency but can change name
    */
   async updateWallet(
     walletId: string,
@@ -250,13 +255,31 @@ export const walletService = {
       };
     }
 
-    // Check if user is trying to update name of default wallet
-    const user = await userRepository.findById(userId);
-    if (user?.defaultWalletId === walletId && data.name !== undefined && data.name !== null) {
-      return {
-        success: false,
-        error: "Cannot change name of default wallet",
-      };
+    // Check if this is the default wallet ("我的錢包")
+    const isDefaultWallet = wallet.name === "我的錢包";
+
+    // Default wallet cannot change name or currency
+    if (isDefaultWallet) {
+      if (data.name !== undefined && data.name !== null && data.name !== wallet.name) {
+        return {
+          success: false,
+          error: "預設錢包無法修改名稱",
+        };
+      }
+      if (data.defaultCurrency !== undefined && data.defaultCurrency !== null && data.defaultCurrency !== wallet.defaultCurrency) {
+        return {
+          success: false,
+          error: "預設錢包無法修改幣別",
+        };
+      }
+    } else {
+      // Regular wallets cannot change currency
+      if (data.defaultCurrency !== undefined && data.defaultCurrency !== null && data.defaultCurrency !== wallet.defaultCurrency) {
+        return {
+          success: false,
+          error: "一般錢包無法修改幣別",
+        };
+      }
     }
 
     // Validate update data
@@ -274,14 +297,26 @@ export const walletService = {
 
     const updateData: UpdateWalletData = {};
 
-    if (typeof data.name === "string" && data.name.trim().length > 0) {
+    // Only allow name update for non-default wallets
+    if (!isDefaultWallet && typeof data.name === "string" && data.name.trim().length > 0) {
       updateData.name = data.name.trim();
     }
 
+    // Currency updates are blocked for all wallets (handled above)
+    // This code should not be reached for currency updates, but kept for safety
     if (
       typeof data.defaultCurrency === "string" &&
       data.defaultCurrency.trim().length > 0
     ) {
+      // This should not happen due to validation above, but kept for safety
+      if (!isDefaultWallet) {
+        // Regular wallets cannot change currency - this should have been caught above
+        // But we keep this check as a safety net
+        return {
+          success: false,
+          error: "一般錢包無法修改幣別",
+        };
+      }
       updateData.defaultCurrency = data.defaultCurrency.trim();
     }
 
@@ -343,20 +378,19 @@ export const walletService = {
     }
 
     // Check wallet existence
-    const exists = await walletRepository.exists(walletId);
-    if (!exists) {
+    const wallet = await walletRepository.findById(walletId, userId);
+    if (!wallet) {
       return {
         success: false,
-        error: "Wallet not found or already deleted",
+        error: "Wallet not found or access denied",
       };
     }
 
-    // Check if this is the user's default wallet - cannot delete default wallet
-    const user = await userRepository.findById(userId);
-    if (user?.defaultWalletId === walletId) {
+    // Check if this is the default wallet ("我的錢包") - cannot delete default wallet
+    if (wallet.name === "我的錢包") {
       return {
         success: false,
-        error: "Cannot delete default wallet",
+        error: "無法刪除預設錢包",
       };
     }
 
