@@ -1,12 +1,107 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useWallet } from "@/hooks/useWallet";
 import { useUser } from "@/hooks/useUser";
 import { useWallets } from "@/hooks/useWallet";
 import { useSession } from "next-auth/react";
 import { WalletUserStatus, WalletRole } from "@/modules/wallet/domain/wallet.types";
+
+/**
+ * Member role dropdown component
+ * 
+ * Dropdown menu for managing member roles (MEMBER/VIEWER) and removing members
+ */
+function MemberRoleDropdown({
+  member,
+  walletId,
+  onRoleChange,
+  onRemove,
+}: {
+  member: { id: string; userId: string; name: string; role: WalletRole; status: WalletUserStatus; imageUrl?: string };
+  walletId: string;
+  onRoleChange: (newRole: WalletRole) => Promise<void>;
+  onRemove: () => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isOpen]);
+
+  const handleRoleChange = async (newRole: WalletRole) => {
+    if (newRole !== member.role) {
+      await onRoleChange(newRole);
+    }
+    setIsOpen(false);
+  };
+
+  const handleRemove = () => {
+    if (confirm("確定要移除這位成員嗎？")) {
+      onRemove();
+      setIsOpen(false);
+    }
+  };
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="text-xs text-black hover:text-black/70 px-2 py-1 rounded hover:bg-gray-100"
+      >
+        ⋮
+      </button>
+      {isOpen && (
+        <div className="absolute right-0 top-full mt-1 w-40 rounded-lg border border-gray-300 bg-white shadow-lg z-20">
+          <div className="py-1">
+            <button
+              type="button"
+              onClick={() => handleRoleChange(WalletRole.MEMBER)}
+              className={`w-full px-3 py-2 text-left text-sm ${
+                member.role === WalletRole.MEMBER
+                  ? "bg-blue-50 text-blue-700 font-medium"
+                  : "text-black hover:bg-gray-100"
+              }`}
+            >
+              {member.role === WalletRole.MEMBER ? "✓ MEMBER" : "設為 MEMBER"}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleRoleChange(WalletRole.VIEWER)}
+              className={`w-full px-3 py-2 text-left text-sm ${
+                member.role === WalletRole.VIEWER
+                  ? "bg-blue-50 text-blue-700 font-medium"
+                  : "text-black hover:bg-gray-100"
+              }`}
+            >
+              {member.role === WalletRole.VIEWER ? "✓ VIEWER" : "設為 VIEWER"}
+            </button>
+            <div className="border-t border-gray-200 my-1" />
+            <button
+              type="button"
+              onClick={handleRemove}
+              className="w-full px-3 py-2 text-left text-sm text-red-500 hover:bg-red-50"
+            >
+              移除成員
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 /**
  * Edit wallet page
@@ -38,10 +133,11 @@ export default function EditWalletPage() {
     imageUrl?: string;
   }>>([]);
   const [invitedUserIds, setInvitedUserIds] = useState<string[]>([]);
-  const [invitedUsers, setInvitedUsers] = useState<Array<{ id: string; userId: string; name: string; imageUrl?: string }>>([]);
+  const [invitedUsers, setInvitedUsers] = useState<Array<{ id: string; userId: string; name: string; imageUrl?: string; role: WalletRole }>>([]);
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [userSearchResults, setUserSearchResults] = useState<Array<{ id: string; userId: string; name: string; imageUrl?: string }>>([]);
   const [showUserSearchResults, setShowUserSearchResults] = useState(false);
+  const [defaultInviteRole, setDefaultInviteRole] = useState<WalletRole>(WalletRole.MEMBER);
   
   // UI state
   const [loading, setLoading] = useState(false);
@@ -136,7 +232,7 @@ export default function EditWalletPage() {
   const handleAddInvitedUser = (user: { id: string; userId: string; name: string; imageUrl?: string }) => {
     if (!invitedUserIds.includes(user.id)) {
       setInvitedUserIds([...invitedUserIds, user.id]);
-      setInvitedUsers([...invitedUsers, user]);
+      setInvitedUsers([...invitedUsers, { ...user, role: defaultInviteRole }]);
       setUserSearchQuery("");
       setShowUserSearchResults(false);
     }
@@ -258,14 +354,18 @@ export default function EditWalletPage() {
       }
 
       // Add new members if any
-      if (invitedUserIds.length > 0) {
+      if (invitedUsers.length > 0) {
+        const invitations = invitedUsers.map(user => ({
+          userId: user.id,
+          role: user.role,
+        }));
         const inviteResponse = await fetch(`/api/wallets/${walletId}/invite`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           credentials: "include",
-          body: JSON.stringify({ userIds: invitedUserIds }),
+          body: JSON.stringify({ invitations }),
         });
 
         if (!inviteResponse.ok) {
@@ -279,10 +379,11 @@ export default function EditWalletPage() {
       setSuccess(true);
       refreshWallets();
       
-      // Navigate back to wallet page
-      setTimeout(() => {
-        router.push(`/wallets/${walletId}`);
-      }, 1500);
+      // Clear invited users after successful invitation
+      setInvitedUsers([]);
+      setInvitedUserIds([]);
+      
+      // Stay on the edit page - user can continue editing or click "返回" to go back
     } catch (err) {
       setError("網路錯誤，請稍後再試");
     } finally {
@@ -421,119 +522,154 @@ export default function EditWalletPage() {
           </select>
         </div>
 
-        {/* Add members */}
-        <div className="flex flex-col gap-2">
-          <label htmlFor="userSearch" className="text-sm font-medium text-black">
-            新增人員（選填）
-          </label>
-          <div className="relative">
-            <input
-              id="userSearch"
-              type="text"
-              value={userSearchQuery}
-              onChange={(e) => setUserSearchQuery(e.target.value)}
-              onFocus={() => {
-                if (userSearchResults.length > 0) {
-                  setShowUserSearchResults(true);
-                }
-              }}
-              placeholder="搜尋使用者 ID 或名稱"
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-500 focus:outline-none"
-            />
-            {showUserSearchResults && userSearchResults.length > 0 && (
-              <>
-                <div
-                  className="fixed inset-0 z-10"
-                  onClick={() => setShowUserSearchResults(false)}
+        {/* Member management section with gray background */}
+        <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}>
+          {/* Add members */}
+          <div className="flex flex-col gap-2 mb-4">
+            <label htmlFor="userSearch" className="text-sm font-medium text-black">
+              新增人員
+            </label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <input
+                  id="userSearch"
+                  type="text"
+                  value={userSearchQuery}
+                  onChange={(e) => setUserSearchQuery(e.target.value)}
+                  onFocus={() => {
+                    if (userSearchResults.length > 0) {
+                      setShowUserSearchResults(true);
+                    }
+                  }}
+                  placeholder="搜尋使用者 ID 或名稱"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-500 focus:outline-none"
                 />
-                <div className="absolute top-full z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-300 bg-white shadow-lg">
-                  {userSearchResults.map((user) => (
+                {showUserSearchResults && userSearchResults.length > 0 && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowUserSearchResults(false)}
+                    />
+                    <div className="absolute top-full z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-300 bg-white shadow-lg">
+                      {userSearchResults.map((user) => (
+                        <button
+                          key={user.id}
+                          type="button"
+                          onClick={() => handleAddInvitedUser(user)}
+                          className="w-full px-3 py-2 text-left text-sm text-black hover:bg-gray-100"
+                        >
+                          <div className="font-medium">{user.name}</div>
+                          <div className="text-xs text-gray-500">{user.userId}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+              <select
+                value={defaultInviteRole}
+                onChange={(e) => setDefaultInviteRole(e.target.value as WalletRole)}
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-500 focus:outline-none"
+              >
+                <option value={WalletRole.MEMBER}>MEMBER</option>
+                <option value={WalletRole.VIEWER}>VIEWER</option>
+              </select>
+            </div>
+            {invitedUsers.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {invitedUsers.map((user) => (
+                  <span
+                    key={user.id}
+                    className="inline-flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1 text-sm text-blue-700"
+                  >
+                    {user.name} ({user.role})
                     <button
-                      key={user.id}
                       type="button"
-                      onClick={() => handleAddInvitedUser(user)}
-                      className="w-full px-3 py-2 text-left text-sm text-black hover:bg-gray-100"
+                      onClick={() => handleRemoveInvitedUser(user.id)}
+                      className="hover:text-blue-900"
                     >
-                      <div className="font-medium">{user.name}</div>
-                      <div className="text-xs text-gray-500">{user.userId}</div>
+                      ×
                     </button>
-                  ))}
-                </div>
-              </>
+                  </span>
+                ))}
+              </div>
             )}
           </div>
-          {invitedUsers.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {invitedUsers.map((user) => (
-                <span
-                  key={user.id}
-                  className="inline-flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1 text-sm text-blue-700"
-                >
-                  {user.name}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveInvitedUser(user.id)}
-                    className="hover:text-blue-900"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
+
+          {/* Existing members */}
+          {existingMembers.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-black">
+                現有成員
+              </label>
+              <div className="flex flex-col gap-2">
+                {existingMembers.map((member) => {
+                  const isCurrentUser = member.userId === currentUserId;
+                  const isMemberCreator = member.status === WalletUserStatus.OWNER && member.role === WalletRole.OWNER;
+                  
+                  return (
+                    <div
+                      key={member.id}
+                      className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div>
+                          <div className="text-sm font-medium text-black">
+                            {member.name}
+                            {isCurrentUser && <span className="ml-1 text-xs text-gray-500">(You)</span>}
+                          </div>
+                          <div className="text-xs text-black/50">
+                            {member.role}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {isCreator && !isCurrentUser && !isMemberCreator && (
+                          <MemberRoleDropdown
+                            member={member}
+                            walletId={walletId}
+                            onRoleChange={async (newRole) => {
+                              try {
+                                const response = await fetch(`/api/wallets/${walletId}/members/${member.userId}`, {
+                                  method: "PATCH",
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                  },
+                                  credentials: "include",
+                                  body: JSON.stringify({ role: newRole }),
+                                });
+                                if (response.ok) {
+                                  setExistingMembers(existingMembers.map(m => 
+                                    m.userId === member.userId ? { ...m, role: newRole } : m
+                                  ));
+                                } else {
+                                  const data = await response.json();
+                                  alert(data.error || "更新權限失敗");
+                                }
+                              } catch (err) {
+                                alert("網路錯誤，請稍後再試");
+                              }
+                            }}
+                            onRemove={() => handleRemoveMember(member.userId)}
+                          />
+                        )}
+                        {!isCreator && isCurrentUser && (
+                          <button
+                            type="button"
+                            onClick={handleLeaveWallet}
+                            className="text-xs text-red-500 hover:text-red-700"
+                          >
+                            退出
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
-
-        {/* Existing members */}
-        {existingMembers.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-black">
-              現有成員
-            </label>
-            <div className="flex flex-col gap-2">
-              {existingMembers.map((member) => {
-                const isCurrentUser = member.userId === currentUserId;
-                const isMemberCreator = member.status === WalletUserStatus.OWNER && member.role === WalletRole.OWNER;
-                
-                return (
-                  <div
-                    key={member.id}
-                    className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div>
-                        <div className="text-sm font-medium text-black">{member.name}</div>
-                        <div className="text-xs text-black/50">
-                          {isMemberCreator ? "創建者" : member.role}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      {isCreator && !isCurrentUser && !isMemberCreator && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveMember(member.userId)}
-                          className="text-xs text-red-500 hover:text-red-700"
-                        >
-                          移除
-                        </button>
-                      )}
-                      {!isCreator && isCurrentUser && (
-                        <button
-                          type="button"
-                          onClick={handleLeaveWallet}
-                          className="text-xs text-red-500 hover:text-red-700"
-                        >
-                          退出
-                        </button>
-                      )}
-                      {/* Creator cannot leave wallet - no button shown */}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* Description */}
         <div className="flex flex-col gap-2">

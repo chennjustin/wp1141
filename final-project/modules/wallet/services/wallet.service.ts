@@ -384,7 +384,7 @@ export const walletService = {
   async inviteUsersToWallet(
     walletId: string,
     userId: string,
-    invitedUserIds: string[]
+    invitations: Array<{ userId: string; role: "MEMBER" | "VIEWER" }>
   ): Promise<WalletServiceResult<Wallet>> {
     // Check authorization - user must be a member of the wallet
     const wallet = await walletRepository.findById(walletId, userId);
@@ -395,11 +395,11 @@ export const walletService = {
       };
     }
 
-    // Validate invited users
-    if (!Array.isArray(invitedUserIds) || invitedUserIds.length === 0) {
+    // Validate invitations
+    if (!Array.isArray(invitations) || invitations.length === 0) {
       return {
         success: false,
-        error: "At least one user ID is required",
+        error: "At least one invitation is required",
       };
     }
 
@@ -414,7 +414,10 @@ export const walletService = {
 
     try {
       await prisma.$transaction(async (tx) => {
-        for (const invitedUserId of invitedUserIds) {
+        for (const invitation of invitations) {
+          const invitedUserId = invitation.userId;
+          const invitedRole = invitation.role || "MEMBER";
+
           // Verify user exists
           const invitedUser = await tx.user.findUnique({
             where: { id: invitedUserId },
@@ -444,7 +447,7 @@ export const walletService = {
             if (!existingMembership.isDeleted && existingMembership.status === WalletUserStatus.ACCEPTED) {
               continue;
             }
-            // If PENDING or REJECTED, update to PENDING
+            // If PENDING or REJECTED, update to PENDING with specified role
             if (!existingMembership.isDeleted) {
               await tx.walletUser.update({
                 where: {
@@ -454,13 +457,13 @@ export const walletService = {
                   },
                 },
                 data: {
-                  role: "MEMBER",
+                  role: invitedRole,
                   status: WalletUserStatus.PENDING,
                   isDeleted: false,
                 },
               });
             } else {
-              // If soft deleted, restore and set to PENDING
+              // If soft deleted, restore and set to PENDING with specified role
               await tx.walletUser.update({
                 where: {
                   walletId_userId: {
@@ -469,19 +472,19 @@ export const walletService = {
                   },
                 },
                 data: {
-                  role: "MEMBER",
+                  role: invitedRole,
                   status: WalletUserStatus.PENDING,
                   isDeleted: false,
                 },
               });
             }
           } else {
-            // Create new membership with PENDING status
+            // Create new membership with PENDING status and specified role
             await tx.walletUser.create({
               data: {
                 walletId,
                 userId: invitedUserId,
-                role: "MEMBER",
+                role: invitedRole,
                 status: WalletUserStatus.PENDING,
               },
             });
@@ -617,6 +620,84 @@ export const walletService = {
   },
 
   /**
+   * Update member role in wallet (only owner can update)
+   */
+  async updateMemberRole(
+    walletId: string,
+    requesterId: string,
+    targetUserId: string,
+    newRole: "MEMBER" | "VIEWER"
+  ): Promise<WalletServiceResult<void>> {
+    // Check authorization - only owner can update member roles
+    const isOwner = await walletRepository.isOwner(walletId, requesterId);
+    if (!isOwner) {
+      return {
+        success: false,
+        error: "Only wallet owner can update member roles",
+      };
+    }
+
+    // Check wallet exists
+    const wallet = await walletRepository.findById(walletId);
+    if (!wallet) {
+      return {
+        success: false,
+        error: "Wallet not found",
+      };
+    }
+
+    // Check target user is a member
+    const targetMembership = await walletRepository.findMembershipByWalletAndUser(
+      walletId,
+      targetUserId
+    );
+    if (!targetMembership || targetMembership.isDeleted) {
+      return {
+        success: false,
+        error: "Member not found",
+      };
+    }
+
+    // Cannot update the owner's role
+    if (targetMembership.status === WalletUserStatus.OWNER && targetMembership.role === "OWNER") {
+      return {
+        success: false,
+        error: "Cannot update wallet owner role",
+      };
+    }
+
+    // If role is already the same, return success
+    if (targetMembership.role === newRole) {
+      return {
+        success: true,
+      };
+    }
+
+    try {
+      // Update member role
+      await walletRepository.updateMembershipRole(walletId, targetUserId, newRole);
+
+      // Send notification to the member
+      const roleText = newRole === "MEMBER" ? "成員" : "檢視者";
+      await notificationRepository.create(
+        targetUserId,
+        "SHARED_WALLET_UPDATE",
+        `您在錢包「${wallet.name}」的權限已變更為 ${roleText}`
+      );
+
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error("Error updating member role:", error);
+      return {
+        success: false,
+        error: "Failed to update member role",
+      };
+    }
+  },
+
+  /**
    * Remove member from wallet (only creator can remove members)
    */
   async removeMemberFromWallet(
@@ -664,6 +745,14 @@ export const walletService = {
 
     try {
       await walletRepository.removeMembership(walletId, targetUserId);
+
+      // Send notification to the removed member
+      await notificationRepository.create(
+        targetUserId,
+        "SHARED_WALLET_UPDATE",
+        `您已被從錢包「${wallet.name}」中移除`
+      );
+
       return {
         success: true,
       };
