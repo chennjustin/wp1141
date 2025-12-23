@@ -508,7 +508,7 @@ export default function WalletStatisticsPage() {
                   currency={currentWallet.defaultCurrency}
                 />
               ) : (
-                <BarChart data={categoryStats} />
+                <BarChart data={categoryStats} currency={currentWallet.defaultCurrency} />
               )}
             </div>
 

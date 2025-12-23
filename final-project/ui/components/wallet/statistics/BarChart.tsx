@@ -21,6 +21,7 @@ import type { CategoryStatistics } from "@/ui/utils/statistics";
 
 interface BarChartProps {
   data: CategoryStatistics[];
+  currency?: string; // Currency code for display (e.g., "TWD", "USD")
 }
 
 /**
@@ -28,33 +29,40 @@ interface BarChartProps {
  * 
  * Displays category name, amount, and percentage when hovering over bars
  */
-const CustomTooltip = ({ active, payload }: any) => {
-  if (!active || !payload || !payload.length || !payload[0]) {
-    return null;
-  }
+const createCustomTooltip = (currency: string = "TWD") => {
+  return ({ active, payload }: any) => {
+    if (!active || !payload || !payload.length || !payload[0]) {
+      return null;
+    }
 
-  const item = payload[0];
-  // Recharts passes data directly in payload[0].payload for BarChart
-  const payloadData = item.payload || item;
-  const name = payloadData.name || "";
-  const totalAmount = payloadData.totalAmount ?? 0;
-  const percentage = payloadData.percentage ?? 0;
+    const item = payload[0];
+    // Recharts passes data directly in payload[0].payload for BarChart
+    const payloadData = item.payload || item;
+    const name = payloadData.name || "";
+    const totalAmount = payloadData.totalAmount ?? 0;
+    const percentage = payloadData.percentage ?? 0;
 
-  if (!name || totalAmount === 0) {
-    return null;
-  }
+    if (!name || totalAmount === 0) {
+      return null;
+    }
 
-  return (
-    <div className="rounded border border-black/20 bg-white p-2 shadow-lg">
-      <p className="text-sm font-medium text-black">{name}</p>
-      <p className="text-xs text-black/70">
-        {typeof totalAmount === "number"
-          ? totalAmount.toLocaleString()
-          : String(totalAmount)}{" "}
-        ({typeof percentage === "number" ? percentage.toFixed(1) : "0.0"}%)
-      </p>
-    </div>
-  );
+    // Format amount with currency
+    const formattedAmount = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(totalAmount);
+
+    return (
+      <div className="rounded border border-black/20 bg-white p-2 shadow-lg">
+        <p className="text-sm font-medium text-black">{name}</p>
+        <p className="text-xs text-black/70">
+          {formattedAmount} ({typeof percentage === "number" ? percentage.toFixed(1) : "0.0"}%)
+        </p>
+      </div>
+    );
+  };
 };
 
 
@@ -88,8 +96,9 @@ const CustomXAxisTick = ({ x, y, payload }: any) => {
  * Each bar represents a category with its assigned color.
  * 
  * @param data - Array of category statistics
+ * @param currency - Currency code for formatting amounts (default: "TWD")
  */
-export function BarChart({ data }: BarChartProps) {
+export function BarChart({ data, currency = "TWD" }: BarChartProps) {
   // Prepare data for recharts
   const chartData = data.map((item) => ({
     name: item.tagName,
@@ -120,7 +129,7 @@ export function BarChart({ data }: BarChartProps) {
             tick={{ fill: "#000", fontSize: 12 }}
             tickFormatter={(value) => `${value}%`}
           />
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip content={createCustomTooltip(currency)} />
           <Bar dataKey="percentage" radius={[4, 4, 0, 0]}>
             {chartData.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={entry.color} />
