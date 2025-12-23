@@ -57,7 +57,7 @@ export function SubscriptionFormFields({
   onHideCalculator,
 }: SubscriptionFormFieldsProps) {
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4" style={{ backgroundColor: 'var(--wallet-bg)' }}>
+    <div className="flex-1 px-4 py-4 space-y-4" style={{ backgroundColor: 'var(--wallet-bg)' }}>
       {/* Description */}
       <div>
         <div className="flex items-center gap-2 mb-2">
@@ -125,6 +125,7 @@ export function SubscriptionFormFields({
         selectedUnit={selectedUnit}
         customIntervalMonths={customIntervalMonths}
         customIntervalUnit={customIntervalUnit}
+        startDate={startDate}
         onUnitChange={(unit) => {
           onSelectedUnitChange(unit);
           onIntervalTypeChange(unit);
@@ -132,10 +133,6 @@ export function SubscriptionFormFields({
         }}
         onCustomChange={onCustomIntervalMonthsChange}
         onCustomUnitChange={onCustomIntervalUnitChange}
-        onSetCustom={() => {
-          onIntervalTypeChange("custom");
-          onCustomIntervalUnitChange(selectedUnit);
-        }}
         onHideCalculator={onHideCalculator}
       />
     </div>

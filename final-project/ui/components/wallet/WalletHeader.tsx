@@ -45,9 +45,7 @@ export function WalletHeader({
       >
         <Menu className="h-5 w-5 text-black" strokeWidth={2} />
         {unreadCount > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white">
-            {unreadCount > 99 ? "99+" : unreadCount}
-          </span>
+          <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500" />
         )}
       </button>
 

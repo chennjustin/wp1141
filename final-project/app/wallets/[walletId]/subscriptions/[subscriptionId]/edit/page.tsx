@@ -455,7 +455,7 @@ export default function EditSubscriptionPage() {
           )}
 
           {/* Cancel Button */}
-          <div className="px-4 py-4 border-t border-gray-200">
+          <div className="px-4 pt-8 pb-4 border-t border-gray-200">
             <button
               type="button"
               onClick={handleCancel}

@@ -222,8 +222,8 @@ export function DailyTransactionsSection({
                     <span className="text-xs text-black/50 text-left">{tx.time}</span>
                   </div>
                   <span
-                    className={`text-sm font-semibold text-black ${
-                      tx.amount >= 0 ? "" : ""
+                    className={`text-sm font-semibold ${
+                      tx.amount >= 0 ? "text-green-600" : "text-red-600"
                     }`}
                   >
                     {tx.amount >= 0 ? "+" : "-"}

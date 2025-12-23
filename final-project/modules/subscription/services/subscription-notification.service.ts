@@ -13,7 +13,7 @@ import { formatDate, formatAmount, isBillingInTwoDays } from "../utils/subscript
 
 /**
  * Create a transaction notification for a subscription
- * Format: 「{訂閱名稱}」已自動扣款 {金額}（{錢包名稱}）
+ * Format: 「系統已幫您建立「{訂閱名稱}{金額}」的款項了！！」 ({錢包名稱})
  */
 export async function createTransactionNotification(
   subscription: Subscription,
@@ -32,7 +32,7 @@ export async function createTransactionNotification(
 
     const subscriptionName = subscription.name || subscription.tag.name;
     const amount = formatAmount(subscription.amount, subscription.currency);
-    const message = `「${subscriptionName}」已自動扣款 ${amount}（${finalWalletName}）`;
+    const message = `「系統已幫您建立「${subscriptionName}${amount}」的款項了！！」 (${finalWalletName})`;
 
     await notificationService.createSubscriptionNotification(
       subscription.userId,
@@ -50,7 +50,7 @@ export async function createTransactionNotification(
 
 /**
  * Create a batch transaction notification for multiple transactions
- * Format: 幫你補齊從{開始日期}到{結束日期}的交易了！！
+ * Format: 幫你補齊從{開始日期}到{結束日期}的款項了！！
  */
 export async function createBatchTransactionNotification(
   subscription: Subscription,
@@ -72,7 +72,7 @@ export async function createBatchTransactionNotification(
     const subscriptionName = subscription.name || subscription.tag.name;
     const startDateStr = formatDate(startDate);
     const endDateStr = formatDate(endDate);
-    const message = `「${subscriptionName}」幫你補齊從${startDateStr}到${endDateStr}的交易了！！`;
+    const message = `「${subscriptionName}」幫你補齊從${startDateStr}到${endDateStr}的款項了！！`;
 
     await notificationService.createSubscriptionNotification(
       subscription.userId,
