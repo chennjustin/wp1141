@@ -253,7 +253,7 @@ export function SubscriptionFormFields({
       />
 
       {/* Payer - 誰先付錢 */}
-      {onTogglePayerSelector && (
+      {onTogglePayerSelector && walletMembers.length > 1 && (
         <div>
           <div className="flex items-center gap-2 mb-2">
             <svg
@@ -316,7 +316,7 @@ export function SubscriptionFormFields({
       )}
 
       {/* Share - 如何分 */}
-      {onToggleShareSelector && (
+      {onToggleShareSelector && walletMembers.length > 1 && (
         <div>
           <div className="flex items-center gap-2 mb-2">
             <svg
