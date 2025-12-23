@@ -53,6 +53,7 @@ export default function EditSubscriptionPage() {
   );
 
   const [fetchingSubscription, setFetchingSubscription] = useState(true);
+  const [deleting, setDeleting] = useState(false);
 
   // Fetch subscription data
   useEffect(() => {
@@ -241,6 +242,32 @@ export default function EditSubscriptionPage() {
     }
   };
 
+  const handleCancel = async () => {
+    if (!confirm("確定要取消此訂閱嗎？取消後將停止未來的自動扣款。")) {
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      const response = await fetch(`/api/subscriptions/${subscriptionId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "取消失敗");
+      }
+
+      // Navigate back to subscriptions list
+      router.push(`/wallets/${walletId}/subscriptions`);
+    } catch (err) {
+      console.error("Failed to cancel subscription", err);
+      actions.setError(err instanceof Error ? err.message : "取消失敗");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     actions.setError(null);
@@ -426,6 +453,18 @@ export default function EditSubscriptionPage() {
               {state.error}
             </div>
           )}
+
+          {/* Cancel Button */}
+          <div className="px-4 py-4 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={deleting || state.loading}
+              className="w-full py-3 px-4 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {deleting ? "取消中..." : "取消訂閱"}
+            </button>
+          </div>
         </form>
       </div>
 

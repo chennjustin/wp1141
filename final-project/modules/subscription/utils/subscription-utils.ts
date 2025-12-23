@@ -105,6 +105,82 @@ export function isBillingInTwoDays(subscription: Subscription): boolean {
 }
 
 /**
+ * Calculate the correct nextBilling date based on today's date
+ * This ensures nextBilling is always the next billing date from today
+ */
+export function calculateCorrectNextBilling(
+  subscription: Subscription
+): Date {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const startDate = new Date(subscription.startDate);
+  startDate.setHours(0, 0, 0, 0);
+  
+  // If startDate is in the future, nextBilling should be startDate
+  if (startDate > today) {
+    return startDate;
+  }
+  
+  // If startDate is today or in the past, calculate the next billing date
+  // Start from startDate and find the first billing date that is after today
+  let currentDate = new Date(startDate);
+  currentDate.setHours(0, 0, 0, 0);
+  
+  // Use a safety counter to prevent infinite loops
+  let iterations = 0;
+  const maxIterations = 1000;
+  
+  while (currentDate <= today && iterations < maxIterations) {
+    const nextDate = calculateNextBilling(currentDate, subscription.intervalMonths);
+    nextDate.setHours(0, 0, 0, 0);
+    
+    // If next date is the same as current date, break to avoid infinite loop
+    if (nextDate.getTime() === currentDate.getTime()) {
+      console.warn(`[calculateCorrectNextBilling] Next billing date is the same as current date, breaking loop`);
+      break;
+    }
+    
+    currentDate = nextDate;
+    iterations++;
+    
+    // If we've found a date after today, return it
+    if (currentDate > today) {
+      // Check if it exceeds endDate
+      if (subscription.endDate) {
+        const endDate = new Date(subscription.endDate);
+        endDate.setHours(0, 0, 0, 0);
+        if (currentDate > endDate) {
+          // Return endDate if nextBilling exceeds it
+          return endDate;
+        }
+      }
+      return currentDate;
+    }
+  }
+  
+  if (iterations >= maxIterations) {
+    console.warn(`[calculateCorrectNextBilling] Reached max iterations (${maxIterations}), returning current date + interval`);
+    // Fallback: return today + interval
+    return calculateNextBilling(today, subscription.intervalMonths);
+  }
+  
+  // If we haven't found a date after today yet, calculate from currentDate
+  const nextBilling = calculateNextBilling(currentDate, subscription.intervalMonths);
+  
+  // Check if it exceeds endDate
+  if (subscription.endDate) {
+    const endDate = new Date(subscription.endDate);
+    endDate.setHours(0, 0, 0, 0);
+    if (nextBilling > endDate) {
+      return endDate;
+    }
+  }
+  
+  return nextBilling;
+}
+
+/**
  * Calculate all expected transaction dates for a subscription
  * Returns dates from startDate to today (or endDate if earlier), based on intervalMonths
  */

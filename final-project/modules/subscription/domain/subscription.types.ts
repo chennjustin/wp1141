@@ -69,6 +69,7 @@ export interface UpdateSubscriptionData {
   intervalMonths?: number;
   nextBilling?: Date | string;
   name?: string | null;
+  isDeleted?: boolean;
 }
 
 /**

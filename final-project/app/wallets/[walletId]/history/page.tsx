@@ -265,6 +265,7 @@ function DailyTransactionCard({
   walletId: string;
 }) {
   const router = useRouter();
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   
   // Calculate daily net amount and determine color
   const netAmount = group.netAmount;
@@ -278,6 +279,38 @@ function DailyTransactionCard({
   const handleTransactionClick = (transactionId: string) => {
     // TODO: Navigate to transaction edit page when implemented
     // router.push(`/wallets/${walletId}/transactions/${transactionId}/edit`);
+  };
+
+  const handleDeleteTransaction = async (e: React.MouseEvent, transactionId: string) => {
+    e.stopPropagation();
+    
+    if (!confirm("確定要刪除此交易嗎？")) {
+      return;
+    }
+
+    try {
+      setDeletingIds((prev) => new Set(prev).add(transactionId));
+      const response = await fetch(`/api/transactions/${transactionId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "刪除失敗");
+      }
+
+      // Reload page to refresh transaction list
+      router.refresh();
+    } catch (err) {
+      console.error("Failed to delete transaction", err);
+      alert(err instanceof Error ? err.message : "刪除失敗");
+    } finally {
+      setDeletingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(transactionId);
+        return next;
+      });
+    }
   };
 
   return (
@@ -302,34 +335,49 @@ function DailyTransactionCard({
           // Get iconKey with fallback
           const iconKey = transaction.tag?.iconKey || "tag";
 
+          const isDeleting = deletingIds.has(transaction.id);
+
           return (
             <div key={transaction.id}>
-              <button
-                type="button"
-                onClick={() => handleTransactionClick(transaction.id)}
-                className="w-full flex items-center justify-between py-2 hover:bg-black/5 transition-colors rounded"
-              >
-                {/* Left: Icon */}
-                <div className="flex h-8 w-8 items-center justify-center flex-shrink-0">
-                  <TagIcon iconKey={iconKey} />
-                </div>
+              <div className="flex items-center gap-2 group">
+                <button
+                  type="button"
+                  onClick={() => handleTransactionClick(transaction.id)}
+                  className="flex-1 flex items-center justify-between py-2 hover:bg-black/5 transition-colors rounded"
+                >
+                  {/* Left: Icon */}
+                  <div className="flex h-8 w-8 items-center justify-center flex-shrink-0">
+                    <TagIcon iconKey={iconKey} />
+                  </div>
 
-                {/* Center: Item name */}
-                <div className="flex-1 px-3 text-left">
-                  <span className="text-sm text-black">{itemName}</span>
-                </div>
+                  {/* Center: Item name */}
+                  <div className="flex-1 px-3 text-left">
+                    <span className="text-sm text-black">{itemName}</span>
+                  </div>
 
-                {/* Right: Amount */}
-                <div className="text-right flex-shrink-0">
-                  <span className="text-sm font-semibold" style={colorStyle}>
-                    ${sign}{formatted}
-                  </span>
-                </div>
-              </button>
+                  {/* Right: Amount */}
+                  <div className="text-right flex-shrink-0">
+                    <span className="text-sm font-semibold" style={colorStyle}>
+                      ${sign}{formatted}
+                    </span>
+                  </div>
+                </button>
+
+                {/* Delete Button */}
+                <button
+                  type="button"
+                  onClick={(e) => handleDeleteTransaction(e, transaction.id)}
+                  disabled={isDeleting}
+                  className="flex-shrink-0 px-2 py-1 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="刪除交易"
+                >
+                  {isDeleting ? "刪除中" : "刪除"}
+                </button>
+              </div>
 
               {/* Separator line (except for last item) */}
               {index < group.transactions.length - 1 && (
-                <div className="border-b border-[#E8E8E8]" />
+                <div className="border-b border-[#E8E8E8] mt-2" />
               )}
             </div>
           );

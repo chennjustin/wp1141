@@ -49,6 +49,46 @@ export async function createTransactionNotification(
 }
 
 /**
+ * Create a batch transaction notification for multiple transactions
+ * Format: 幫你補齊從{開始日期}到{結束日期}的交易了！！
+ */
+export async function createBatchTransactionNotification(
+  subscription: Subscription,
+  startDate: Date,
+  endDate: Date,
+  walletName?: string
+): Promise<void> {
+  try {
+    // Get wallet name if not provided
+    let finalWalletName = walletName;
+    if (!finalWalletName) {
+      const wallet = await prisma.wallet.findUnique({
+        where: { id: subscription.walletId },
+        select: { name: true },
+      });
+      finalWalletName = wallet?.name || "未知錢包";
+    }
+
+    const subscriptionName = subscription.name || subscription.tag.name;
+    const startDateStr = formatDate(startDate);
+    const endDateStr = formatDate(endDate);
+    const message = `「${subscriptionName}」幫你補齊從${startDateStr}到${endDateStr}的交易了！！`;
+
+    await notificationService.createSubscriptionNotification(
+      subscription.userId,
+      NotificationType.SUBSCRIPTION_REMINDER,
+      message
+    );
+  } catch (error) {
+    console.error(
+      `[createBatchTransactionNotification] Error creating batch transaction notification for subscription ${subscription.id}:`,
+      error
+    );
+    // Don't throw - notification failure shouldn't break the operation
+  }
+}
+
+/**
  * Create a reminder notification for a subscription
  * Format: 「{訂閱名稱}」將於後天（{日期}）自動扣款 {金額}（{錢包名稱}）
  */
