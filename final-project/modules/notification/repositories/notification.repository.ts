@@ -154,5 +154,67 @@ export const notificationRepository = {
       },
     });
   },
+
+  /**
+   * Hard delete multiple notifications by IDs
+   */
+  async hardDeleteMany(ids: string[], userId: string) {
+    if (ids.length === 0) {
+      return { count: 0 };
+    }
+    return prisma.notification.deleteMany({
+      where: {
+        id: { in: ids },
+        userId,
+      },
+    });
+  },
+
+  /**
+   * Find notifications related to a subscription
+   * Searches for notifications that contain subscription name or tag name in the message
+   */
+  async findBySubscription(subscriptionId: string, userId: string) {
+    // First get the subscription to extract its name and tag name
+    const subscription = await prisma.subscription.findUnique({
+      where: { id: subscriptionId },
+      include: {
+        tag: true,
+      },
+    });
+
+    if (!subscription) {
+      return [];
+    }
+
+    const subscriptionName = subscription.name || subscription.tag.name;
+
+    // Find notifications matching the subscription pattern
+    return prisma.notification.findMany({
+      where: {
+        userId,
+        type: NotificationType.SUBSCRIPTION_REMINDER,
+        isDeleted: false,
+        message: {
+          contains: subscriptionName,
+        },
+      },
+    });
+  },
+
+  /**
+   * Delete notifications related to a subscription (hard delete)
+   * Deletes notifications that match the subscription's transaction or reminder pattern
+   */
+  async deleteBySubscription(subscriptionId: string, userId: string) {
+    const notifications = await this.findBySubscription(subscriptionId, userId);
+    
+    if (notifications.length === 0) {
+      return { count: 0 };
+    }
+
+    const ids = notifications.map((n) => n.id);
+    return this.hardDeleteMany(ids, userId);
+  },
 };
 
