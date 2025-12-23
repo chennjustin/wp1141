@@ -173,7 +173,7 @@ export function SideMenu({
               onClick={() => onNavigate(item.path)}
             >
               <div className="flex items-center gap-3">
-                <Icon className={`h-5 w-5 ${isActive ? "text-amber-700" : "text-black/60"}`} />
+                <Icon className={`h-4 w-4 ${isActive ? "text-amber-700" : "text-black/60"}`} />
                 <span className={isActive ? "text-amber-700 font-medium" : ""}>
                   {item.label}
                 </span>
@@ -206,7 +206,7 @@ export function SideMenu({
           className="flex items-center gap-3 px-5 py-2.5 text-left text-red-600 hover:bg-red-50 transition-colors"
           onClick={handleLogout}
         >
-          <LogOut className="h-5 w-5" />
+          <LogOut className="h-4 w-4" />
           <span>登出</span>
         </button>
       </nav>
