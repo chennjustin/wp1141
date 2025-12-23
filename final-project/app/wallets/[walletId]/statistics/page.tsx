@@ -15,7 +15,7 @@
 
 import { useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, BarChart3, PieChart } from "lucide-react";
 import { useWallets } from "@/hooks/useWallet";
 import { useCurrentWallet } from "@/hooks/useCurrentWallet";
 import { useWalletTransactions } from "@/hooks/useWalletTransactions";
@@ -446,82 +446,9 @@ export default function WalletStatisticsPage() {
           aria-label="Toggle chart type"
         >
           {chartType === "donut" ? (
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="text-black"
-            >
-              {/* Bar chart icon */}
-              <line
-                x1="4"
-                y1="20"
-                x2="20"
-                y2="20"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-              <rect
-                x="5"
-                y="16"
-                width="3"
-                height="4"
-                rx="0.5"
-                stroke="currentColor"
-                strokeWidth="2"
-                fill="none"
-              />
-              <rect
-                x="11"
-                y="12"
-                width="3"
-                height="8"
-                rx="0.5"
-                stroke="currentColor"
-                strokeWidth="2"
-                fill="none"
-              />
-              <rect
-                x="17"
-                y="6"
-                width="3"
-                height="14"
-                rx="0.5"
-                stroke="currentColor"
-                strokeWidth="2"
-                fill="none"
-              />
-            </svg>
+            <BarChart3 className="h-5 w-5 text-black" strokeWidth={2} />
           ) : (
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="text-black"
-            >
-              {/* Donut chart icon */}
-              <circle
-                cx="12"
-                cy="12"
-                r="8"
-                stroke="currentColor"
-                strokeWidth="2"
-                fill="none"
-              />
-              <circle
-                cx="12"
-                cy="12"
-                r="4"
-                stroke="currentColor"
-                strokeWidth="2"
-                fill="none"
-              />
-            </svg>
+            <PieChart className="h-5 w-5 text-black" strokeWidth={2} />
           )}
         </button>
       </section>
@@ -537,7 +464,7 @@ export default function WalletStatisticsPage() {
               : "bg-white text-black/70 hover:bg-black/5"
           }`}
         >
-          MTH
+          Month
         </button>
         <button
           type="button"
