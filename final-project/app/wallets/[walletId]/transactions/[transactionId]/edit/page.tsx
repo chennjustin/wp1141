@@ -550,8 +550,9 @@ export default function EditTransactionPage() {
                 }}
                 className="flex h-10 w-full items-center justify-between px-3 bg-white border-b border-gray-200 text-left hover:border-gray-400 transition-colors"
               >
-                <span className="text-sm text-black">
-                  {formatDate(date)} {formatTime(time)}
+                <span className="text-sm text-black flex items-center gap-2">
+                  <span>{formatDate(date)}</span>
+                  <span className="w-12 text-right">{formatTime(time)}</span>
                 </span>
                 <svg
                   className="h-4 w-4 text-gray-400"

@@ -260,30 +260,28 @@ function DailyTransactionCard({
 
           return (
             <div key={transaction.id}>
-              <div className="flex items-center gap-2 group">
-                <button
-                  type="button"
-                  onClick={() => handleTransactionClick(transaction.id)}
-                  className="flex-1 flex items-center justify-between py-2 hover:bg-black/5 transition-colors rounded"
-                >
-                  {/* Left: Icon */}
-                  <div className="flex h-8 w-8 items-center justify-center flex-shrink-0">
-                    <TagIcon iconKey={iconKey} />
-                  </div>
+              <button
+                type="button"
+                onClick={() => handleTransactionClick(transaction.id)}
+                className="w-full flex items-center gap-2 py-2 hover:bg-black/5 transition-colors"
+              >
+                {/* Left: Icon */}
+                <div className="flex h-8 w-8 items-center justify-center flex-shrink-0">
+                  <TagIcon iconKey={iconKey} />
+                </div>
 
-                  {/* Center: Item name */}
-                  <div className="flex-1 px-3 text-left">
-                    <span className="text-sm text-black">{itemName}</span>
-                  </div>
+                {/* Center: Item name */}
+                <div className="flex-1 text-left">
+                  <span className="text-sm text-black">{itemName}</span>
+                </div>
 
-                  {/* Right: Amount */}
-                  <div className="text-right flex-shrink-0">
-                    <span className="text-sm font-semibold" style={colorStyle}>
-                      ${sign}{formatted}
-                    </span>
-                  </div>
-                </button>
-              </div>
+                {/* Right: Amount */}
+                <div className="text-right flex-shrink-0">
+                  <span className="text-sm font-semibold" style={colorStyle}>
+                    ${sign}{formatted}
+                  </span>
+                </div>
+              </button>
 
               {/* Separator line (except for last item) */}
               {index < group.transactions.length - 1 && (

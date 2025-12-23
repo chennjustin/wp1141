@@ -209,17 +209,17 @@ export function DailyTransactionsSection({
             <span className="text-sm text-black/50">{getEmptyMessage()}</span>
           </div>
         ) : (
-          <ul className="pr-2">
+          <ul>
             {displayTransactions.map((tx, index) => (
               <li key={tx.id}>
                 <button
                   type="button"
                   onClick={() => handleTransactionClick(tx.id)}
-                  className="w-full flex items-center justify-between py-3 hover:bg-black/5 transition-colors rounded"
+                  className="w-full flex items-center justify-between py-3 px-0 hover:bg-black/5 transition-colors"
                 >
-                  <div className="flex flex-col items-start gap-0.5">
+                  <div className="flex flex-col items-start gap-0.5 flex-1 min-w-0">
                     <span className="text-sm text-black text-left">{tx.title}</span>
-                    <span className="text-xs text-black/50 text-left">{tx.time}</span>
+                    <span className="text-xs text-black/50 text-left w-12">{tx.time}</span>
                   </div>
                   <span
                     className={`text-sm font-semibold ${
