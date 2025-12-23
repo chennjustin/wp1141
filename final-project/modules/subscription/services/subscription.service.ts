@@ -8,6 +8,7 @@
 
 import { subscriptionRepository } from "../repositories/subscription.repository";
 import { walletRepository } from "@/modules/wallet/repositories/wallet.repository";
+import { syncSubscriptionTransactions } from "./sync-subscription-transactions.service";
 import type {
   Subscription,
   CreateSubscriptionData,
@@ -293,15 +294,71 @@ export const subscriptionService = {
         };
       }
 
-      const subscription = await subscriptionRepository.update(
+      // Store old subscription data for sync comparison
+      const oldSubscription: Subscription = {
+        id: existing.id,
+        walletId: existing.walletId,
+        userId: existing.userId,
+        amount: existing.amount,
+        currency: existing.currency,
+        nextBilling: new Date(existing.nextBilling),
+        intervalMonths: existing.intervalMonths,
+        startDate: new Date(existing.startDate),
+        endDate: existing.endDate ? new Date(existing.endDate) : null,
+        type: existing.type,
+        tagId: existing.tagId,
+        name: existing.name,
+        tag: {
+          id: existing.tag.id,
+          name: existing.tag.name,
+          iconKey: existing.tag.iconKey,
+        },
+        isDeleted: existing.isDeleted,
+        createdAt: new Date(existing.createdAt),
+        updatedAt: new Date(existing.updatedAt),
+      };
+
+      // Update subscription
+      const updated = await subscriptionRepository.update(
         subscriptionId,
         data
       );
 
+      // Build new subscription data for sync comparison
+      const newSubscription: Subscription = {
+        id: updated.id,
+        walletId: updated.walletId,
+        userId: updated.userId,
+        amount: updated.amount,
+        currency: updated.currency,
+        nextBilling: new Date(updated.nextBilling),
+        intervalMonths: updated.intervalMonths,
+        startDate: new Date(updated.startDate),
+        endDate: updated.endDate ? new Date(updated.endDate) : null,
+        type: updated.type,
+        tagId: updated.tagId,
+        name: updated.name,
+        tag: {
+          id: updated.tag.id,
+          name: updated.tag.name,
+          iconKey: updated.tag.iconKey,
+        },
+        isDeleted: updated.isDeleted,
+        createdAt: new Date(updated.createdAt),
+        updatedAt: new Date(updated.updatedAt),
+      };
+
+      // Sync transactions if startDate or amount changed
+      await syncSubscriptionTransactions(
+        subscriptionId,
+        oldSubscription,
+        newSubscription
+      );
+
       return {
         success: true,
-        data: subscription as Subscription,
-        error: undefined,
+        data: newSubscription,
+        error: null,
       };
     } catch (error) {
       console.error("[updateSubscription] Error:", error);

@@ -231,7 +231,8 @@ export default function SubscriptionsPage() {
                           const diffDays = diffTime / (1000 * 60 * 60 * 24);
                           const totalMonths = diffDays / (30 * subscription.intervalMonths);
                           const totalAmount = subscription.amount * totalMonths;
-                          return formatAmount(Math.round(totalAmount * 100) / 100, subscription.currency);
+                          // Round to integer for total amount display
+                          return formatAmount(Math.round(totalAmount), subscription.currency);
                         })()
                       ) : (
                         formatAmount(Math.round(subscription.amount * 100) / 100, subscription.currency)

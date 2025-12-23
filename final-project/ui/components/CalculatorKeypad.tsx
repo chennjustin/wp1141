@@ -54,7 +54,8 @@ export function CalculatorKeypad({
   };
 
   const handleClear = () => {
-    updateExpression(clearExpression());
+    // When AC is pressed, temporarily set expression to "0" so the display shows "0"
+    updateExpression("0");
   };
 
   const handleOk = () => {

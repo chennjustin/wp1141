@@ -49,6 +49,73 @@ const swaggerDefinition = {
         },
         required: ["error"],
       },
+      Notification: {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+            description: "Notification ID",
+            example: "notification-1",
+          },
+          userId: {
+            type: "string",
+            description: "User ID who owns this notification",
+            example: "user-1",
+          },
+          type: {
+            type: "string",
+            enum: ["REPAYMENT", "SUBSCRIPTION_REMINDER", "SHARED_WALLET_UPDATE", "WALLET_INVITATION"],
+            description: "Notification type",
+            example: "WALLET_INVITATION",
+          },
+          message: {
+            type: "string",
+            description: "Notification message",
+            example: "您被邀請加入錢包「家庭開支」",
+          },
+          isRead: {
+            type: "boolean",
+            description: "Whether the notification has been read",
+            default: false,
+            example: false,
+          },
+          createdAt: {
+            type: "string",
+            format: "date-time",
+            description: "Creation timestamp",
+            example: "2025-12-15T10:00:00Z",
+          },
+          isDeleted: {
+            type: "boolean",
+            description: "Soft delete flag",
+            default: false,
+            example: false,
+          },
+        },
+        required: ["id", "userId", "type", "message", "isRead", "createdAt", "isDeleted"],
+      },
+      CreateNotificationRequest: {
+        type: "object",
+        properties: {
+          userId: {
+            type: "string",
+            description: "Target user ID (optional, defaults to current user if not provided)",
+            example: "user-1",
+          },
+          type: {
+            type: "string",
+            enum: ["REPAYMENT", "SUBSCRIPTION_REMINDER", "SHARED_WALLET_UPDATE", "WALLET_INVITATION"],
+            description: "Notification type",
+            example: "SUBSCRIPTION_REMINDER",
+          },
+          message: {
+            type: "string",
+            description: "Notification message",
+            example: "您的訂閱將於明天到期",
+          },
+        },
+        required: ["type", "message"],
+      },
       CurrentUser: {
         type: "object",
         properties: {
