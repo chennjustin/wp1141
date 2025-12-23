@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useWallets } from "@/hooks/useWallet";
 import { useUser } from "@/hooks/useUser";
+import { WalletRole } from "@/modules/wallet/domain/wallet.types";
 
 /**
  * Create wallet page
@@ -21,10 +22,11 @@ export default function CreateWalletPage() {
   const [defaultCurrency, setDefaultCurrency] = useState("TWD");
   const [description, setDescription] = useState("");
   const [invitedUserIds, setInvitedUserIds] = useState<string[]>([]);
-  const [invitedUsers, setInvitedUsers] = useState<Array<{ id: string; userId: string; name: string; imageUrl?: string }>>([]);
+  const [invitedUsers, setInvitedUsers] = useState<Array<{ id: string; userId: string; name: string; imageUrl?: string; role: WalletRole }>>([]);
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [userSearchResults, setUserSearchResults] = useState<Array<{ id: string; userId: string; name: string; imageUrl?: string }>>([]);
   const [showUserSearchResults, setShowUserSearchResults] = useState(false);
+  const [defaultInviteRole, setDefaultInviteRole] = useState<WalletRole>(WalletRole.MEMBER);
   
   // UI state
   const [loading, setLoading] = useState(false);
@@ -58,7 +60,7 @@ export default function CreateWalletPage() {
   const handleAddInvitedUser = (user: { id: string; userId: string; name: string; imageUrl?: string }) => {
     if (!invitedUserIds.includes(user.id)) {
       setInvitedUserIds([...invitedUserIds, user.id]);
-      setInvitedUsers([...invitedUsers, user]);
+      setInvitedUsers([...invitedUsers, { ...user, role: defaultInviteRole }]);
       setUserSearchQuery("");
       setShowUserSearchResults(false);
     }
@@ -85,8 +87,11 @@ export default function CreateWalletPage() {
         walletData.description = description.trim();
       }
 
-      if (invitedUserIds.length > 0) {
-        walletData.invitedUserIds = invitedUserIds;
+      // Include invited users with their roles
+      if (invitedUsers.length > 0) {
+        walletData.invitedUserIds = invitedUsers.map(u => u.id);
+        // Note: The backend will use default role (MEMBER) for invited users
+        // If we need to support roles during creation, we'd need to modify the API
       }
 
       const response = await fetch("/api/wallets", {
@@ -119,21 +124,57 @@ export default function CreateWalletPage() {
   };
 
   return (
-    <div className="flex h-full flex-col gap-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-black">新增錢包</h1>
+    <div className="flex h-full flex-col relative -mx-4">
+      {/* Header with back button and checkmark */}
+      <div className="relative flex items-center justify-between px-4 pt-2 pb-2">
+        {/* Back Button - Left */}
         <button
           type="button"
           onClick={() => router.back()}
-          className="text-sm text-black hover:text-black/70"
+          className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/10 transition-colors"
+          aria-label="取消新增錢包"
         >
-          取消
+          <svg
+            className="h-5 w-5 text-black"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+        </button>
+
+        {/* Checkmark/Submit Button - Right */}
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={loading || !name.trim()}
+          className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label="確認"
+        >
+          <svg
+            className="h-5 w-5 text-black"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
         </button>
       </div>
 
       {/* Wallet Form */}
-      <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-4">
+      <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-4 px-4 overflow-y-auto">
         <div className="flex flex-col gap-2">
           <label htmlFor="walletName" className="text-sm font-medium text-black">
             錢包名稱 <span className="text-red-500">*</span>
@@ -149,72 +190,94 @@ export default function CreateWalletPage() {
           />
         </div>
 
-        <div className="flex flex-col gap-2">
-          <label htmlFor="userSearch" className="text-sm font-medium text-black">
-            新增人員（選填）
-          </label>
-          <div className="relative">
-            <input
-              id="userSearch"
-              type="text"
-              value={userSearchQuery}
-              onChange={(e) => setUserSearchQuery(e.target.value)}
-              onFocus={() => {
-                if (userSearchResults.length > 0) {
-                  setShowUserSearchResults(true);
-                }
-              }}
-              placeholder="搜尋使用者 ID 或名稱"
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-500 focus:outline-none"
-            />
-            {showUserSearchResults && userSearchResults.length > 0 && (
+        {/* Member management section with gray background */}
+        <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}>
+          {/* Add members */}
+          <div className="flex flex-col gap-2">
+            <label htmlFor="userSearch" className="text-sm font-medium text-black">
+              新增人員
+            </label>
+            <div className="relative">
+              <input
+                id="userSearch"
+                type="text"
+                value={userSearchQuery}
+                onChange={(e) => setUserSearchQuery(e.target.value)}
+                onFocus={() => {
+                  if (userSearchResults.length > 0) {
+                    setShowUserSearchResults(true);
+                  }
+                }}
+                placeholder="搜尋使用者 ID 或名稱"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-500 focus:outline-none"
+              />
+              {showUserSearchResults && userSearchResults.length > 0 && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setShowUserSearchResults(false)}
+                  />
+                  <div className="absolute top-full z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-300 bg-white shadow-lg">
+                    {userSearchResults
+                      .filter(user => !invitedUserIds.includes(user.id))
+                      .map((user) => (
+                        <button
+                          key={user.id}
+                          type="button"
+                          onClick={() => handleAddInvitedUser(user)}
+                          className="w-full px-3 py-2 text-left text-sm text-black hover:bg-gray-100"
+                        >
+                          <div className="font-medium">{user.name}</div>
+                          <div className="text-xs text-gray-500">{user.userId}</div>
+                        </button>
+                      ))}
+                  </div>
+                </>
+              )}
+            </div>
+            {invitedUsers.length > 0 && (
               <>
-                <div
-                  className="fixed inset-0 z-10"
-                  onClick={() => setShowUserSearchResults(false)}
-                />
-                <div className="absolute top-full z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-300 bg-white shadow-lg">
-                  {userSearchResults
-                    .filter(user => !invitedUserIds.includes(user.id))
-                    .map((user) => (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {invitedUsers.map((user) => (
+                    <span
+                      key={user.id}
+                      className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black"
+                    >
+                      {user.name}
                       <button
-                        key={user.id}
                         type="button"
-                        onClick={() => handleAddInvitedUser(user)}
-                        className="w-full px-3 py-2 text-left text-sm text-black hover:bg-gray-100"
+                        onClick={() => handleRemoveInvitedUser(user.id)}
+                        className="text-gray-400 hover:text-gray-600"
                       >
-                        <div className="font-medium">{user.name}</div>
-                        <div className="text-xs text-gray-500">{user.userId}</div>
+                        ×
                       </button>
-                    ))}
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <label className="text-xs text-gray-600">權限：</label>
+                  <select
+                    value={defaultInviteRole}
+                    onChange={(e) => {
+                      const newRole = e.target.value as WalletRole;
+                      setDefaultInviteRole(newRole);
+                      // Update all pending users' roles
+                      setInvitedUsers(invitedUsers.map(u => ({ ...u, role: newRole })));
+                    }}
+                    className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs text-black focus:border-blue-500 focus:outline-none"
+                  >
+                    <option value={WalletRole.MEMBER}>MEMBER</option>
+                    <option value={WalletRole.VIEWER}>VIEWER</option>
+                  </select>
                 </div>
               </>
             )}
           </div>
-          {invitedUsers.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {invitedUsers.map((user) => (
-                <span
-                  key={user.id}
-                  className="inline-flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1 text-sm text-blue-700"
-                >
-                  {user.name}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveInvitedUser(user.id)}
-                    className="hover:text-blue-900"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
         </div>
 
         <div className="flex flex-col gap-2">
           <label htmlFor="currency" className="text-sm font-medium text-black">
-            預設幣別
+            預設幣別 <span className="text-xs font-normal text-gray-500">（預設幣別不得修改）</span>
           </label>
           <select
             id="currency"
@@ -232,7 +295,7 @@ export default function CreateWalletPage() {
 
         <div className="flex flex-col gap-2">
           <label htmlFor="description" className="text-sm font-medium text-black">
-            備註（選填）
+            備註
           </label>
           <textarea
             id="description"
@@ -255,23 +318,6 @@ export default function CreateWalletPage() {
             錢包新增成功！
           </div>
         )}
-
-        <div className="mt-auto flex justify-end gap-3 pt-4">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-black hover:bg-gray-50"
-          >
-            取消
-          </button>
-          <button
-            type="submit"
-            disabled={loading || !name.trim()}
-            className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
-          >
-            {loading ? "處理中..." : "確認"}
-          </button>
-        </div>
       </form>
     </div>
   );
