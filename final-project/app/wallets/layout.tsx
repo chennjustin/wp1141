@@ -95,9 +95,9 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
     pathname?.includes("/subscriptions/history");
 
   return (
-    <div className="h-screen overflow-hidden flex justify-center px-4 py-4" style={{ backgroundColor: 'var(--wallet-bg)' }}>
+    <div className="h-screen overflow-hidden flex justify-center px-4 py-4" style={{ backgroundColor: "var(--wallet-bg)" }}>
       {/* Mobile-sized container with thick black border and rounded corners */}
-      <div className="relative flex h-[calc(100vh-2rem)] w-full max-w-sm flex-col border-[3px] border-black rounded-[3rem] overflow-hidden" style={{ backgroundColor: 'var(--wallet-bg)' }}>
+      <div className="relative flex h-[calc(100vh-2rem)] w-full max-w-sm flex-col border-[3px] border-black rounded-[3rem] overflow-hidden" style={{ backgroundColor: "var(--wallet-bg)" }}>
         {/* Header */}
         {!isNewTransactionPage && !isSubscriptionPage && (
           <>

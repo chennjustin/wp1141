@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useWallets } from "@/hooks/useWallet";
@@ -142,10 +142,16 @@ export default function AllWalletsPage() {
   const [pinningWalletId, setPinningWalletId] = useState<string | null>(null);
   const [pinnedWalletIds, setPinnedWalletIds] = useState<Set<string>>(new Set());
 
+  // Use ref to store latest refetch function to avoid dependency issues
+  const refetchRef = useRef(refetch);
+  useEffect(() => {
+    refetchRef.current = refetch;
+  }, [refetch]);
+
   const currentUserId = profile?.id;
 
   // Fetch pinned wallets on mount and when page becomes visible
-  const fetchPinnedWallets = async () => {
+  const fetchPinnedWallets = useCallback(async () => {
     try {
       const response = await fetch("/api/users/default-wallet");
       if (response.ok) {
@@ -157,17 +163,17 @@ export default function AllWalletsPage() {
     } catch (error) {
       console.error("Error fetching pinned wallets:", error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchPinnedWallets();
-  }, []);
+  }, [fetchPinnedWallets]);
 
   // Refetch wallets and pinned wallets when page becomes visible (e.g., user returns from another page)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
-        refetch();
+        refetchRef.current();
         fetchPinnedWallets();
       }
     };
@@ -176,7 +182,7 @@ export default function AllWalletsPage() {
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [refetch]);
+  }, [fetchPinnedWallets]);
 
   // Handle pin toggle
   const handlePinToggle = async (walletId: string, isPinned: boolean) => {

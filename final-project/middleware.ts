@@ -18,9 +18,9 @@ export function middleware(req: NextRequest) {
     pathname.startsWith("/_next") ||
     pathname.startsWith("/public") ||
     pathname === "/favicon.ico" ||
-    pathname.startsWith("/login") 
+    pathname.startsWith("/login");
 
-    // If route is protected and user is not logged in, redirect to /login with callback
+  // If route is protected and user is not logged in, redirect to /login with callback
   if (!isPublic && !isLoggedIn) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
@@ -35,11 +35,11 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
+     * - /api (all API routes including /api/auth)
+     * - /_next/static (static files)
+     * - /_next/image (image optimization files)
+     * - /favicon.ico (favicon file)
      */
-    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+    "/((?!api/|_next/static|_next/image|favicon.ico).*)",
   ],
 };
