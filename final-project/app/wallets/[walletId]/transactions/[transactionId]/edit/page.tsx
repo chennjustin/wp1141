@@ -87,7 +87,10 @@ export default function EditTransactionPage() {
   const [name, setName] = useState<string>("");
   const [currency, setCurrency] = useState<string>("TWD");
   const [rateToDefaultCurrency, setRateToDefaultCurrency] = useState<string>("");
-  const [rateMode, setRateMode] = useState<"last" | "manual">("last");
+  const [rateMode, setRateMode] = useState<"last" | "manual" | "current">("last");
+  const [rateInputError, setRateInputError] = useState<string | null>(null);
+  const [fetchingCurrentRate, setFetchingCurrentRate] = useState(false);
+  const [currentRate, setCurrentRate] = useState<number | null>(null);
   const [amount, setAmount] = useState<string>("");
   const [note, setNote] = useState<string>("");
   const [selectedTag, setSelectedTag] = useState<TagWithIcon | null>(null);
@@ -197,17 +200,13 @@ export default function EditTransactionPage() {
             setRateToDefaultCurrency(data.rateToDefaultCurrency.toString());
           } else {
             setRateToDefaultCurrency("");
-            // If no last rate found, switch to manual mode
-            setRateMode("manual");
           }
         } else {
           setRateToDefaultCurrency("");
-          setRateMode("manual");
         }
       } catch (err) {
         console.error("Failed to fetch last rate", err);
         setRateToDefaultCurrency("");
-        setRateMode("manual");
       } finally {
         setFetchingLastRate(false);
       }
@@ -215,6 +214,53 @@ export default function EditTransactionPage() {
 
     fetchLastRate();
   }, [wallet, currency, rateMode, walletId]);
+
+  // Fetch current exchange rate when currency changes and rateMode is "manual" or "current"
+  useEffect(() => {
+    async function fetchCurrentRate() {
+      if (!wallet || !currency || currency === wallet.defaultCurrency || (rateMode !== "manual" && rateMode !== "current")) {
+        if (rateMode !== "current") {
+          setCurrentRate(null);
+        }
+        return;
+      }
+
+      setFetchingCurrentRate(true);
+      try {
+        const response = await fetch(`/api/transactions/current-rate?from=${currency}&to=${wallet.defaultCurrency}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.rate) {
+            setCurrentRate(data.rate);
+            // If in "current" mode, automatically set the rate
+            if (rateMode === "current") {
+              setRateToDefaultCurrency(data.rate.toString());
+            }
+          } else {
+            setCurrentRate(null);
+            if (rateMode === "current") {
+              setRateToDefaultCurrency("");
+            }
+          }
+        } else {
+          setCurrentRate(null);
+          if (rateMode === "current") {
+            setRateToDefaultCurrency("");
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch current rate", err);
+        setCurrentRate(null);
+        if (rateMode === "current") {
+          setRateToDefaultCurrency("");
+        }
+      } finally {
+        setFetchingCurrentRate(false);
+      }
+    }
+
+    fetchCurrentRate();
+  }, [wallet, currency, rateMode]);
 
   // Fetch tag by ID
   async function fetchTagById(tagIdToFetch: string) {
@@ -302,6 +348,41 @@ export default function EditTransactionPage() {
     return `$${num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
   };
 
+  // Validate rate input: accepts integers or decimals with max 2 decimal places
+  const validateRateInput = (value: string): boolean => {
+    if (!value || value.trim() === "") {
+      return true; // Empty is valid (will be handled by form validation)
+    }
+    // Check if it's a valid number
+    const num = parseFloat(value);
+    if (isNaN(num) || num <= 0) {
+      return false;
+    }
+    // Check decimal places (max 2)
+    const decimalParts = value.split(".");
+    if (decimalParts.length > 2) {
+      return false; // Multiple decimal points
+    }
+    if (decimalParts.length === 2 && decimalParts[1].length > 2) {
+      return false; // More than 2 decimal places
+    }
+    return true;
+  };
+
+  // Handle rate input change with validation
+  const handleRateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setRateInputError(null);
+    
+    if (validateRateInput(value)) {
+      setRateToDefaultCurrency(value);
+    } else {
+      setRateInputError("輸入格式錯誤");
+      // Still update the value so user can see what they typed, but show error
+      setRateToDefaultCurrency(value);
+    }
+  };
+
   // Hide calculator when other fields are focused
   const handleHideCalculator = () => {
     setShowCalculator(false);
@@ -363,6 +444,17 @@ export default function EditTransactionPage() {
     if (!time || !time.match(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/)) {
       setError("請選擇有效的時間");
       return;
+    }
+    // Validate rate input if in manual mode and rate is required
+    if (showRateInput && rateMode === "manual" && rateInputError) {
+      setError("匯率輸入格式錯誤");
+      return;
+    }
+    if (showRateInput && rateMode === "manual" && rateToDefaultCurrency) {
+      if (!validateRateInput(rateToDefaultCurrency)) {
+        setError("匯率輸入格式錯誤");
+        return;
+      }
     }
 
     setLoading(true);
@@ -757,13 +849,16 @@ export default function EditTransactionPage() {
                   <label className="text-xs text-gray-600">匯率</label>
                 </div>
                 <div className="space-y-2">
-                  {/* Rate mode selection */}
+                  {/* Rate mode selection - Three buttons */}
                   <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={() => {
-                        setRateMode("last");
-                        setRateToDefaultCurrency("");
+                        if (rateMode !== "last") {
+                          setRateMode("last");
+                          setRateToDefaultCurrency("");
+                          setRateInputError(null);
+                        }
                       }}
                       className={`flex-1 h-9 px-3 text-sm rounded border transition-colors ${
                         rateMode === "last"
@@ -771,13 +866,14 @@ export default function EditTransactionPage() {
                           : "bg-white text-black border-gray-200 hover:border-gray-400"
                       }`}
                     >
-                      使用上次匯率
+                      上次匯率
                     </button>
                     <button
                       type="button"
                       onClick={() => {
                         setRateMode("manual");
                         setRateToDefaultCurrency("");
+                        setRateInputError(null);
                       }}
                       className={`flex-1 h-9 px-3 text-sm rounded border transition-colors ${
                         rateMode === "manual"
@@ -787,6 +883,21 @@ export default function EditTransactionPage() {
                     >
                       手動輸入
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRateMode("current");
+                        setRateInputError(null);
+                        // useEffect will fetch and set the current rate
+                      }}
+                      className={`flex-1 h-9 px-3 text-sm rounded border transition-colors ${
+                        rateMode === "current"
+                          ? "bg-black text-white border-black"
+                          : "bg-white text-black border-gray-200 hover:border-gray-400"
+                      }`}
+                    >
+                      當日匯率
+                    </button>
                   </div>
                   {/* Rate input */}
                   {rateMode === "last" ? (
@@ -795,27 +906,42 @@ export default function EditTransactionPage() {
                         <span className="text-sm text-gray-500">載入中...</span>
                       ) : rateToDefaultCurrency ? (
                         <span className="text-sm text-black">
-                          1 {currency} = {parseFloat(rateToDefaultCurrency).toLocaleString()} {wallet.defaultCurrency}
+                          1 {currency} = {parseFloat(rateToDefaultCurrency).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })} {wallet.defaultCurrency}
                         </span>
                       ) : (
                         <span className="text-sm text-gray-500">沒有找到上次使用的匯率</span>
                       )}
                     </div>
+                  ) : rateMode === "current" ? (
+                    <div className="h-10 px-3 bg-gray-50 border-b border-gray-200 flex items-center">
+                      {fetchingCurrentRate ? (
+                        <span className="text-sm text-gray-500">載入中...</span>
+                      ) : rateToDefaultCurrency ? (
+                        <span className="text-sm text-black">
+                          1 {currency} = {parseFloat(rateToDefaultCurrency).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })} {wallet.defaultCurrency}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-gray-500">無法取得當日匯率</span>
+                      )}
+                    </div>
                   ) : (
                     <div className="space-y-1">
                       <input
-                        type="number"
-                        step="0.01"
-                        min="0"
+                        type="text"
+                        inputMode="decimal"
                         value={rateToDefaultCurrency}
-                        onChange={(e) => setRateToDefaultCurrency(e.target.value)}
+                        onChange={handleRateInputChange}
                         onFocus={handleHideCalculator}
-                        placeholder={`1 ${currency} = ? ${wallet.defaultCurrency}`}
-                        className="w-full h-10 px-3 bg-white border-b border-gray-200 text-sm text-black placeholder:text-gray-400 focus:outline-none focus:border-gray-400"
+                        placeholder="請輸入數字"
+                        className={`w-full h-10 px-3 bg-white border-b text-sm text-black placeholder:text-gray-400 focus:outline-none ${
+                          rateInputError
+                            ? "border-red-500 focus:border-red-500"
+                            : "border-gray-200 focus:border-gray-400"
+                        }`}
                       />
-                      <p className="text-xs text-gray-500 px-3">
-                        1 {currency} = ? {wallet.defaultCurrency}
-                      </p>
+                      {rateInputError && (
+                        <p className="text-xs text-red-500 px-3">{rateInputError}</p>
+                      )}
                     </div>
                   )}
                 </div>
