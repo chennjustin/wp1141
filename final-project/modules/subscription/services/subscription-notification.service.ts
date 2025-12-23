@@ -32,7 +32,7 @@ export async function createTransactionNotification(
 
     const subscriptionName = subscription.name || subscription.tag.name;
     const amount = formatAmount(subscription.amount, subscription.currency);
-    const message = `系統已幫您建立「${subscriptionName}${amount}」的款項了！！ (${finalWalletName})`;
+    const message = `系統已幫您建立「${subscriptionName}${amount}」的款項了！ (${finalWalletName})`;
 
     await notificationService.createSubscriptionNotification(
       subscription.userId,
