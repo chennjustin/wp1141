@@ -514,9 +514,7 @@ export default function EditWalletPage() {
 
     try {
       // Update wallet info
-      const updateData: any = {
-        defaultCurrency,
-      };
+      const updateData: any = {};
 
       if (!isDefaultWallet && name.trim()) {
         updateData.name = name.trim();
@@ -698,7 +696,8 @@ export default function EditWalletPage() {
             id="currency"
             value={defaultCurrency}
             onChange={(e) => setDefaultCurrency(e.target.value)}
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-500 focus:outline-none"
+            disabled
+            className="rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-black/50 cursor-not-allowed focus:outline-none"
           >
             <option value="TWD">TWD - 新台幣</option>
             <option value="USD">USD - 美元</option>
