@@ -83,7 +83,7 @@ export default function NewTransactionPage() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [tagId] = useState<string>(tagIdFromUrl || "");
   const [name, setName] = useState<string>("");
-  const [currency, setCurrency] = useState<string>("TWD");
+  const [currency, setCurrency] = useState<string>("");
   const [rateToDefaultCurrency, setRateToDefaultCurrency] = useState<string>("");
   const [rateMode, setRateMode] = useState<"last" | "manual" | "current">("last");
   const [rateInputError, setRateInputError] = useState<string | null>(null);
@@ -110,7 +110,7 @@ export default function NewTransactionPage() {
 
   // Initialize currency with wallet default currency
   useEffect(() => {
-    if (wallet && !currency) {
+    if (wallet && (!currency || currency === "")) {
       setCurrency(wallet.defaultCurrency);
     }
   }, [wallet, currency]);
