@@ -99,17 +99,17 @@ export default function EditSelectTagPage() {
     let otherTag: TagWithIcon | null = null;
     const customTags: TagWithIcon[] = [];
     
-    // Get system tag names, excluding "other" which will be handled separately
+    // Get system tag names, excluding "其他" which will be handled separately
     const allSystemTagNames = transactionType === "INCOME" 
       ? [...DEFAULT_SYSTEM_INCOME_TAGS]
       : [...DEFAULT_SYSTEM_TAGS];
-    const systemTagNames = allSystemTagNames.filter(name => name !== "other");
+    const systemTagNames = allSystemTagNames.filter(name => name !== "其他");
     
     allTags.forEach((tag) => {
       const isSystemTag = tag.id.startsWith("system-tag-") || 
                           systemTagNames.includes(tag.name as any);
       
-      if (tag.name === "other") {
+      if (tag.name === "其他") {
         otherTag = tag;
       } else if (isSystemTag) {
         systemTags.push(tag);

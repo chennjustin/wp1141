@@ -156,7 +156,7 @@ export default function SettingsPage() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <label htmlFor="carrierCode" className="text-xs text-black/70">
+            <label htmlFor="carrierCode" className="text-xs" style={{ color: 'var(--card-text)' }}>
               載具編碼
             </label>
             <input
@@ -166,10 +166,21 @@ export default function SettingsPage() {
               onChange={handleInputChange}
               placeholder="/ABCDEF1"
               maxLength={8}
-              className="rounded border border-gray-300 px-3 py-2 text-sm font-mono focus:border-black focus:outline-none"
+              className="rounded border px-3 py-2 text-sm font-mono focus:outline-none placeholder:opacity-50"
+              style={{
+                backgroundColor: 'var(--card-bg)',
+                color: 'var(--card-text)',
+                borderColor: 'rgba(0, 0, 0, 0.1)',
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = 'var(--card-text)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = 'rgba(0, 0, 0, 0.1)';
+              }}
               disabled={isSubmitting}
             />
-            <p className="text-xs text-black/50">
+            <p className="text-xs" style={{ color: 'var(--card-text)', opacity: 0.6 }}>
               格式：/ + 7 個英數字，共 8 個字元（例如：/ABCDEF1）
             </p>
           </div>

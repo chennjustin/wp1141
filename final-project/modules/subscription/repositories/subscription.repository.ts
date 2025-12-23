@@ -190,6 +190,9 @@ export const subscriptionRepository = {
     if (data.name !== undefined) {
       updateData.name = data.name;
     }
+    if (data.isDeleted !== undefined) {
+      updateData.isDeleted = data.isDeleted;
+    }
 
     return prisma.subscription.update({
       where: { id },
