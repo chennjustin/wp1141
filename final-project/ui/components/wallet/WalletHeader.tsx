@@ -7,7 +7,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Settings } from "lucide-react";
+import { Pencil } from "lucide-react";
 
 interface WalletHeaderProps {
   walletDisplayName: string;
@@ -71,10 +71,10 @@ export function WalletHeader({
           <button
             type="button"
             onClick={onEditClick}
-            className="absolute left-full ml-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full hover:bg-black/10 active:bg-black/20 transition-colors focus:outline-none focus:ring-0"
+            className="absolute left-full top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-full hover:bg-black/10 active:bg-black/20 transition-colors focus:outline-none focus:ring-0"
             aria-label="Edit wallet settings"
           >
-            <Settings className="h-4 w-4 text-black" />
+            <Pencil className="h-3.5 w-3.5 text-black/50" />
           </button>
         )}
       </div>
