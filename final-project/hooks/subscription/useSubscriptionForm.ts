@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { TransactionType } from "@/modules/transaction/domain/transaction.types";
 import type { IntervalType } from "@/ui/utils/subscription-utils";
+import type { CreateTransactionPayerData, CreateTransactionShareData } from "@/modules/transaction/domain/transaction.types";
 
 /**
  * Amount input mode: total amount or monthly amount
@@ -41,6 +42,9 @@ export interface SubscriptionFormState {
   selectedTag: TagWithIcon | null;
   loading: boolean;
   error: string | null;
+  selectedPayers: CreateTransactionPayerData[];
+  selectedShares: CreateTransactionShareData[];
+  splitMethod: "even" | "custom";
 }
 
 /**
@@ -67,6 +71,9 @@ export interface SubscriptionFormActions {
   setSelectedTag: (value: TagWithIcon | null) => void;
   setLoading: (value: boolean) => void;
   setError: (value: string | null) => void;
+  setSelectedPayers: (value: CreateTransactionPayerData[]) => void;
+  setSelectedShares: (value: CreateTransactionShareData[]) => void;
+  setSplitMethod: (value: "even" | "custom") => void;
 }
 
 /**
@@ -114,6 +121,15 @@ export function useSubscriptionForm(initialState?: Partial<SubscriptionFormState
   );
   const [loading, setLoading] = useState<boolean>(initialState?.loading || false);
   const [error, setError] = useState<string | null>(initialState?.error || null);
+  const [selectedPayers, setSelectedPayers] = useState<CreateTransactionPayerData[]>(
+    initialState?.selectedPayers || []
+  );
+  const [selectedShares, setSelectedShares] = useState<CreateTransactionShareData[]>(
+    initialState?.selectedShares || []
+  );
+  const [splitMethod, setSplitMethod] = useState<"even" | "custom">(
+    initialState?.splitMethod || "custom"
+  );
 
   const state: SubscriptionFormState = {
     transactionType,
@@ -136,6 +152,9 @@ export function useSubscriptionForm(initialState?: Partial<SubscriptionFormState
     selectedTag,
     loading,
     error,
+    selectedPayers,
+    selectedShares,
+    splitMethod,
   };
 
   const actions: SubscriptionFormActions = {
@@ -159,6 +178,9 @@ export function useSubscriptionForm(initialState?: Partial<SubscriptionFormState
     setSelectedTag,
     setLoading,
     setError,
+    setSelectedPayers,
+    setSelectedShares,
+    setSplitMethod,
   };
 
   return { state, actions };

@@ -35,6 +35,7 @@ import {
 import { findTransactionsBySubscription } from "./transaction-finder.service";
 import { walletRepository } from "@/modules/wallet/repositories/wallet.repository";
 import { determineCurrency, determineExchangeRateToDefaultCurrency } from "@/modules/transaction/utils/transaction.currency";
+import { validatePayers, validateShares } from "@/modules/transaction/utils/transaction.validators";
 
 /**
  * Subscription lifecycle service interface
@@ -124,6 +125,30 @@ export const subscriptionLifecycleService = {
         data.rateToDefaultCurrency
       );
 
+      // Validate payers if provided
+      if (data.payers && data.payers.length > 0) {
+        const payersError = await validatePayers(data.payers, data.amount);
+        if (payersError) {
+          return {
+            success: false,
+            error: payersError,
+            data: undefined,
+          };
+        }
+      }
+
+      // Validate shares if provided
+      if (data.shares && data.shares.length > 0) {
+        const sharesError = await validateShares(data.shares, data.amount);
+        if (sharesError) {
+          return {
+            success: false,
+            error: sharesError,
+            data: undefined,
+          };
+        }
+      }
+
       // Calculate nextBilling based on today's date
       // We'll update it after creating transactions if needed
       const startDate = new Date(data.startDate);
@@ -138,6 +163,14 @@ export const subscriptionLifecycleService = {
         rateToDefaultCurrency: rateToDefaultCurrency ?? null,
         nextBilling: initialNextBilling,
       });
+
+      if (!subscription) {
+        return {
+          success: false,
+          error: new InvalidSubscriptionDataError("Failed to create subscription"),
+          data: undefined,
+        };
+      }
 
       const subscriptionTyped: Subscription = {
         id: subscription.id,
@@ -161,6 +194,14 @@ export const subscriptionLifecycleService = {
         isDeleted: subscription.isDeleted,
         createdAt: new Date(subscription.createdAt),
         updatedAt: new Date(subscription.updatedAt),
+        payers: subscription.payers?.map((p: any) => ({
+          payerId: p.payerId,
+          paidAmount: p.paidAmount,
+        })),
+        shares: subscription.shares?.map((s: any) => ({
+          userId: s.userId,
+          shareAmount: s.shareAmount,
+        })),
       };
 
       // Use wallet name from the previously fetched wallet object
@@ -349,6 +390,33 @@ export const subscriptionLifecycleService = {
         };
       }
 
+      // Determine final amount for validation
+      const finalAmount = data.amount ?? existing.amount;
+
+      // Validate payers if provided
+      if (data.payers !== undefined && data.payers.length > 0) {
+        const payersError = await validatePayers(data.payers, finalAmount);
+        if (payersError) {
+          return {
+            success: false,
+            error: payersError,
+            data: undefined,
+          };
+        }
+      }
+
+      // Validate shares if provided
+      if (data.shares !== undefined && data.shares.length > 0) {
+        const sharesError = await validateShares(data.shares, finalAmount);
+        if (sharesError) {
+          return {
+            success: false,
+            error: sharesError,
+            data: undefined,
+          };
+        }
+      }
+
       // Get wallet for default currency
       const wallet = await walletRepository.findById(existing.walletId, userId);
       if (!wallet) {
@@ -407,6 +475,14 @@ export const subscriptionLifecycleService = {
         isDeleted: existing.isDeleted,
         createdAt: new Date(existing.createdAt),
         updatedAt: new Date(existing.updatedAt),
+        payers: (existing as any).payers?.map((p: any) => ({
+          payerId: p.payerId,
+          paidAmount: p.paidAmount,
+        })),
+        shares: (existing as any).shares?.map((s: any) => ({
+          userId: s.userId,
+          shareAmount: s.shareAmount,
+        })),
       };
 
       // Update subscription with determined currency and rate
@@ -419,6 +495,14 @@ export const subscriptionLifecycleService = {
         subscriptionId,
         updateData
       );
+
+      if (!updated) {
+        return {
+          success: false,
+          error: new InvalidSubscriptionDataError("Failed to update subscription"),
+          data: undefined,
+        };
+      }
 
       // Build new subscription data for sync comparison
       const newSubscription: Subscription = {
@@ -443,6 +527,14 @@ export const subscriptionLifecycleService = {
         isDeleted: updated.isDeleted,
         createdAt: new Date(updated.createdAt),
         updatedAt: new Date(updated.updatedAt),
+        payers: (updated as any).payers?.map((p: any) => ({
+          payerId: p.payerId,
+          paidAmount: p.paidAmount,
+        })),
+        shares: (updated as any).shares?.map((s: any) => ({
+          userId: s.userId,
+          shareAmount: s.shareAmount,
+        })),
       };
 
       // Use wallet name from the previously fetched wallet object

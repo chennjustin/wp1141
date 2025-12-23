@@ -94,20 +94,36 @@ function convertToDefaultCurrency(
 }
 
 /**
+ * Get current user's paid amount from transaction payers
+ * Returns 0 if current user didn't pay anything
+ */
+function getUserPaidAmount(
+  transaction: Transaction,
+  currentUserId: string | undefined
+): number {
+  if (!currentUserId || !transaction.payers || transaction.payers.length === 0) {
+    return 0;
+  }
+  const userPayer = transaction.payers.find((payer) => payer.payerId === currentUserId);
+  return userPayer ? userPayer.paidAmount : 0;
+}
+
+/**
  * Group transactions by date and calculate daily summaries
  * 
  * This function groups transactions by date (year-month-day) and calculates
- * daily totals for income, expense, and net amount. All amounts are converted
- * to wallet default currency before calculation. Transactions within each day
- * are sorted by time (most recent first).
+ * daily totals for income, expense, and net amount based on current user's paid amounts.
+ * All amounts are converted to wallet default currency before calculation. 
+ * Transactions within each day are sorted by time (most recent first).
  * 
  * @param transactions - Array of transactions to group
  * @param walletDefaultCurrency - Wallet default currency for conversion
+ * @param currentUserId - Current user ID to filter by user's paid amounts
  * @returns Array of daily transaction groups, sorted by date (most recent first)
  * 
  * @example
  * ```tsx
- * const groups = groupTransactionsByDate(transactions, "TWD");
+ * const groups = groupTransactionsByDate(transactions, "TWD", "user-1");
  * // Returns: [
  * //   {
  * //     date: Date,
@@ -124,7 +140,8 @@ function convertToDefaultCurrency(
  */
 export function groupTransactionsByDate(
   transactions: Transaction[],
-  walletDefaultCurrency: string
+  walletDefaultCurrency: string,
+  currentUserId?: string | undefined
 ): DailyTransactionGroup[] {
   // Group transactions by date
   const dateMap = new Map<string, Transaction[]>();
@@ -151,14 +168,22 @@ export function groupTransactionsByDate(
       return dateB - dateA;
     });
     
-    // Calculate daily totals (converted to wallet default currency)
+    // Calculate daily totals based on current user's paid amounts (converted to wallet default currency)
     let totalIncome = 0;
     let totalExpense = 0;
     
     for (const transaction of dayTransactions) {
-      // Convert amount to wallet default currency
+      // Get current user's paid amount instead of total transaction amount
+      const userPaidAmount = getUserPaidAmount(transaction, currentUserId);
+      
+      if (userPaidAmount === 0) {
+        // User didn't pay anything for this transaction, skip it in totals
+        continue;
+      }
+      
+      // Convert user's paid amount to wallet default currency
       const convertedAmount = convertToDefaultCurrency(
-        transaction.amount,
+        userPaidAmount,
         transaction.currency,
         transaction.rateToDefaultCurrency,
         walletDefaultCurrency

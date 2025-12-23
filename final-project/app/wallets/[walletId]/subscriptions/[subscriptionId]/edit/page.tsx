@@ -11,6 +11,8 @@ import { useSubscriptionForm } from "@/hooks/subscription/useSubscriptionForm";
 import { useAmountCalculation } from "@/hooks/subscription/useAmountCalculation";
 import { useSubscriptionDropdowns } from "@/hooks/subscription/useSubscriptionDropdowns";
 import { useWallet } from "@/hooks/useWallet";
+import { PayerSelector } from "@/ui/components/split/PayerSelector";
+import { ShareSelector } from "@/ui/components/split/ShareSelector";
 
 /**
  * Edit Subscription page
@@ -56,6 +58,8 @@ export default function EditSubscriptionPage() {
   const [fetchingSubscription, setFetchingSubscription] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [fetchingLastRate, setFetchingLastRate] = useState(false);
+  const [showPayerSelector, setShowPayerSelector] = useState(false);
+  const [showShareSelector, setShowShareSelector] = useState(false);
 
   // Get wallet information
   const { wallet, loading: walletLoading } = useWallet(walletId);
@@ -82,6 +86,18 @@ export default function EditSubscriptionPage() {
             actions.setRateMode("last");
           }
           actions.setName(sub.name || "");
+
+          // Load split information if available
+          if (sub.payers && sub.payers.length > 0) {
+            actions.setSelectedPayers(sub.payers);
+          }
+          if (sub.shares && sub.shares.length > 0) {
+            actions.setSelectedShares(sub.shares);
+            // Determine split method based on whether amounts are equal
+            const amounts = sub.shares.map((s) => s.shareAmount);
+            const allEqual = amounts.every((a) => Math.abs(a - amounts[0]) < 0.01);
+            actions.setSplitMethod(allEqual ? "even" : "custom");
+          }
 
           // Determine amount mode based on endDate
           if (sub.endDate) {
@@ -379,6 +395,8 @@ export default function EditSubscriptionPage() {
         intervalMonths: intervalMonths,
         nextBilling: new Date(state.startDate),
         name: state.name || null,
+        payers: state.selectedPayers.length > 0 ? state.selectedPayers : undefined,
+        shares: state.selectedShares.length > 0 ? state.selectedShares : undefined,
       });
 
       if (result.success) {
@@ -512,6 +530,28 @@ export default function EditSubscriptionPage() {
               setShowCalculator(false);
             }}
             onHideCalculator={() => handleHideCalculator(handleSaveCalculatorExpression)}
+            selectedPayers={state.selectedPayers}
+            selectedShares={state.selectedShares}
+            splitMethod={state.splitMethod}
+            showPayerSelector={showPayerSelector}
+            showShareSelector={showShareSelector}
+            onTogglePayerSelector={() => {
+              setShowPayerSelector(!showPayerSelector);
+              setShowStartDatePicker(false);
+              setShowEndDatePicker(false);
+              setShowCurrencyDropdown(false);
+              setShowCalculator(false);
+              setShowShareSelector(false);
+            }}
+            onToggleShareSelector={() => {
+              setShowShareSelector(!showShareSelector);
+              setShowStartDatePicker(false);
+              setShowEndDatePicker(false);
+              setShowCurrencyDropdown(false);
+              setShowCalculator(false);
+              setShowPayerSelector(false);
+            }}
+            walletMembers={wallet?.members || []}
           />
 
           {/* Error message */}
@@ -568,6 +608,50 @@ export default function EditSubscriptionPage() {
             clearOnConfirm={true}
           />
         </div>
+      )}
+
+      {/* Payer Selector */}
+      {showPayerSelector && wallet && (
+        <PayerSelector
+          members={wallet.members}
+          totalAmount={state.amountMode === "total" 
+            ? (calculatedMonthlyAmount || 0) 
+            : parseFloat(state.monthlyAmount) || 0}
+          currency={state.currency}
+          initialPayers={state.selectedPayers}
+          transactionName={state.name}
+          tagName={state.selectedTag?.name}
+          onConfirm={(payers) => {
+            actions.setSelectedPayers(payers);
+            setShowPayerSelector(false);
+          }}
+          onCancel={() => {
+            setShowPayerSelector(false);
+          }}
+        />
+      )}
+
+      {/* Share Selector */}
+      {showShareSelector && wallet && (
+        <ShareSelector
+          members={wallet.members}
+          totalAmount={state.amountMode === "total" 
+            ? (calculatedMonthlyAmount || 0) 
+            : parseFloat(state.monthlyAmount) || 0}
+          currency={state.currency}
+          initialPayers={state.selectedShares}
+          transactionName={state.name}
+          tagName={state.selectedTag?.name}
+          initialMethod={state.splitMethod}
+          onConfirm={(shares, method) => {
+            actions.setSelectedShares(shares);
+            actions.setSplitMethod(method);
+            setShowShareSelector(false);
+          }}
+          onCancel={() => {
+            setShowShareSelector(false);
+          }}
+        />
       )}
     </div>
   );

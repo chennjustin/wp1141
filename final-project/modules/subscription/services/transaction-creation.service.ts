@@ -25,12 +25,34 @@ export async function createMissingTransactions(
 ): Promise<void> {
   const client = tx || prisma;
   
-  // Get subscription with full details
+  // Get subscription with full details including payers and shares
   const fullSubscription = await (tx || prisma).subscription.findFirst({
     where: { id: subscription.id },
     include: {
       tag: true,
       wallet: { select: { name: true } },
+      payers: {
+        include: {
+          payer: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+            },
+          },
+        },
+      },
+      shares: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+            },
+          },
+        },
+      },
     },
   });
   
@@ -75,8 +97,16 @@ export async function createMissingTransactions(
   
   for (const transactionDate of missingDates) {
     try {
+      // Use subscription's payers and shares if available
+      const payers = subscription.payers && subscription.payers.length > 0
+        ? subscription.payers
+        : undefined;
+      const shares = subscription.shares && subscription.shares.length > 0
+        ? subscription.shares
+        : undefined;
+
       // Create transaction
-      let transaction;
+      let transaction: Transaction;
       if (tx) {
         // Create transaction within transaction context
         transaction = await tx.transaction.create({
@@ -93,23 +123,45 @@ export async function createMissingTransactions(
           },
         });
         
-        // Create default payer
-        await tx.transactionPayer.create({
-          data: {
-            transactionId: transaction.id,
-            payerId: subscription.userId,
-            paidAmount: subscription.amount,
-          },
-        });
+        // Create payers if provided, otherwise default
+        if (payers && payers.length > 0) {
+          await tx.transactionPayer.createMany({
+            data: payers.map((payer) => ({
+              transactionId: transaction.id,
+              payerId: payer.payerId,
+              paidAmount: payer.paidAmount,
+            })),
+          });
+        } else {
+          // Default payer
+          await tx.transactionPayer.create({
+            data: {
+              transactionId: transaction.id,
+              payerId: subscription.userId,
+              paidAmount: subscription.amount,
+            },
+          });
+        }
         
-        // Create default share
-        await tx.transactionShare.create({
-          data: {
-            transactionId: transaction.id,
-            userId: subscription.userId,
-            shareAmount: subscription.amount,
-          },
-        });
+        // Create shares if provided, otherwise default
+        if (shares && shares.length > 0) {
+          await tx.transactionShare.createMany({
+            data: shares.map((share) => ({
+              transactionId: transaction.id,
+              userId: share.userId,
+              shareAmount: share.shareAmount,
+            })),
+          });
+        } else {
+          // Default share
+          await tx.transactionShare.create({
+            data: {
+              transactionId: transaction.id,
+              userId: subscription.userId,
+              shareAmount: subscription.amount,
+            },
+          });
+        }
         
         // Create SubscriptionHistory
         await tx.subscriptionHistory.create({
@@ -130,6 +182,8 @@ export async function createMissingTransactions(
           name: subscriptionName,
           type: subscription.type,
           tagId: subscription.tagId,
+          payers,
+          shares,
         });
         
         // Create SubscriptionHistory

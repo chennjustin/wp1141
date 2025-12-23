@@ -9,6 +9,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { History, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { useDailyTransactions } from "@/hooks/useDailyTransactions";
 import { TagIcon } from "@/ui/utils/tag-icon";
@@ -24,14 +25,23 @@ interface DailyTransactionsSectionProps {
  * 
  * Transforms the Transaction entity from the API into the display format
  * used by the UI component, including title, amount, and time formatting.
+ * Shows the amount that the current user paid, not the total transaction amount.
  */
-function transformTransactionToDisplay(tx: Transaction): DisplayTransaction {
+function transformTransactionToDisplay(tx: Transaction, currentUserId: string | undefined): DisplayTransaction {
   // Use transaction name or tag name as title
   const title = tx.name || tx.tag.name || "未命名交易";
 
-  // Calculate display amount based on transaction type
-  // INCOME transactions are positive, EXPENSE transactions are negative
-  const displayAmount = tx.type === "INCOME" ? tx.amount : -tx.amount;
+  // Find current user's paid amount from payers
+  // If current user didn't pay anything, amount will be null
+  let displayAmount: number | null = null;
+  if (currentUserId && tx.payers && tx.payers.length > 0) {
+    const userPayer = tx.payers.find((payer) => payer.payerId === currentUserId);
+    if (userPayer) {
+      // Calculate display amount based on transaction type
+      // INCOME transactions are positive, EXPENSE transactions are negative
+      displayAmount = tx.type === "INCOME" ? userPayer.paidAmount : -userPayer.paidAmount;
+    }
+  }
 
   // Format time from transaction date (HH:mm format)
   const transactionDate = new Date(tx.date);
@@ -56,6 +66,8 @@ export function DailyTransactionsSection({
   walletId,
 }: DailyTransactionsSectionProps) {
   const router = useRouter();
+  const { data: session } = useSession();
+  const currentUserId = session?.user?.id;
   
   // Get current date for default selection and comparison
   const today = useMemo(() => {
@@ -80,8 +92,8 @@ export function DailyTransactionsSection({
 
   // Transform transactions for display
   const displayTransactions = useMemo(() => {
-    return dailyTransactions.map(transformTransactionToDisplay);
-  }, [dailyTransactions]);
+    return dailyTransactions.map((tx) => transformTransactionToDisplay(tx, currentUserId));
+  }, [dailyTransactions, currentUserId]);
 
   // Check if selected date is today
   const isToday = useMemo(() => {
@@ -227,14 +239,20 @@ export function DailyTransactionsSection({
                     <span className="text-sm text-black text-left">{tx.title}</span>
                     <span className="text-xs text-black/50 text-left w-12">{tx.time}</span>
                   </div>
-                  <span
-                    className={`text-sm font-semibold ${
-                      tx.amount >= 0 ? "text-green-600" : "text-red-600"
-                    }`}
-                  >
-                    {tx.currency} {tx.amount >= 0 ? "+" : "-"}
-                    {Math.abs(tx.amount).toLocaleString()}
-                  </span>
+                  {tx.amount !== null ? (
+                    <span
+                      className={`text-sm font-semibold ${
+                        tx.amount >= 0 ? "text-green-600" : "text-red-600"
+                      }`}
+                    >
+                      {tx.currency} {tx.amount >= 0 ? "+" : "-"}
+                      {Math.abs(tx.amount).toLocaleString()}
+                    </span>
+                  ) : (
+                    <span className="text-sm font-semibold text-black/30">
+                      {/* Empty - user didn't pay anything */}
+                    </span>
+                  )}
                 </button>
                 {index < displayTransactions.length - 1 && (
                   <div className="border-b border-[#E8E8E8]" />

@@ -13,6 +13,8 @@ import { useAmountCalculation } from "@/hooks/subscription/useAmountCalculation"
 import { useSubscriptionDropdowns } from "@/hooks/subscription/useSubscriptionDropdowns";
 import type { TagWithIcon } from "@/hooks/subscription/useSubscriptionForm";
 import { useWallet } from "@/hooks/useWallet";
+import { PayerSelector } from "@/ui/components/split/PayerSelector";
+import { ShareSelector } from "@/ui/components/split/ShareSelector";
 
 /**
  * New Subscription page
@@ -65,6 +67,8 @@ export default function NewSubscriptionPage() {
 
   const [fetchingTag, setFetchingTag] = useState(true);
   const [fetchingLastRate, setFetchingLastRate] = useState(false);
+  const [showPayerSelector, setShowPayerSelector] = useState(false);
+  const [showShareSelector, setShowShareSelector] = useState(false);
 
   // Get wallet information
   const { wallet, loading: walletLoading } = useWallet(walletId);
@@ -302,6 +306,8 @@ export default function NewSubscriptionPage() {
         endDate: state.endDate ? new Date(state.endDate) : null,
         intervalMonths: intervalMonths,
         name: state.name || null,
+        payers: state.selectedPayers.length > 0 ? state.selectedPayers : undefined,
+        shares: state.selectedShares.length > 0 ? state.selectedShares : undefined,
       });
 
       if (result.success) {
@@ -431,6 +437,28 @@ export default function NewSubscriptionPage() {
                   setShowCalculator(false);
                 }}
             onHideCalculator={() => handleHideCalculator(handleSaveCalculatorExpression)}
+            selectedPayers={state.selectedPayers}
+            selectedShares={state.selectedShares}
+            splitMethod={state.splitMethod}
+            showPayerSelector={showPayerSelector}
+            showShareSelector={showShareSelector}
+            onTogglePayerSelector={() => {
+              setShowPayerSelector(!showPayerSelector);
+              setShowStartDatePicker(false);
+              setShowEndDatePicker(false);
+              setShowCurrencyDropdown(false);
+              setShowCalculator(false);
+              setShowShareSelector(false);
+            }}
+            onToggleShareSelector={() => {
+              setShowShareSelector(!showShareSelector);
+              setShowStartDatePicker(false);
+              setShowEndDatePicker(false);
+              setShowCurrencyDropdown(false);
+              setShowCalculator(false);
+              setShowPayerSelector(false);
+            }}
+            walletMembers={wallet?.members || []}
           />
 
             {/* Error message */}
@@ -475,6 +503,50 @@ export default function NewSubscriptionPage() {
             clearOnConfirm={true}
           />
         </div>
+      )}
+
+      {/* Payer Selector */}
+      {showPayerSelector && wallet && (
+        <PayerSelector
+          members={wallet.members}
+          totalAmount={state.amountMode === "total" 
+            ? (calculatedMonthlyAmount || 0) 
+            : parseFloat(state.monthlyAmount) || 0}
+          currency={state.currency}
+          initialPayers={state.selectedPayers}
+          transactionName={state.name}
+          tagName={state.selectedTag?.name}
+          onConfirm={(payers) => {
+            actions.setSelectedPayers(payers);
+            setShowPayerSelector(false);
+          }}
+          onCancel={() => {
+            setShowPayerSelector(false);
+          }}
+        />
+      )}
+
+      {/* Share Selector */}
+      {showShareSelector && wallet && (
+        <ShareSelector
+          members={wallet.members}
+          totalAmount={state.amountMode === "total" 
+            ? (calculatedMonthlyAmount || 0) 
+            : parseFloat(state.monthlyAmount) || 0}
+          currency={state.currency}
+          initialPayers={state.selectedShares}
+          transactionName={state.name}
+          tagName={state.selectedTag?.name}
+          initialMethod={state.splitMethod}
+          onConfirm={(shares, method) => {
+            actions.setSelectedShares(shares);
+            actions.setSplitMethod(method);
+            setShowShareSelector(false);
+          }}
+          onCancel={() => {
+            setShowShareSelector(false);
+          }}
+        />
       )}
     </div>
   );
