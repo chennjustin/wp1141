@@ -106,7 +106,7 @@ export async function createMissingTransactions(
         : undefined;
 
       // Create transaction
-      let transaction;
+      let transaction: Transaction;
       if (tx) {
         // Create transaction within transaction context
         transaction = await tx.transaction.create({

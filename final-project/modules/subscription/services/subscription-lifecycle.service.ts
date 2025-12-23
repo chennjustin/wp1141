@@ -164,6 +164,14 @@ export const subscriptionLifecycleService = {
         nextBilling: initialNextBilling,
       });
 
+      if (!subscription) {
+        return {
+          success: false,
+          error: new InvalidSubscriptionDataError("Failed to create subscription"),
+          data: undefined,
+        };
+      }
+
       const subscriptionTyped: Subscription = {
         id: subscription.id,
         walletId: subscription.walletId,
@@ -487,6 +495,14 @@ export const subscriptionLifecycleService = {
         subscriptionId,
         updateData
       );
+
+      if (!updated) {
+        return {
+          success: false,
+          error: new InvalidSubscriptionDataError("Failed to update subscription"),
+          data: undefined,
+        };
+      }
 
       // Build new subscription data for sync comparison
       const newSubscription: Subscription = {
