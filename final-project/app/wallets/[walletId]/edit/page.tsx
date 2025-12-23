@@ -9,6 +9,85 @@ import { useSession } from "next-auth/react";
 import { WalletUserStatus, WalletRole } from "@/modules/wallet/domain/wallet.types";
 
 /**
+ * Rejected member dropdown component
+ * 
+ * Dropdown menu for managing rejected invitations (reinvite or delete)
+ */
+function RejectedMemberDropdown({
+  member,
+  walletId,
+  onReinvite,
+  onRemove,
+}: {
+  member: { id: string; userId: string; name: string; role: WalletRole; status: WalletUserStatus; imageUrl?: string };
+  walletId: string;
+  onReinvite: () => Promise<void>;
+  onRemove: () => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isOpen]);
+
+  const handleReinvite = async () => {
+    await onReinvite();
+    setIsOpen(false);
+  };
+
+  const handleRemove = () => {
+    if (confirm("確定要刪除此紀錄嗎？")) {
+      onRemove();
+      setIsOpen(false);
+    }
+  };
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="text-lg text-gray-800 hover:text-black px-2 py-1 rounded hover:bg-gray-200 font-bold leading-none"
+        style={{ fontSize: '18px', lineHeight: '1' }}
+      >
+        ⋮
+      </button>
+      {isOpen && (
+        <div className="absolute right-0 top-full mt-1 w-40 rounded-lg border border-gray-300 bg-white shadow-lg z-20">
+          <div className="py-1">
+            <button
+              type="button"
+              onClick={handleReinvite}
+              className="w-full px-3 py-2 text-left text-sm text-black hover:bg-gray-100"
+            >
+              重新邀請
+            </button>
+            <div className="border-t border-gray-200 my-1" />
+            <button
+              type="button"
+              onClick={handleRemove}
+              className="w-full px-3 py-2 text-left text-sm text-red-500 hover:bg-red-50"
+            >
+              刪除
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * Pending member dropdown component
  * 
  * Dropdown menu for managing pending invitations (cancel invite or change role)
@@ -859,6 +938,9 @@ export default function EditWalletPage() {
                             {member.status === WalletUserStatus.PENDING && (
                               <span className="ml-1 text-xs text-gray-500">(Pending)</span>
                             )}
+                            {member.status === WalletUserStatus.REJECTED && (
+                              <span className="ml-1 text-xs text-gray-500">(Rejected)</span>
+                            )}
                           </div>
                           <div className="text-xs text-black/50">
                             {member.role}
@@ -894,6 +976,49 @@ export default function EditWalletPage() {
                                 }
                               }}
                               onCancelInvite={() => handleRemoveMember(member.userId)}
+                            />
+                          ) : member.status === WalletUserStatus.REJECTED ? (
+                            <RejectedMemberDropdown
+                              member={member}
+                              walletId={walletId}
+                              onReinvite={async () => {
+                                try {
+                                  const response = await fetch(`/api/wallets/${walletId}/invite`, {
+                                    method: "POST",
+                                    headers: {
+                                      "Content-Type": "application/json",
+                                    },
+                                    credentials: "include",
+                                    body: JSON.stringify({
+                                      invitations: [{ userId: member.userId, role: member.role }],
+                                    }),
+                                  });
+                                  if (response.ok) {
+                                    // Reload wallet data to update member status
+                                    const walletResponse = await fetch(`/api/wallets/${walletId}?includePending=true`, {
+                                      credentials: "include",
+                                    });
+                                    if (walletResponse.ok) {
+                                      const walletData = await walletResponse.json();
+                                      const members = walletData.members.map((m: any) => ({
+                                        id: m.id,
+                                        userId: m.userId,
+                                        name: m.user.name,
+                                        role: m.role,
+                                        status: m.status,
+                                        imageUrl: m.user.image || undefined,
+                                      }));
+                                      setExistingMembers(members);
+                                    }
+                                  } else {
+                                    const data = await response.json();
+                                    alert(data.error || "重新邀請失敗");
+                                  }
+                                } catch (err) {
+                                  alert("網路錯誤，請稍後再試");
+                                }
+                              }}
+                              onRemove={() => handleRemoveMember(member.userId)}
                             />
                           ) : (
                             <MemberRoleDropdown

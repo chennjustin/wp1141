@@ -169,7 +169,8 @@ export default function NotificationsPage() {
   const { notifications, loading, error, markAsRead, markAsUnread, deleteNotification, refetch } = useNotifications();
   const { refreshCount: refreshUnreadCount } = useUnreadNotificationCount();
   const [processingInvitations, setProcessingInvitations] = useState<Set<string>>(new Set());
-  const [pendingInvitations, setPendingInvitations] = useState<Map<string, string>>(new Map());
+  // Map wallet name to invitation info (walletId and status)
+  const [invitationMap, setInvitationMap] = useState<Map<string, { walletId: string; status: "PENDING" | "ACCEPTED" | "REJECTED" }>>(new Map());
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   // Listen for Pusher notifications
@@ -200,26 +201,29 @@ export default function NotificationsPage() {
     refreshUnreadCount();
   };
 
-  // Fetch pending wallet invitations to map wallet names to IDs
+  // Fetch wallet invitations to map wallet names to IDs and status
   useEffect(() => {
-    async function fetchPendingInvitations() {
+    async function fetchInvitations() {
       try {
         const response = await fetch("/api/wallets/pending-invitations");
         if (response.ok) {
-          const invitations: Array<{ walletId: string; walletName: string }> = await response.json();
-          const map = new Map<string, string>();
+          const invitations: Array<{ walletId: string; walletName: string; status: "PENDING" | "ACCEPTED" | "REJECTED" }> = await response.json();
+          const map = new Map<string, { walletId: string; status: "PENDING" | "ACCEPTED" | "REJECTED" }>();
           invitations.forEach((inv) => {
-            map.set(inv.walletName, inv.walletId);
+            map.set(inv.walletName, {
+              walletId: inv.walletId,
+              status: inv.status,
+            });
           });
-          setPendingInvitations(map);
+          setInvitationMap(map);
         }
       } catch (err) {
-        console.error("Error fetching pending invitations:", err);
+        console.error("Error fetching invitations:", err);
       }
     }
 
-    fetchPendingInvitations();
-  }, []);
+    fetchInvitations();
+  }, [notifications]); // Refetch when notifications change to update status
 
   const groupedNotifications = useMemo(() => {
     return groupNotificationsByTime(notifications);
@@ -235,6 +239,15 @@ export default function NotificationsPage() {
     if (notification.type === NotificationType.SUBSCRIPTION_REMINDER) {
       // Extract subscription info from message and navigate to subscriptions page
       router.push("/wallets/subscriptions");
+    } else if (notification.type === NotificationType.WALLET_INVITATION) {
+      // If wallet invitation is accepted, navigate to wallet
+      const walletName = extractWalletNameFromMessage(notification.message);
+      if (walletName) {
+        const invitationInfo = invitationMap.get(walletName);
+        if (invitationInfo && invitationInfo.status === "ACCEPTED") {
+          router.push(`/wallets/${invitationInfo.walletId}`);
+        }
+      }
     }
   };
 
@@ -254,6 +267,19 @@ export default function NotificationsPage() {
 
       // Mark notification as read
       await markAsRead(notification.id);
+      
+      // Update local invitation status
+      const walletName = extractWalletNameFromMessage(notification.message);
+      if (walletName) {
+        setInvitationMap((prev) => {
+          const next = new Map(prev);
+          const existing = next.get(walletName);
+          if (existing) {
+            next.set(walletName, { ...existing, status: "ACCEPTED" });
+          }
+          return next;
+        });
+      }
       
       // Refresh notifications
       refetch();
@@ -283,17 +309,34 @@ export default function NotificationsPage() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to reject invitation");
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || "Failed to reject invitation";
+        throw new Error(errorMessage);
       }
 
       // Mark notification as read
       await markAsRead(notification.id);
       
-      // Refresh notifications
+      // Update local invitation status
+      const walletName = extractWalletNameFromMessage(notification.message);
+      if (walletName) {
+        setInvitationMap((prev) => {
+          const next = new Map(prev);
+          const existing = next.get(walletName);
+          if (existing) {
+            next.set(walletName, { ...existing, status: "REJECTED" });
+          }
+          return next;
+        });
+      }
+      
+      // Refresh notifications and unread count
       refetch();
+      refreshUnreadCount();
     } catch (err) {
       console.error("Error rejecting invitation:", err);
-      alert("拒絕邀請失敗，請稍後再試");
+      const errorMessage = err instanceof Error ? err.message : "拒絕邀請失敗，請稍後再試";
+      alert(errorMessage);
     } finally {
       setProcessingInvitations((prev) => {
         const next = new Set(prev);
@@ -305,16 +348,20 @@ export default function NotificationsPage() {
 
   const renderNotificationItem = (notification: Notification) => {
     const walletName = extractWalletNameFromMessage(notification.message);
-    const walletId = walletName ? pendingInvitations.get(walletName) : null;
+    const invitationInfo = walletName ? invitationMap.get(walletName) : null;
+    const walletId = invitationInfo?.walletId || null;
+    const invitationStatus = invitationInfo?.status;
     const isWalletInvitation = notification.type === NotificationType.WALLET_INVITATION;
     const isProcessing = processingInvitations.has(notification.id);
+    // If invitation is accepted, make it clickable
+    const isClickable = !isWalletInvitation || invitationStatus === "ACCEPTED";
 
     return (
       <div
         key={notification.id}
-        onClick={() => !isWalletInvitation && handleNotificationClick(notification)}
+        onClick={() => isClickable && handleNotificationClick(notification)}
         className={`flex items-start gap-3 p-3 bg-white rounded-lg relative ${
-          !isWalletInvitation ? "cursor-pointer hover:bg-gray-50 transition-colors" : ""
+          isClickable ? "cursor-pointer hover:bg-gray-50 transition-colors" : ""
         }`}
       >
         {/* Unread indicator - red dot */}
@@ -335,6 +382,12 @@ export default function NotificationsPage() {
         {/* Notification content */}
         <div className="flex-1 min-w-0">
           <p className="text-sm text-black mb-1">{notification.message}</p>
+          {/* Show invitation status if accepted or rejected */}
+          {isWalletInvitation && invitationStatus && invitationStatus !== "PENDING" && (
+            <p className="text-xs text-black/60 mb-1">
+              {invitationStatus === "ACCEPTED" ? "（已接受）" : "（已拒絕）"}
+            </p>
+          )}
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs text-black/50">
               {formatRelativeTime(new Date(notification.createdAt))}
@@ -354,8 +407,8 @@ export default function NotificationsPage() {
             )}
           </div>
 
-          {/* Action buttons for wallet invitation */}
-          {isWalletInvitation && walletId && (
+          {/* Action buttons for wallet invitation - only show if pending */}
+          {isWalletInvitation && walletId && invitationStatus === "PENDING" && (
             <div className="flex gap-2 mt-2">
               <button
                 type="button"

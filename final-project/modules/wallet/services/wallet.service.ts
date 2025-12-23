@@ -16,6 +16,7 @@ import type {
   WalletServiceResult,
 } from "../domain/wallet.types";
 import { WalletUserStatus } from "../domain/wallet.types";
+import { WalletUserStatus as PrismaWalletUserStatus } from "@prisma/client";
 import { DEFAULT_CURRENCY } from "@/config/constants";
 import { prisma } from "@/lib/prisma";
 
@@ -460,6 +461,8 @@ export const walletService = {
               continue;
             }
             // If PENDING or REJECTED, update to PENDING with specified role
+            const wasRejected = !existingMembership.isDeleted && existingMembership.status === WalletUserStatus.REJECTED;
+            
             if (!existingMembership.isDeleted) {
               await tx.walletUser.update({
                 where: {
@@ -490,6 +493,15 @@ export const walletService = {
                 },
               });
             }
+            
+            // Create notification for invited user (always send, especially for REJECTED -> PENDING)
+            await tx.notification.create({
+              data: {
+                userId: invitedUserId,
+                type: "WALLET_INVITATION",
+                message: `${inviterUser.name} 邀請您加入錢包「${wallet.name}」`,
+              },
+            });
           } else {
             // Create new membership with PENDING status and specified role
             await tx.walletUser.create({
@@ -500,16 +512,16 @@ export const walletService = {
                 status: WalletUserStatus.PENDING,
               },
             });
-          }
 
-          // Create notification for invited user
-          await tx.notification.create({
-            data: {
-              userId: invitedUserId,
-              type: "WALLET_INVITATION",
-              message: `${inviterUser.name} 邀請您加入錢包「${wallet.name}」`,
-            },
-          });
+            // Create notification for invited user
+            await tx.notification.create({
+              data: {
+                userId: invitedUserId,
+                type: "WALLET_INVITATION",
+                message: `${inviterUser.name} 邀請您加入錢包「${wallet.name}」`,
+              },
+            });
+          }
         }
       });
 
@@ -552,7 +564,8 @@ export const walletService = {
       };
     }
 
-    if (membership.status !== WalletUserStatus.PENDING) {
+    // Compare with Prisma enum value to ensure type compatibility
+    if (membership.status !== PrismaWalletUserStatus.PENDING) {
       return {
         success: false,
         error: `Cannot accept invitation with status ${membership.status}`,
@@ -560,11 +573,43 @@ export const walletService = {
     }
 
     try {
+      // Get wallet and user info for notification
+      const wallet = await walletRepository.findById(walletId);
+      const user = await userRepository.findById(userId);
+      
+      if (!wallet || !user) {
+        return {
+          success: false,
+          error: "Wallet or user not found",
+        };
+      }
+
       // Update membership status to ACCEPTED
       await walletRepository.updateMembershipStatus(walletId, userId, WalletUserStatus.ACCEPTED);
 
       // Mark related notifications as read
       await notificationRepository.markWalletInvitationAsRead(userId, walletId);
+
+      // Send notification to wallet owners
+      const owners = await prisma.walletUser.findMany({
+        where: {
+          walletId,
+          status: PrismaWalletUserStatus.OWNER,
+          role: "OWNER",
+          isDeleted: false,
+        },
+        select: { userId: true },
+      });
+
+      for (const owner of owners) {
+        if (owner.userId !== userId) {
+          await notificationRepository.create(
+            owner.userId,
+            "SHARED_WALLET_UPDATE",
+            `${user.name} 已接受加入錢包「${wallet.name}」的邀請`
+          );
+        }
+      }
 
       // Fetch updated wallet
       const updatedWallet = await walletRepository.findById(walletId, userId);
@@ -605,7 +650,30 @@ export const walletService = {
       };
     }
 
-    if (membership.status !== WalletUserStatus.PENDING) {
+    // Handle different invitation statuses
+    // If already rejected, treat as success (idempotent operation)
+    if (membership.status === PrismaWalletUserStatus.REJECTED) {
+      // Still mark notifications as read and refresh
+      try {
+        await notificationRepository.markWalletInvitationAsRead(userId, walletId);
+      } catch (error) {
+        console.error("Error marking notifications as read:", error);
+      }
+      return {
+        success: true,
+      };
+    }
+
+    // If already accepted, cannot reject
+    if (membership.status === PrismaWalletUserStatus.ACCEPTED) {
+      return {
+        success: false,
+        error: `Cannot reject invitation that has already been accepted`,
+      };
+    }
+
+    // Only process if status is PENDING
+    if (membership.status !== PrismaWalletUserStatus.PENDING) {
       return {
         success: false,
         error: `Cannot reject invitation with status ${membership.status}`,
@@ -613,11 +681,43 @@ export const walletService = {
     }
 
     try {
+      // Get wallet and user info for notification
+      const wallet = await walletRepository.findById(walletId);
+      const user = await userRepository.findById(userId);
+      
+      if (!wallet || !user) {
+        return {
+          success: false,
+          error: "Wallet or user not found",
+        };
+      }
+
       // Update membership status to REJECTED
       await walletRepository.updateMembershipStatus(walletId, userId, WalletUserStatus.REJECTED);
 
       // Mark related notifications as read
       await notificationRepository.markWalletInvitationAsRead(userId, walletId);
+
+      // Send notification to wallet owners (only if not already rejected)
+      const owners = await prisma.walletUser.findMany({
+        where: {
+          walletId,
+          status: PrismaWalletUserStatus.OWNER,
+          role: "OWNER",
+          isDeleted: false,
+        },
+        select: { userId: true },
+      });
+
+      for (const owner of owners) {
+        if (owner.userId !== userId) {
+          await notificationRepository.create(
+            owner.userId,
+            "SHARED_WALLET_UPDATE",
+            `${user.name} 已拒絕加入錢包「${wallet.name}」的邀請`
+          );
+        }
+      }
 
       return {
         success: true,
