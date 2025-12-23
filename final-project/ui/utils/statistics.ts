@@ -68,7 +68,10 @@ function convertToDefaultCurrency(
   }
 
   // If no exchange rate, return 0 (cannot convert)
-  if (!rateToDefaultCurrency) {
+  if (!rateToDefaultCurrency || rateToDefaultCurrency <= 0) {
+    console.warn(
+      `Missing exchange rate for ${currency} to ${walletDefaultCurrency}. Transaction excluded from calculation.`
+    );
     return 0;
   }
 

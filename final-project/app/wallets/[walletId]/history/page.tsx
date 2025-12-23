@@ -48,11 +48,11 @@ export default function WalletHistoryPage() {
 
   // Group transactions by date
   const dailyGroups = useMemo(() => {
-    if (!transactions || transactions.length === 0) {
+    if (!transactions || transactions.length === 0 || !currentWallet) {
       return [];
     }
-    return groupTransactionsByDate(transactions);
-  }, [transactions]);
+    return groupTransactionsByDate(transactions, currentWallet.defaultCurrency);
+  }, [transactions, currentWallet]);
 
   // Check if current selected month is the current month
   const isCurrentMonth = useMemo(() => {
@@ -195,6 +195,7 @@ export default function WalletHistoryPage() {
               group={group} 
               formatAmount={formatAmount}
               walletId={currentWallet.id}
+              walletDefaultCurrency={currentWallet.defaultCurrency}
             />
           ))
         )}
@@ -212,6 +213,7 @@ function DailyTransactionCard({
   group,
   formatAmount,
   walletId,
+  walletDefaultCurrency,
 }: {
   group: DailyTransactionGroup;
   formatAmount: (amount: number, currency: string, type: "INCOME" | "EXPENSE") => {
@@ -221,6 +223,7 @@ function DailyTransactionCard({
     currency: string;
   };
   walletId: string;
+  walletDefaultCurrency: string;
 }) {
   const router = useRouter();
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
@@ -276,7 +279,7 @@ function DailyTransactionCard({
       <div className="mb-3 flex items-center justify-between border-b border-black/20 pb-2">
         <span className="text-sm font-medium text-black">{group.dateLabel}</span>
         <span className="text-sm font-semibold" style={dailyAmountColor}>
-          ${dailyAmountSign}{dailyAmountFormatted}
+          {walletDefaultCurrency} {dailyAmountSign}{dailyAmountFormatted}
         </span>
       </div>
 
