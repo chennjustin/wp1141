@@ -82,6 +82,12 @@ export function WalletsClientLayout({ children }: WalletsClientLayoutProps) {
     pathname?.startsWith("/wallets/") &&
     pathname.includes("/transactions/new");
   
+  // 是否為「編輯交易」頁面：/wallets/[walletId]/transactions/[transactionId]/edit
+  const isEditTransactionPage =
+    pathname?.startsWith("/wallets/") &&
+    pathname.includes("/transactions/") &&
+    pathname.includes("/edit");
+  
   // 是否為「新增/編輯訂閱」頁面：/wallets/[walletId]/subscriptions/new 或 /wallets/[walletId]/subscriptions/[id]/edit
   // 或訂閱歷史頁面：/wallets/[walletId]/subscriptions/history
   const isSubscriptionPage =
@@ -94,7 +100,7 @@ export function WalletsClientLayout({ children }: WalletsClientLayoutProps) {
       {/* Mobile-sized container with thick black border and rounded corners */}
       <div className="relative flex h-[calc(100vh-2rem)] w-full max-w-sm flex-col border-[3px] border-black rounded-[3rem] overflow-hidden" style={{ backgroundColor: "var(--wallet-bg)" }}>
         {/* Header */}
-        {!isNewTransactionPage && !isSubscriptionPage && (
+        {!isNewTransactionPage && !isEditTransactionPage && !isSubscriptionPage && (
           <>
             <WalletHeader
               walletDisplayName={walletDisplayName}
