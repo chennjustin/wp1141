@@ -100,13 +100,13 @@ export default function SelectSubscriptionTagPage() {
     const allSystemTagNames = transactionType === "INCOME" 
       ? [...DEFAULT_SYSTEM_INCOME_TAGS]
       : [...DEFAULT_SYSTEM_TAGS];
-    const systemTagNames = allSystemTagNames.filter(name => name !== "other");
+    const systemTagNames = allSystemTagNames.filter(name => name !== "其他");
     
     allTags.forEach((tag) => {
       const isSystemTag = tag.id.startsWith("system-tag-") || 
                           systemTagNames.includes(tag.name as any);
       
-      if (tag.name === "other") {
+      if (tag.name === "其他") {
         otherTag = tag;
       } else if (isSystemTag) {
         systemTags.push(tag);
