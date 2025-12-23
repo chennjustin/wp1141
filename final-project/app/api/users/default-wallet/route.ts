@@ -164,14 +164,6 @@ export async function DELETE(req: Request) {
       );
     }
 
-    // Check if My Wallet - cannot unpin
-    if (wallet.name === "我的錢包") {
-      return NextResponse.json(
-        { error: "Cannot unpin My Wallet" },
-        { status: 400 }
-      );
-    }
-
     // Check if pinned
     const isPinned = await walletRepository.isWalletPinned(session.user.id, walletId);
     if (!isPinned) {

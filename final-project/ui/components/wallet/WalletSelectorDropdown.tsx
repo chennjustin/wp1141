@@ -53,6 +53,27 @@ export function WalletSelectorDropdown({
     .map((walletId) => walletMap.get(walletId))
     .filter((wallet): wallet is Wallet => wallet !== undefined);
 
+  // Get unpinned wallets (wallets not in pinnedWalletIds)
+  const unpinnedWallets = wallets.filter(
+    (wallet) => !pinnedWalletIds.has(wallet.id)
+  );
+
+  // Display logic according to rules:
+  // 1. Always show all pinned wallets first
+  // 2. If pinned wallets >= 3: only show pinned wallets
+  // 3. If pinned wallets < 3: fill with unpinned wallets up to 3 total
+  const walletsToDisplay: Wallet[] = [];
+  
+  // Step 1: Add all pinned wallets
+  walletsToDisplay.push(...orderedPinnedWallets);
+  
+  // Step 2: If pinned wallets < 3, add unpinned wallets to fill up to 3
+  if (orderedPinnedWallets.length < 3) {
+    const remainingSlots = 3 - orderedPinnedWallets.length;
+    const unpinnedToAdd = unpinnedWallets.slice(0, remainingSlots);
+    walletsToDisplay.push(...unpinnedToAdd);
+  }
+
   return (
     <>
       <div
@@ -70,8 +91,8 @@ export function WalletSelectorDropdown({
         }}
       >
         <div className="py-2">
-          {/* Show all pinned wallets in order (max 5) */}
-          {orderedPinnedWallets.map((wallet) => (
+          {/* Show wallets based on total count */}
+          {walletsToDisplay.map((wallet) => (
             <button
               key={wallet.id}
               type="button"
@@ -82,7 +103,13 @@ export function WalletSelectorDropdown({
               {wallet.name}
             </button>
           ))}
-          <div className="border-t border-gray-200 my-1" />
+          
+          {/* Only show separator if there are wallets displayed */}
+          {walletsToDisplay.length > 0 && (
+            <div className="border-t border-gray-200 my-1" />
+          )}
+          
+          {/* Always show "所有錢包" option */}
           <button
             type="button"
             className="w-full px-4 py-2 text-left text-sm hover:opacity-80 transition-opacity"

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Pin } from "lucide-react";
 import { useWallets } from "@/hooks/useWallet";
 import { useUser } from "@/hooks/useUser";
+import { usePinnedWallets } from "@/hooks/usePinnedWallets";
 import type { Wallet } from "@/modules/wallet/domain/wallet.types";
 import { Loading } from "@/ui/components/common/Loading";
 
@@ -33,7 +34,7 @@ function WalletCard({
 
   const handlePinClick = async (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click
-    if (isToggling || (isMyWallet && isPinned)) return; // Prevent unpinning My Wallet
+    if (isToggling) return; // Prevent concurrent toggles
 
     setIsToggling(true);
     try {
@@ -54,9 +55,9 @@ function WalletCard({
         type="button"
         className={`absolute top-3 right-3 z-10 p-1 rounded-full hover:bg-gray-100 transition-colors ${
           isToggling ? "opacity-50 cursor-not-allowed" : ""
-        } ${isMyWallet && isPinned ? "cursor-not-allowed" : ""}`}
+        }`}
         onClick={handlePinClick}
-        disabled={isToggling || (isMyWallet && isPinned)}
+        disabled={isToggling}
         aria-label={isPinned ? "Unpin wallet" : "Pin wallet"}
       >
         <Pin
@@ -98,10 +99,12 @@ export default function AllWalletsPage() {
   const router = useRouter();
   const pathname = usePathname();
   const { data: session, update: updateSession } = useSession();
-  const { profile } = useUser();
+  const { profile, isAuthenticated } = useUser();
   const { wallets, loading, error, refetch } = useWallets();
   const [pinningWalletId, setPinningWalletId] = useState<string | null>(null);
-  const [pinnedWalletIds, setPinnedWalletIds] = useState<Set<string>>(new Set());
+  
+  // Use pinned wallets hook for consistent state management
+  const { pinnedWalletIds, pinnedWalletIdsArray, refetch: refetchPinnedWallets } = usePinnedWallets(isAuthenticated);
 
   // Use ref to store latest refetch function to avoid dependency issues
   const refetchRef = useRef(refetch);
@@ -110,40 +113,6 @@ export default function AllWalletsPage() {
   }, [refetch]);
 
   const currentUserId = profile?.id;
-
-  // Fetch pinned wallets on mount and when page becomes visible
-  const fetchPinnedWallets = useCallback(async () => {
-    try {
-      const response = await fetch("/api/users/default-wallet");
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.pinnedWalletIds) {
-          setPinnedWalletIds(new Set(data.pinnedWalletIds));
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching pinned wallets:", error);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchPinnedWallets();
-  }, [fetchPinnedWallets]);
-
-  // Refetch wallets and pinned wallets when page becomes visible (e.g., user returns from another page)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        refetchRef.current();
-        fetchPinnedWallets();
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [fetchPinnedWallets]);
 
   // Handle pin toggle
   const handlePinToggle = async (walletId: string, isPinned: boolean) => {
@@ -166,9 +135,7 @@ export default function AllWalletsPage() {
           const errorMessage = errorData.error || "Failed to unpin wallet";
           
           // Map backend error messages to user-friendly messages
-          if (errorMessage === "Cannot unpin My Wallet") {
-            throw new Error("無法取消釘選「我的錢包」");
-          } else if (errorMessage === "Wallet is not pinned") {
+          if (errorMessage === "Wallet is not pinned") {
             throw new Error("此錢包尚未釘選");
           } else if (errorMessage === "Wallet not found or access denied") {
             throw new Error("錢包不存在或無權限存取");
@@ -177,31 +144,7 @@ export default function AllWalletsPage() {
           throw new Error(errorMessage);
         }
 
-        const data = await response.json();
-        if (data.success && data.pinnedWalletIds) {
-          setPinnedWalletIds(new Set(data.pinnedWalletIds));
-        }
       } else {
-        // Pin wallet - check limit before attempting (excluding My Wallet)
-        const wallet = wallets.find((w) => w.id === walletId);
-        if (!wallet) {
-          throw new Error("錢包不存在");
-        }
-        
-        const myWallet = isMyWallet(wallet);
-        
-        if (!myWallet) {
-          // Count pinned wallets (excluding My Wallet)
-          const pinnedCount = Array.from(pinnedWalletIds).filter((id) => {
-            const w = wallets.find((w) => w.id === id);
-            return w && !isMyWallet(w);
-          }).length;
-          
-          if (pinnedCount >= 5) {
-            throw new Error("最多只能釘選 5 個錢包（「我的錢包」不計入限制）");
-          }
-        }
-
         // Pin wallet
         const response = await fetch("/api/users/default-wallet", {
           method: "PUT",
@@ -217,17 +160,12 @@ export default function AllWalletsPage() {
           
           // Map backend error messages to user-friendly messages
           if (errorMessage === "Maximum 5 pinned wallets allowed") {
-            throw new Error("最多只能釘選 5 個錢包（「我的錢包」不計入限制）");
+            throw new Error("最多只能釘選 5 個錢包");
           } else if (errorMessage === "Wallet not found or access denied") {
             throw new Error("錢包不存在或無權限存取");
           }
           
           throw new Error(errorMessage);
-        }
-
-        const data = await response.json();
-        if (data.success && data.pinnedWalletIds) {
-          setPinnedWalletIds(new Set(data.pinnedWalletIds));
         }
       }
 
@@ -236,6 +174,9 @@ export default function AllWalletsPage() {
         await updateSession();
       }
 
+      // Immediately refetch pinned wallets to update UI
+      await refetchPinnedWallets();
+      
       // Refetch wallets to get updated data
       await refetch();
     } catch (error) {

@@ -215,6 +215,9 @@ export const walletService = {
           });
         }
 
+        // Note: Pin/unpin state can only be changed by user manual operation
+        // System will NOT automatically pin newly created wallets
+
         return createdWallet;
       });
 

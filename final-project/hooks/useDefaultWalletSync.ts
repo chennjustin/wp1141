@@ -33,7 +33,8 @@ export function useDefaultWalletSync(currentWallet: Wallet | null) {
     // Debounce the update to avoid excessive API calls
     updateTimeoutRef.current = setTimeout(async () => {
       try {
-        const response = await fetch("/api/users/default-wallet", {
+        // Use set-default-wallet endpoint to only set defaultWalletId without pinning
+        const response = await fetch("/api/users/set-default-wallet", {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -71,12 +72,12 @@ export function useDefaultWalletSync(currentWallet: Wallet | null) {
       const data = JSON.stringify({ walletId });
       if (navigator.sendBeacon) {
         navigator.sendBeacon(
-          "/api/users/default-wallet",
+          "/api/users/set-default-wallet",
           new Blob([data], { type: "application/json" })
         );
       } else {
         // Fallback to fetch if sendBeacon is not available
-        fetch("/api/users/default-wallet", {
+        fetch("/api/users/set-default-wallet", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: data,
