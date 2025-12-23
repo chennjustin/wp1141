@@ -59,17 +59,18 @@ export function WalletSelectorDropdown({
   );
 
   // Display logic according to rules:
-  // 1. Always show all pinned wallets first
-  // 2. If pinned wallets >= 3: only show pinned wallets
+  // 1. Always show pinned wallets first (up to 3)
+  // 2. If pinned wallets >= 3: only show first 3 pinned wallets
   // 3. If pinned wallets < 3: fill with unpinned wallets up to 3 total
   const walletsToDisplay: Wallet[] = [];
   
-  // Step 1: Add all pinned wallets
-  walletsToDisplay.push(...orderedPinnedWallets);
+  // Step 1: Add pinned wallets (limit to first 3)
+  const pinnedToShow = orderedPinnedWallets.slice(0, 3);
+  walletsToDisplay.push(...pinnedToShow);
   
-  // Step 2: If pinned wallets < 3, add unpinned wallets to fill up to 3
-  if (orderedPinnedWallets.length < 3) {
-    const remainingSlots = 3 - orderedPinnedWallets.length;
+  // Step 2: If pinned wallets < 3, add unpinned wallets to fill up to 3 total
+  if (pinnedToShow.length < 3) {
+    const remainingSlots = 3 - pinnedToShow.length;
     const unpinnedToAdd = unpinnedWallets.slice(0, remainingSlots);
     walletsToDisplay.push(...unpinnedToAdd);
   }
