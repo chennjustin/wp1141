@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { createTransactionAction } from "@/modules/transaction/routes/create-transaction";
 import { listTagsAction } from "@/modules/tag/routes/list-tags";
@@ -125,10 +125,22 @@ export default function NewTransactionPage() {
     }
   }, [wallet, currency]);
 
+  // Track if we've already fetched the last rate for current currency/mode combination
+  const lastFetchedKeyRef = useRef<string>("");
+
   // Fetch last exchange rate when currency changes or rateMode is "last"
   useEffect(() => {
     async function fetchLastRate() {
       if (!wallet || !currency || currency === wallet.defaultCurrency || rateMode !== "last") {
+        return;
+      }
+
+      // Create a key to track if we've already fetched for this combination
+      const fetchKey = `${walletId}-${currency}-last`;
+      
+      // If we've already fetched for this combination and got a result, don't refetch
+      // This prevents clearing the rate when clicking the button again
+      if (lastFetchedKeyRef.current === fetchKey && rateToDefaultCurrency) {
         return;
       }
 
@@ -137,25 +149,58 @@ export default function NewTransactionPage() {
         const response = await fetch(`/api/transactions/last-rate?walletId=${walletId}&currency=${currency}`);
         if (response.ok) {
           const data = await response.json();
-          if (data.rateToDefaultCurrency) {
+          if (data.rateToDefaultCurrency && data.rateToDefaultCurrency !== null) {
+            // Update with the fetched rate
             setRateToDefaultCurrency(data.rateToDefaultCurrency.toString());
+            // Clear current rate since we have a last rate
+            setCurrentRate(null);
+            // Mark that we've successfully fetched for this combination
+            lastFetchedKeyRef.current = fetchKey;
           } else {
-            // If no last rate found, keep in "last" mode but show empty
-            // Don't automatically switch to manual mode
+            // If no last rate found, try to fetch current rate as fallback
+            // This provides a helpful reference even when no historical rate exists
+            try {
+              const currentRateResponse = await fetch(
+                `/api/transactions/current-rate?from=${currency}&to=${wallet.defaultCurrency}`
+              );
+              if (currentRateResponse.ok) {
+                const currentRateData = await currentRateResponse.json();
+                if (currentRateData.rate) {
+                  // Store current rate but don't auto-fill - let user decide
+                  // We'll show it as a suggestion in the UI
+                  setCurrentRate(currentRateData.rate);
+                } else {
+                  setCurrentRate(null);
+                }
+              } else {
+                setCurrentRate(null);
+              }
+            } catch (currentRateErr) {
+              // Ignore current rate fetch errors
+              console.error("Failed to fetch current rate as fallback", currentRateErr);
+              setCurrentRate(null);
+            }
+            // Clear rate only if we don't have a valid last rate
             setRateToDefaultCurrency("");
+            // Mark that we've fetched (even though no rate was found)
+            lastFetchedKeyRef.current = fetchKey;
           }
         } else {
           setRateToDefaultCurrency("");
+          lastFetchedKeyRef.current = fetchKey;
         }
       } catch (err) {
         console.error("Failed to fetch last rate", err);
         setRateToDefaultCurrency("");
+        lastFetchedKeyRef.current = fetchKey;
       } finally {
         setFetchingLastRate(false);
       }
     }
 
     fetchLastRate();
+    // Note: rateToDefaultCurrency is intentionally not in dependencies
+    // to prevent infinite loops. We use lastFetchedKeyRef to track if we've already fetched.
   }, [wallet, currency, rateMode, walletId]);
 
   // Fetch current exchange rate when currency changes and rateMode is "manual"
@@ -679,8 +724,14 @@ export default function NewTransactionPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setRateMode("last");
-                        setRateToDefaultCurrency("");
+                        // Only change mode if not already in "last" mode
+                        if (rateMode !== "last") {
+                          setRateMode("last");
+                          // Clear rate when switching from manual mode
+                          // useEffect will fetch the last rate
+                          setRateToDefaultCurrency("");
+                        }
+                        // If already in "last" mode, do nothing (prevent clearing existing rate)
                       }}
                       className={`flex-1 h-9 px-3 text-sm rounded border transition-colors ${
                         rateMode === "last"
@@ -707,15 +758,35 @@ export default function NewTransactionPage() {
                   </div>
                   {/* Rate input */}
                   {rateMode === "last" ? (
-                    <div className="h-10 px-3 bg-gray-50 border-b border-gray-200 flex items-center">
-                      {fetchingLastRate ? (
-                        <span className="text-sm text-gray-500">載入中...</span>
-                      ) : rateToDefaultCurrency ? (
-                        <span className="text-sm text-black">
-                          1 {currency} = {parseFloat(rateToDefaultCurrency).toLocaleString()} {wallet.defaultCurrency}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-gray-500">沒有找到上次使用的匯率</span>
+                    <div className="space-y-1">
+                      <div className="h-10 px-3 bg-gray-50 border-b border-gray-200 flex items-center">
+                        {fetchingLastRate ? (
+                          <span className="text-sm text-gray-500">載入中...</span>
+                        ) : rateToDefaultCurrency ? (
+                          <span className="text-sm text-black">
+                            1 {currency} = {parseFloat(rateToDefaultCurrency).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })} {wallet.defaultCurrency}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-gray-500">沒有找到上次使用的匯率</span>
+                        )}
+                      </div>
+                      {/* Show current rate as suggestion when no last rate found */}
+                      {!fetchingLastRate && !rateToDefaultCurrency && currentRate && (
+                        <div className="px-3">
+                          <p className="text-xs text-gray-500">
+                            當日匯率參考：1 {currency} = {currentRate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })} {wallet.defaultCurrency}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRateMode("manual");
+                              setRateToDefaultCurrency(currentRate.toString());
+                            }}
+                            className="text-xs text-blue-600 hover:text-blue-800 mt-1 underline"
+                          >
+                            使用當日匯率
+                          </button>
+                        </div>
                       )}
                     </div>
                   ) : (
