@@ -62,17 +62,7 @@ export default function WalletsLayout({ children }: WalletLayoutProps) {
   // Get unread notification count
   const { count: unreadCount } = useUnreadNotificationCount();
 
-  // Redirect to login if not authenticated (use useEffect to avoid render-time navigation)
-  useEffect(() => {
-    if (!isAuthenticated || sessionStatus === "unauthenticated") {
-      router.push("/login");
-    }
-  }, [isAuthenticated, sessionStatus, router]);
-
-  // Don't render content if not authenticated
-  if (!isAuthenticated || sessionStatus === "unauthenticated") {
-    return null;
-  }
+ 
 
   const handleWalletChange = (walletId: string) => {
     setCurrentWalletId(walletId);
