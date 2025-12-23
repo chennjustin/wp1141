@@ -44,40 +44,32 @@ import type { LucideIcon } from "lucide-react";
 /**
  * Mapping of iconKey to lucide-react icon components
  * 
- * Common mappings:
- * - "tag" -> Tag (default)
- * - "food" -> UtensilsCrossed
- * - "drinks" -> Coffee
- * - "shopping" -> ShoppingCart
- * - etc.
+ * Maps system tag IDs to their corresponding icons.
+ * Uses full system tag IDs (e.g., "system-tag-food") for system tags.
  */
 export const tagIconMap: Record<string, LucideIcon> = {
   // Default
   tag: Tag,
   
-  // System expense tags
-  food: UtensilsCrossed,
-  drinks: Coffee,
-  entertainment: Film,
-  transportation: Car,
-  shopping: ShoppingCart,
-  bills: Receipt,
-  healthcare: HeartPulse,
-  education: GraduationCap,
-  travel: Plane,
-  other: MoreHorizontal,
+  // System expense tags (Full IDs only)
+  "system-tag-food": UtensilsCrossed,
+  "system-tag-drinks": Coffee,
+  "system-tag-entertainment": Film,
+  "system-tag-transportation": Car,
+  "system-tag-shopping": ShoppingCart,
+  "system-tag-bills": Receipt,
+  "system-tag-healthcare": HeartPulse,
+  "system-tag-education": GraduationCap,
+  "system-tag-travel": Plane,
+  "system-tag-other": MoreHorizontal,
   
-  // System income tags
-  salary: Wallet,
-  bonus: DollarSign,
-  investment: TrendingUp,
-  gift: Gift,
-  freelance: HandCoins,
-  interest: Percent,
-  refund: RotateCcw,
-  dividend: PieChart,
+  // System income tags (Full IDs only)
+  "system-tag-salary": Wallet,
+  "system-tag-bonus": DollarSign,
+  "system-tag-investment": TrendingUp,
+  "system-tag-gift": Gift,
   
-  // Additional common icons
+  // Additional common icons (for user-created tags)
   "shopping-cart": ShoppingCart,
   "shopping-bag": ShoppingBag,
   coffee: Coffee,
