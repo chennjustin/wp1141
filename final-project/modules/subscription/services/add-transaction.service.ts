@@ -158,7 +158,7 @@ export async function addTransactionFromSubscriptions() {
           userId: sub.userId,
           amount: sub.amount,
           currency: sub.currency,
-          rateToDefaultCurrency: sub.rateToDefaultCurrency,
+          rateToDefaultCurrency: sub.rateToDefaultCurrency ?? null,
           nextBilling: new Date(sub.nextBilling),
           intervalMonths: sub.intervalMonths,
           startDate: new Date(sub.startDate),

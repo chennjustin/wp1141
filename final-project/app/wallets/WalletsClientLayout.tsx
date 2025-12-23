@@ -99,7 +99,11 @@ export function WalletsClientLayout({ children }: WalletsClientLayoutProps) {
   const isEditPage = 
     pathname?.startsWith("/wallets/") &&
     pathname?.includes("/edit") &&
-    !pathname?.includes("/subscriptions/");
+    !pathname?.includes("/subscriptions/") &&
+    !pathname?.includes("/transactions/");
+
+  // Check if current page is the new wallet page
+  const isNewWalletPage = pathname === "/wallets/new";
 
   // Handle edit wallet click
   const handleEditWallet = () => {
@@ -113,7 +117,7 @@ export function WalletsClientLayout({ children }: WalletsClientLayoutProps) {
       {/* Mobile-sized container with thick black border and rounded corners */}
       <div className="relative flex h-[calc(100vh-2rem)] w-full max-w-sm flex-col border-[3px] border-black rounded-[3rem] overflow-hidden" style={{ backgroundColor: "var(--wallet-bg)" }}>
         {/* Header */}
-        {!isNewTransactionPage && !isEditTransactionPage && !isSubscriptionPage && (
+        {!isNewTransactionPage && !isEditTransactionPage && !isSubscriptionPage && !isEditPage && !isNewWalletPage && (
           <>
             <WalletHeader
               walletDisplayName={walletDisplayName}
@@ -122,8 +126,8 @@ export function WalletsClientLayout({ children }: WalletsClientLayoutProps) {
               onWalletSelectorOpen={() => setIsWalletSelectorOpen(true)}
               walletButtonRef={walletButtonRef}
               unreadCount={unreadCount}
-              currentWalletId={!isEditPage ? currentWalletId : null}
-              onEditClick={!isEditPage ? handleEditWallet : undefined}
+              currentWalletId={currentWalletId}
+              onEditClick={handleEditWallet}
             />
 
             <WalletSelectorDropdown

@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ChevronLeft, ChevronRight, BarChart3 } from "lucide-react";
+import { ChevronLeft, ChevronRight, BarChart3, Trash2 } from "lucide-react";
 import { useWallets } from "@/hooks/useWallet";
 import { useCurrentWallet } from "@/hooks/useCurrentWallet";
 import { useWalletTransactions } from "@/hooks/useWalletTransactions";
@@ -43,6 +43,7 @@ export default function WalletHistoryPage() {
     data: transactions,
     loading: transactionsLoading,
     error: transactionsError,
+    refetch: refetchTransactions,
   } = useWalletTransactions({
     walletId: currentWallet?.id ?? null,
     year: selectedYear,
@@ -201,6 +202,7 @@ export default function WalletHistoryPage() {
               walletId={currentWallet.id}
               walletDefaultCurrency={currentWallet.defaultCurrency}
               currentUserId={currentUserId}
+              onTransactionDeleted={refetchTransactions}
             />
           ))
         )}
@@ -220,6 +222,7 @@ function DailyTransactionCard({
   walletId,
   walletDefaultCurrency,
   currentUserId,
+  onTransactionDeleted,
 }: {
   group: DailyTransactionGroup;
   formatAmount: (amount: number, currency: string, type: "INCOME" | "EXPENSE") => {
@@ -230,10 +233,11 @@ function DailyTransactionCard({
   };
   walletId: string;
   walletDefaultCurrency: string;
-  currentUserId: string | undefined;
+  currentUserId?: string;
+  onTransactionDeleted?: () => void;
 }) {
   const router = useRouter();
-  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null);
   
   /**
    * Get current user's paid amount from transaction payers
@@ -261,35 +265,34 @@ function DailyTransactionCard({
     router.push(`/wallets/${walletId}/transactions/${transactionId}/edit?from=history`);
   };
 
+  // Handle delete transaction
   const handleDeleteTransaction = async (e: React.MouseEvent, transactionId: string) => {
-    e.stopPropagation();
+    e.stopPropagation(); // Prevent triggering the transaction click
     
-    if (!confirm("確定要刪除此交易嗎？")) {
+    if (!confirm("確定要刪除這筆交易嗎？")) {
       return;
     }
 
+    setDeletingTransactionId(transactionId);
     try {
-      setDeletingIds((prev) => new Set(prev).add(transactionId));
       const response = await fetch(`/api/transactions/${transactionId}`, {
         method: "DELETE",
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "刪除失敗");
+      if (response.ok) {
+        // Refresh transactions after deletion
+        if (onTransactionDeleted) {
+          onTransactionDeleted();
+        }
+      } else {
+        const errorData = await response.json();
+        alert(`刪除失敗：${errorData.error || "未知錯誤"}`);
       }
-
-      // Reload page to refresh transaction list
-      router.refresh();
-    } catch (err) {
-      console.error("Failed to delete transaction", err);
-      alert(err instanceof Error ? err.message : "刪除失敗");
+    } catch (error) {
+      console.error("Error deleting transaction:", error);
+      alert("刪除交易時發生錯誤");
     } finally {
-      setDeletingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(transactionId);
-        return next;
-      });
+      setDeletingTransactionId(null);
     }
   };
 
@@ -314,20 +317,24 @@ function DailyTransactionCard({
           // Get iconKey with fallback
           const iconKey = transaction.tag?.iconKey || "tag";
 
-          const isDeleting = deletingIds.has(transaction.id);
-          
-          // Format amount only if user paid something
+          const isDeleting = deletingTransactionId === transaction.id;
+
+          // Calculate amount display based on user's paid amount and transaction type
           const amountDisplay = userPaidAmount !== null
-            ? formatAmount(userPaidAmount, transaction.currency, transaction.type)
+            ? formatAmount(
+                transaction.type === "INCOME" ? userPaidAmount : -userPaidAmount,
+                transaction.currency,
+                transaction.type
+              )
             : null;
 
           return (
             <div key={transaction.id}>
-              <div className="flex items-center gap-2 group">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => handleTransactionClick(transaction.id)}
-                  className="flex-1 flex items-center justify-between py-2 hover:bg-black/5 transition-colors rounded"
+                  className="flex-1 flex items-center gap-2 py-2 hover:bg-black/5 transition-colors"
                 >
                   {/* Left: Icon */}
                   <div className="flex h-8 w-8 items-center justify-center flex-shrink-0">
@@ -335,7 +342,7 @@ function DailyTransactionCard({
                   </div>
 
                   {/* Center: Item name */}
-                  <div className="flex-1 px-3 text-left">
+                  <div className="flex-1 text-left">
                     <span className="text-sm text-black">{itemName}</span>
                   </div>
 
@@ -358,10 +365,10 @@ function DailyTransactionCard({
                   type="button"
                   onClick={(e) => handleDeleteTransaction(e, transaction.id)}
                   disabled={isDeleting}
-                  className="flex-shrink-0 px-2 py-1 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-shrink-0 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title="刪除交易"
                 >
-                  {isDeleting ? "刪除中" : "刪除"}
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </div>
 

@@ -60,13 +60,13 @@ export function SideMenu({
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-50 w-2/3 max-w-[280px] h-full shadow-xl md:absolute md:inset-y-0 md:left-0 md:top-0 md:bottom-0 md:h-full md:rounded-l-[3rem] md:rounded-r-none transition-transform duration-300 ease-out ${
+      className={`absolute inset-y-0 left-0 z-50 w-2/3 max-w-[280px] h-full shadow-xl rounded-l-[3rem] rounded-r-none transition-transform duration-300 ease-out ${
         isOpen ? "translate-x-0" : "-translate-x-full"
       }`}
       style={{ backgroundColor: 'var(--wallet-bg)' }}
     >
       {/* User block with home icon */}
-      <div className="mt-2 mb-6 px-5">
+      <div className="mt-6 mb-6 px-5">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
             {userImage ? (
@@ -118,7 +118,7 @@ export function SideMenu({
           {
             id: "history",
             path: currentWalletId ? `/wallets/${currentWalletId}/history` : "/wallets/history",
-            label: "收支明細",
+            label: "款項明細",
             icon: FileText,
           },
           {

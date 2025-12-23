@@ -37,8 +37,6 @@ export default function WalletDetailPage() {
     // UI state
     showAmounts,
     setShowAmounts,
-    brightCarrier,
-    setBrightCarrier,
     
     // Loading state
     isInitialLoading,
@@ -84,8 +82,6 @@ export default function WalletDetailPage() {
         carrierCode={carrierCode}
         hasRealCarrier={hasRealCarrier}
         carrierLoading={carrierLoading}
-        brightCarrier={brightCarrier}
-        onToggleBrightness={() => setBrightCarrier((prev) => !prev)}
       />
 
       <DailyTransactionsSection

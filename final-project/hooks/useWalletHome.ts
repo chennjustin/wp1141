@@ -26,6 +26,7 @@ export interface DisplayTransaction {
   amount: number | null; // null when current user didn't pay anything
   currency: string;
   time: string;
+  iconKey: string;
 }
 
 /**
@@ -49,7 +50,6 @@ export function useWalletHome(walletId: string) {
   }, [walletById, wallets]);
 
   const [showAmounts, setShowAmounts] = useState(true);
-  const [brightCarrier, setBrightCarrier] = useState(true);
   
   // Track loading state with minimum display time (0.3 seconds)
   const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -170,12 +170,16 @@ export function useWalletHome(walletId: string) {
       const minutes = transactionDate.getMinutes().toString().padStart(2, "0");
       const time = `${hours}:${minutes}`;
 
+      // Get iconKey from tag with fallback to default "tag"
+      const iconKey = tx.tag?.iconKey || "tag";
+
       return {
         id: tx.id,
         title,
         amount: displayAmount,
         currency: tx.currency,
         time,
+        iconKey,
       };
     });
   }, [dailyTransactions]);
@@ -272,8 +276,6 @@ export function useWalletHome(walletId: string) {
     // UI state
     showAmounts,
     setShowAmounts,
-    brightCarrier,
-    setBrightCarrier,
     
     // Loading state
     isInitialLoading,

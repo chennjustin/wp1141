@@ -42,7 +42,6 @@ export default function SubscriptionsPage() {
   const [subscriptions, setSubscriptions] = useState<SubscriptionWithTag[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Fetch subscriptions
   useEffect(() => {
@@ -89,41 +88,6 @@ export default function SubscriptionsPage() {
     router.push(`/wallets/${walletId}/subscriptions/${subscriptionId}/edit`);
   };
 
-  const handleCancelSubscription = async (e: React.MouseEvent, subscriptionId: string) => {
-    e.stopPropagation();
-    
-    if (!confirm("確定要取消此訂閱嗎？取消後將停止未來的自動扣款。")) {
-      return;
-    }
-
-    try {
-      setDeletingId(subscriptionId);
-      const response = await fetch(`/api/subscriptions/${subscriptionId}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "取消失敗");
-      }
-
-      // Refresh subscriptions list to show updated endDate
-      const result = await listSubscriptionsAction({
-        walletId,
-        includeDeleted: false,
-      });
-
-      if (result.success && result.data) {
-        setSubscriptions(result.data as unknown as SubscriptionWithTag[]);
-      }
-    } catch (err) {
-      console.error("Failed to cancel subscription", err);
-      alert(err instanceof Error ? err.message : "取消失敗");
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
   if (!walletId) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -166,7 +130,6 @@ export default function SubscriptionsPage() {
           <div className="space-y-3">
             {subscriptions.map((subscription) => {
               const bgColor = getTagColor(subscription.tag.iconKey);
-              const isDeleting = deletingId === subscription.id;
               return (
                 <div
                   key={subscription.id}
@@ -232,17 +195,6 @@ export default function SubscriptionsPage() {
                         )}
                       </div>
                     </div>
-                  </button>
-
-                  {/* Cancel Button */}
-                  <button
-                    type="button"
-                    onClick={(e) => handleCancelSubscription(e, subscription.id)}
-                    disabled={isDeleting}
-                    className="flex-shrink-0 px-3 py-1 text-sm text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="取消訂閱"
-                  >
-                    {isDeleting ? "取消中..." : "取消"}
                   </button>
                 </div>
               );

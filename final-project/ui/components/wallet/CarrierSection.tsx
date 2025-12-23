@@ -1,7 +1,7 @@
 /**
  * Carrier section component
  * 
- * Displays the user's device carrier barcode with brightness toggle.
+ * Displays the user's device carrier barcode.
  * Shows real barcode if carrier exists, otherwise shows a button to add carrier.
  */
 
@@ -10,23 +10,19 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import JsBarcode from "jsbarcode";
-import { Sun, Copy } from "lucide-react";
+import { Copy } from "lucide-react";
 import { BARCODE_HEIGHT, BARCODE_WIDTH } from "@/ui/utils/barcode";
 
 interface CarrierSectionProps {
   carrierCode: string;
   hasRealCarrier: boolean;
   carrierLoading: boolean;
-  brightCarrier: boolean;
-  onToggleBrightness: () => void;
 }
 
 export function CarrierSection({
   carrierCode,
   hasRealCarrier,
   carrierLoading,
-  brightCarrier,
-  onToggleBrightness,
 }: CarrierSectionProps) {
   const router = useRouter();
   const barcodeRef = useRef<SVGSVGElement>(null);
@@ -45,7 +41,7 @@ export function CarrierSection({
           height: BARCODE_HEIGHT,
           displayValue: false, // Don't show text below barcode (text is shown separately)
           background: "transparent",
-          lineColor: brightCarrier ? "#000000" : "#FFFFFF",
+          lineColor: "#000000",
           width: 2, // Standard width for Code 39
           margin: 10, // Adequate margin for scanning
           valid: function(valid) {
@@ -58,7 +54,7 @@ export function CarrierSection({
         console.error("Error generating barcode:", error);
       }
     }
-  }, [hasRealCarrier, carrierCode, brightCarrier]);
+  }, [hasRealCarrier, carrierCode]);
 
   const handleCopyCarrierCode = async () => {
     if (navigator?.clipboard?.writeText) {
@@ -87,8 +83,8 @@ export function CarrierSection({
     <section
       className="relative rounded-xl p-4 text-sm transition-colors"
       style={{
-        backgroundColor: brightCarrier ? 'var(--card-bg)' : '#000000',
-        color: brightCarrier ? 'var(--card-text)' : '#ffffff',
+        backgroundColor: 'var(--card-bg)',
+        color: 'var(--card-text)',
       }}
     >
       {/* Copy toast notification */}
@@ -123,20 +119,8 @@ export function CarrierSection({
           </div>
         </div>
       )}
-      <div className="mb-2 flex items-center justify-between">
+      <div className="mb-2">
         <span className="text-sm font-normal text-gray-600">載具</span>
-        <button
-          type="button"
-          className="flex items-center justify-center transition-opacity hover:opacity-70"
-          onClick={onToggleBrightness}
-          aria-label="Toggle brightness"
-        >
-          <Sun
-            className="text-gray-500 transition-colors"
-            size={20}
-            strokeWidth={2}
-          />
-        </button>
       </div>
 
       {/* Barcode area */}
@@ -149,19 +133,13 @@ export function CarrierSection({
             <button
               type="button"
               onClick={handleAddCarrier}
-              className={`flex h-12 w-full items-center justify-center rounded-lg border-2 border-dashed transition-colors hover:opacity-80 ${
-                brightCarrier
-                  ? "border-gray-300 bg-gray-50 text-gray-700 hover:border-gray-400 hover:bg-gray-100"
-                  : "border-gray-600 bg-gray-800 text-gray-300 hover:border-gray-500 hover:bg-gray-700"
-              }`}
+              className="flex h-12 w-full items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 text-gray-700 transition-colors hover:opacity-80 hover:border-gray-400 hover:bg-gray-100"
             >
               <span className="text-sm font-medium">新增載具</span>
             </button>
           ) : (
             <div className="flex h-12 w-full items-center justify-center">
-              <span className={`text-sm ${
-                brightCarrier ? "text-gray-500" : "text-gray-400"
-              }`}>
+              <span className="text-sm text-gray-500">
                 載入中...
               </span>
             </div>
@@ -171,9 +149,7 @@ export function CarrierSection({
         {/* Carrier code and copy icon - only show when carrier exists */}
         {hasRealCarrier && !carrierLoading && (
           <div className="flex items-center gap-2">
-            <span className={`text-sm font-mono ${
-              brightCarrier ? "text-black" : "text-white"
-            }`}>{carrierCode}</span>
+            <span className="text-sm font-mono text-black">{carrierCode}</span>
             <button
               type="button"
               className="flex items-center justify-center transition-opacity hover:opacity-70"
@@ -181,9 +157,7 @@ export function CarrierSection({
               aria-label="Copy carrier code"
             >
               <Copy
-                className={`transition-colors ${
-                  brightCarrier ? "text-black" : "text-white"
-                }`}
+                className="text-black transition-colors"
                 size={16}
                 strokeWidth={2}
               />

@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { History, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { useDailyTransactions } from "@/hooks/useDailyTransactions";
+import { TagIcon } from "@/ui/utils/tag-icon";
 import type { DisplayTransaction } from "@/hooks/useWalletHome";
 import type { Transaction } from "@/modules/transaction/domain/transaction.types";
 
@@ -48,12 +49,16 @@ function transformTransactionToDisplay(tx: Transaction, currentUserId: string | 
   const minutes = transactionDate.getMinutes().toString().padStart(2, "0");
   const time = `${hours}:${minutes}`;
 
+  // Get iconKey from tag with fallback to default "tag"
+  const iconKey = tx.tag?.iconKey || "tag";
+
   return {
     id: tx.id,
     title,
     amount: displayAmount,
     currency: tx.currency,
     time,
+    iconKey,
   };
 }
 
@@ -151,7 +156,7 @@ export function DailyTransactionsSection({
   return (
     <section className="relative flex min-h-0 flex-1 flex-col rounded-xl pl-4 pr-2 pt-4 pb-4 text-sm" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}>
       <div className="mb-2 flex items-center justify-between pr-2">
-        <span className="text-sm font-normal text-gray-600">明細</span>
+        <span className="text-sm font-normal text-gray-600">款項</span>
         <div className="relative flex items-center gap-3">
           {/* Previous day button */}
           <button
@@ -222,22 +227,22 @@ export function DailyTransactionsSection({
             <span className="text-sm text-black/50">{getEmptyMessage()}</span>
           </div>
         ) : (
-          <ul className="pr-2">
+          <ul>
             {displayTransactions.map((tx, index) => (
               <li key={tx.id}>
                 <button
                   type="button"
                   onClick={() => handleTransactionClick(tx.id)}
-                  className="w-full flex items-center justify-between py-3 hover:bg-black/5 transition-colors rounded"
+                  className="w-full flex items-center justify-between py-3 px-0 hover:bg-black/5 transition-colors"
                 >
-                  <div className="flex flex-col items-start gap-0.5">
+                  <div className="flex flex-col items-start gap-0.5 flex-1 min-w-0">
                     <span className="text-sm text-black text-left">{tx.title}</span>
-                    <span className="text-xs text-black/50 text-left">{tx.time}</span>
+                    <span className="text-xs text-black/50 text-left w-12">{tx.time}</span>
                   </div>
                   {tx.amount !== null ? (
                     <span
-                      className={`text-sm font-semibold text-black ${
-                        tx.amount >= 0 ? "" : ""
+                      className={`text-sm font-semibold ${
+                        tx.amount >= 0 ? "text-green-600" : "text-red-600"
                       }`}
                     >
                       {tx.currency} {tx.amount >= 0 ? "+" : "-"}
