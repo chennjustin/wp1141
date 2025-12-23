@@ -217,9 +217,9 @@ export function DailyTransactionsSection({
                   onClick={() => handleTransactionClick(tx.id)}
                   className="w-full flex items-center justify-between py-3 hover:bg-black/5 transition-colors rounded"
                 >
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-sm text-black">{tx.title}</span>
-                    <span className="text-xs text-black/50">{tx.time}</span>
+                  <div className="flex flex-col items-start gap-0.5">
+                    <span className="text-sm text-black text-left">{tx.title}</span>
+                    <span className="text-xs text-black/50 text-left">{tx.time}</span>
                   </div>
                   <span
                     className={`text-sm font-semibold text-black ${
