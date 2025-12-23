@@ -33,12 +33,22 @@ export const walletService = {
 
   /**
    * Get wallet by ID with authorization check
+   * @param includePending If true and user is owner, includes PENDING members
    */
   async getWalletById(
     walletId: string,
-    userId: string
+    userId: string,
+    includePending: boolean = false
   ): Promise<WalletServiceResult<Wallet>> {
-    const wallet = await walletRepository.findById(walletId, userId);
+    // Check if user is owner when includePending is true
+    if (includePending) {
+      const isOwner = await walletRepository.isOwner(walletId, userId);
+      if (!isOwner) {
+        includePending = false; // Only owner can see PENDING members
+      }
+    }
+
+    const wallet = await walletRepository.findById(walletId, userId, includePending);
 
     if (!wallet) {
       return {

@@ -9,6 +9,102 @@ import { useSession } from "next-auth/react";
 import { WalletUserStatus, WalletRole } from "@/modules/wallet/domain/wallet.types";
 
 /**
+ * Pending member dropdown component
+ * 
+ * Dropdown menu for managing pending invitations (cancel invite or change role)
+ */
+function PendingMemberDropdown({
+  member,
+  walletId,
+  onRoleChange,
+  onCancelInvite,
+}: {
+  member: { id: string; userId: string; name: string; role: WalletRole; status: WalletUserStatus; imageUrl?: string };
+  walletId: string;
+  onRoleChange: (newRole: WalletRole) => Promise<void>;
+  onCancelInvite: () => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isOpen]);
+
+  const handleRoleChange = async (newRole: WalletRole) => {
+    if (newRole !== member.role) {
+      await onRoleChange(newRole);
+    }
+    setIsOpen(false);
+  };
+
+  const handleCancelInvite = () => {
+    if (confirm("確定要取消邀請嗎？")) {
+      onCancelInvite();
+      setIsOpen(false);
+    }
+  };
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="text-lg text-gray-800 hover:text-black px-2 py-1 rounded hover:bg-gray-200 font-bold leading-none"
+        style={{ fontSize: '18px', lineHeight: '1' }}
+      >
+        ⋮
+      </button>
+      {isOpen && (
+        <div className="absolute right-0 top-full mt-1 w-40 rounded-lg border border-gray-300 bg-white shadow-lg z-20">
+          <div className="py-1">
+            <button
+              type="button"
+              onClick={() => handleRoleChange(WalletRole.MEMBER)}
+              className={`w-full px-3 py-2 text-left text-sm ${
+                member.role === WalletRole.MEMBER
+                  ? "bg-blue-50 text-blue-700 font-medium"
+                  : "text-black hover:bg-gray-100"
+              }`}
+            >
+              {member.role === WalletRole.MEMBER ? "✓ MEMBER" : "設為 MEMBER"}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleRoleChange(WalletRole.VIEWER)}
+              className={`w-full px-3 py-2 text-left text-sm ${
+                member.role === WalletRole.VIEWER
+                  ? "bg-blue-50 text-blue-700 font-medium"
+                  : "text-black hover:bg-gray-100"
+              }`}
+            >
+              {member.role === WalletRole.VIEWER ? "✓ VIEWER" : "設為 VIEWER"}
+            </button>
+            <div className="border-t border-gray-200 my-1" />
+            <button
+              type="button"
+              onClick={handleCancelInvite}
+              className="w-full px-3 py-2 text-left text-sm text-red-500 hover:bg-red-50"
+            >
+              取消邀請
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * Member role dropdown component
  * 
  * Dropdown menu for managing member roles (MEMBER/VIEWER) and removing members
@@ -59,7 +155,8 @@ function MemberRoleDropdown({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="text-xs text-black hover:text-black/70 px-2 py-1 rounded hover:bg-gray-100"
+        className="text-lg text-gray-800 hover:text-black px-2 py-1 rounded hover:bg-gray-200 font-bold leading-none"
+        style={{ fontSize: '18px', lineHeight: '1' }}
       >
         ⋮
       </button>
@@ -182,23 +279,51 @@ export default function EditWalletPage() {
 
   // Load wallet data
   useEffect(() => {
-    if (wallet) {
+    async function loadWalletWithAllMembers() {
+      if (!wallet || !currentUserId) return;
+
       setName(wallet.name || "");
       setDefaultCurrency(wallet.defaultCurrency || "TWD");
       setDescription(wallet.description || "");
       
-      // Load existing members
+      // If user is owner, fetch wallet with all members (including PENDING)
+      if (isCreator) {
+        try {
+          const response = await fetch(`/api/wallets/${walletId}?includePending=true`, {
+            credentials: "include",
+          });
+          if (response.ok) {
+            const walletData = await response.json();
+            const members = walletData.members.map((m: any) => ({
+              id: m.id,
+              userId: m.userId,
+              name: m.user.name,
+              role: m.role,
+              status: m.status,
+              imageUrl: m.user.image || undefined,
+            }));
+            setExistingMembers(members);
+            return;
+          }
+        } catch (err) {
+          console.error("Error fetching wallet with all members:", err);
+        }
+      }
+      
+      // Fallback to regular wallet data
       const members = wallet.members.map(m => ({
-          id: m.id,
-          userId: m.userId,
-          name: m.user.name,
-          role: m.role,
-          status: m.status,
-          imageUrl: m.user.image || undefined,
-        }));
+        id: m.id,
+        userId: m.userId,
+        name: m.user.name,
+        role: m.role,
+        status: m.status,
+        imageUrl: m.user.image || undefined,
+      }));
       setExistingMembers(members);
     }
-  }, [wallet]);
+
+    loadWalletWithAllMembers();
+  }, [wallet, currentUserId, isCreator, walletId]);
 
   // Search users
   useEffect(() => {
@@ -235,6 +360,69 @@ export default function EditWalletPage() {
       setInvitedUsers([...invitedUsers, { ...user, role: defaultInviteRole }]);
       setUserSearchQuery("");
       setShowUserSearchResults(false);
+    }
+  };
+
+  const handleInviteUsers = async () => {
+    if (invitedUsers.length === 0) return;
+
+    setError(null);
+    setLoading(true);
+
+    try {
+      const invitations = invitedUsers.map(user => ({
+        userId: user.id,
+        role: user.role,
+      }));
+      const inviteResponse = await fetch(`/api/wallets/${walletId}/invite`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ invitations }),
+      });
+
+      if (!inviteResponse.ok) {
+        const inviteData = await inviteResponse.json();
+        setError(inviteData.error || "新增成員失敗");
+        setLoading(false);
+        return;
+      }
+
+      // Reload wallet data to show PENDING members
+      if (isCreator) {
+        try {
+          const walletResponse = await fetch(`/api/wallets/${walletId}?includePending=true`, {
+            credentials: "include",
+          });
+          if (walletResponse.ok) {
+            const walletData = await walletResponse.json();
+            const members = walletData.members.map((m: any) => ({
+              id: m.id,
+              userId: m.userId,
+              name: m.user.name,
+              role: m.role,
+              status: m.status,
+              imageUrl: m.user.image || undefined,
+            }));
+            setExistingMembers(members);
+          }
+        } catch (err) {
+          console.error("Error reloading wallet:", err);
+        }
+      }
+
+      // Clear invited users after successful invitation
+      setInvitedUsers([]);
+      setInvitedUserIds([]);
+      setSuccess(true);
+      
+      refreshWallets();
+      setLoading(false);
+    } catch (err) {
+      setError("網路錯誤，請稍後再試");
+      setLoading(false);
     }
   };
 
@@ -317,8 +505,10 @@ export default function EditWalletPage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
     setError(null);
     setLoading(true);
 
@@ -353,37 +543,13 @@ export default function EditWalletPage() {
         return;
       }
 
-      // Add new members if any
-      if (invitedUsers.length > 0) {
-        const invitations = invitedUsers.map(user => ({
-          userId: user.id,
-          role: user.role,
-        }));
-        const inviteResponse = await fetch(`/api/wallets/${walletId}/invite`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({ invitations }),
-        });
-
-        if (!inviteResponse.ok) {
-          const inviteData = await inviteResponse.json();
-          setError(inviteData.error || "新增成員失敗");
-          setLoading(false);
-          return;
-        }
-      }
-
       setSuccess(true);
       refreshWallets();
       
-      // Clear invited users after successful invitation
-      setInvitedUsers([]);
-      setInvitedUserIds([]);
-      
-      // Stay on the edit page - user can continue editing or click "返回" to go back
+      // Navigate back to previous page after successful update
+      setTimeout(() => {
+        router.back();
+      }, 500);
     } catch (err) {
       setError("網路錯誤，請稍後再試");
     } finally {
@@ -408,33 +574,53 @@ export default function EditWalletPage() {
   }
 
   return (
-    <div className="flex h-full flex-col gap-4">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-2">
+    <div className="flex h-full flex-col relative -mx-4">
+      {/* Header with back button and checkmark */}
+      <div className="relative flex items-center justify-between px-4 pt-2 pb-2">
+        {/* Back Button - Left */}
         <button
           type="button"
           onClick={() => router.back()}
-          className="text-sm text-black hover:text-black/70"
+          className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/10 transition-colors"
+          aria-label="返回"
         >
-          ← 返回
+          <svg
+            className="h-5 w-5 text-black"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
         </button>
-        {isCreator && !isDefaultWallet ? (
-          <button
-            type="button"
-            onClick={() => setShowDeleteConfirm(true)}
-            className="text-sm text-red-500 hover:text-red-700"
+
+        {/* Checkmark/Submit Button - Right */}
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={loading || (!isDefaultWallet && !name.trim())}
+          className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label="完成"
+        >
+          <svg
+            className="h-5 w-5 text-black"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
           >
-            刪除
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="text-sm text-black hover:text-black/70"
-          >
-            取消
-          </button>
-        )}
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
+        </button>
       </div>
 
       {/* Delete confirmation dialog */}
@@ -468,7 +654,7 @@ export default function EditWalletPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-4">
+      <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-4 px-4 overflow-y-auto">
         {/* Wallet name */}
         {!isDefaultWallet && (
           <div className="flex flex-col gap-2">
@@ -529,70 +715,86 @@ export default function EditWalletPage() {
             <label htmlFor="userSearch" className="text-sm font-medium text-black">
               新增人員
             </label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <input
-                  id="userSearch"
-                  type="text"
-                  value={userSearchQuery}
-                  onChange={(e) => setUserSearchQuery(e.target.value)}
-                  onFocus={() => {
-                    if (userSearchResults.length > 0) {
-                      setShowUserSearchResults(true);
-                    }
-                  }}
-                  placeholder="搜尋使用者 ID 或名稱"
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-500 focus:outline-none"
-                />
-                {showUserSearchResults && userSearchResults.length > 0 && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-10"
-                      onClick={() => setShowUserSearchResults(false)}
-                    />
-                    <div className="absolute top-full z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-300 bg-white shadow-lg">
-                      {userSearchResults.map((user) => (
-                        <button
-                          key={user.id}
-                          type="button"
-                          onClick={() => handleAddInvitedUser(user)}
-                          className="w-full px-3 py-2 text-left text-sm text-black hover:bg-gray-100"
-                        >
-                          <div className="font-medium">{user.name}</div>
-                          <div className="text-xs text-gray-500">{user.userId}</div>
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-              <select
-                value={defaultInviteRole}
-                onChange={(e) => setDefaultInviteRole(e.target.value as WalletRole)}
-                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-500 focus:outline-none"
-              >
-                <option value={WalletRole.MEMBER}>MEMBER</option>
-                <option value={WalletRole.VIEWER}>VIEWER</option>
-              </select>
+            <div className="relative">
+              <input
+                id="userSearch"
+                type="text"
+                value={userSearchQuery}
+                onChange={(e) => setUserSearchQuery(e.target.value)}
+                onFocus={() => {
+                  if (userSearchResults.length > 0) {
+                    setShowUserSearchResults(true);
+                  }
+                }}
+                placeholder="搜尋使用者 ID 或名稱"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-500 focus:outline-none"
+              />
+              {showUserSearchResults && userSearchResults.length > 0 && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setShowUserSearchResults(false)}
+                  />
+                  <div className="absolute top-full z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-300 bg-white shadow-lg">
+                    {userSearchResults.map((user) => (
+                      <button
+                        key={user.id}
+                        type="button"
+                        onClick={() => handleAddInvitedUser(user)}
+                        className="w-full px-3 py-2 text-left text-sm text-black hover:bg-gray-100"
+                      >
+                        <div className="font-medium">{user.name}</div>
+                        <div className="text-xs text-gray-500">{user.userId}</div>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
             {invitedUsers.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {invitedUsers.map((user) => (
-                  <span
-                    key={user.id}
-                    className="inline-flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1 text-sm text-blue-700"
-                  >
-                    {user.name} ({user.role})
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveInvitedUser(user.id)}
-                      className="hover:text-blue-900"
+              <>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {invitedUsers.map((user) => (
+                    <span
+                      key={user.id}
+                      className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black"
                     >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
+                      {user.name}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveInvitedUser(user.id)}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <label className="text-xs text-gray-600">權限：</label>
+                  <select
+                    value={defaultInviteRole}
+                    onChange={(e) => {
+                      const newRole = e.target.value as WalletRole;
+                      setDefaultInviteRole(newRole);
+                      // Update all pending users' roles
+                      setInvitedUsers(invitedUsers.map(u => ({ ...u, role: newRole })));
+                    }}
+                    className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs text-black focus:border-blue-500 focus:outline-none"
+                  >
+                    <option value={WalletRole.MEMBER}>MEMBER</option>
+                    <option value={WalletRole.VIEWER}>VIEWER</option>
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleInviteUsers}
+                  disabled={loading}
+                  className="mt-2 w-full rounded-lg border-2 border-blue-500 bg-white px-4 py-2 text-sm font-medium text-blue-500 hover:bg-blue-50 transition-colors disabled:opacity-50"
+                >
+                  {loading ? "處理中..." : "邀請"}
+                </button>
+              </>
             )}
           </div>
 
@@ -617,6 +819,9 @@ export default function EditWalletPage() {
                           <div className="text-sm font-medium text-black">
                             {member.name}
                             {isCurrentUser && <span className="ml-1 text-xs text-gray-500">(You)</span>}
+                            {member.status === WalletUserStatus.PENDING && (
+                              <span className="ml-1 text-xs text-gray-500">(Pending)</span>
+                            )}
                           </div>
                           <div className="text-xs text-black/50">
                             {member.role}
@@ -625,33 +830,63 @@ export default function EditWalletPage() {
                       </div>
                       <div className="flex gap-2">
                         {isCreator && !isCurrentUser && !isMemberCreator && (
-                          <MemberRoleDropdown
-                            member={member}
-                            walletId={walletId}
-                            onRoleChange={async (newRole) => {
-                              try {
-                                const response = await fetch(`/api/wallets/${walletId}/members/${member.userId}`, {
-                                  method: "PATCH",
-                                  headers: {
-                                    "Content-Type": "application/json",
-                                  },
-                                  credentials: "include",
-                                  body: JSON.stringify({ role: newRole }),
-                                });
-                                if (response.ok) {
-                                  setExistingMembers(existingMembers.map(m => 
-                                    m.userId === member.userId ? { ...m, role: newRole } : m
-                                  ));
-                                } else {
-                                  const data = await response.json();
-                                  alert(data.error || "更新權限失敗");
+                          member.status === WalletUserStatus.PENDING ? (
+                            <PendingMemberDropdown
+                              member={member}
+                              walletId={walletId}
+                              onRoleChange={async (newRole) => {
+                                try {
+                                  const response = await fetch(`/api/wallets/${walletId}/members/${member.userId}`, {
+                                    method: "PATCH",
+                                    headers: {
+                                      "Content-Type": "application/json",
+                                    },
+                                    credentials: "include",
+                                    body: JSON.stringify({ role: newRole }),
+                                  });
+                                  if (response.ok) {
+                                    setExistingMembers(existingMembers.map(m => 
+                                      m.userId === member.userId ? { ...m, role: newRole } : m
+                                    ));
+                                  } else {
+                                    const data = await response.json();
+                                    alert(data.error || "更新權限失敗");
+                                  }
+                                } catch (err) {
+                                  alert("網路錯誤，請稍後再試");
                                 }
-                              } catch (err) {
-                                alert("網路錯誤，請稍後再試");
-                              }
-                            }}
-                            onRemove={() => handleRemoveMember(member.userId)}
-                          />
+                              }}
+                              onCancelInvite={() => handleRemoveMember(member.userId)}
+                            />
+                          ) : (
+                            <MemberRoleDropdown
+                              member={member}
+                              walletId={walletId}
+                              onRoleChange={async (newRole) => {
+                                try {
+                                  const response = await fetch(`/api/wallets/${walletId}/members/${member.userId}`, {
+                                    method: "PATCH",
+                                    headers: {
+                                      "Content-Type": "application/json",
+                                    },
+                                    credentials: "include",
+                                    body: JSON.stringify({ role: newRole }),
+                                  });
+                                  if (response.ok) {
+                                    setExistingMembers(existingMembers.map(m => 
+                                      m.userId === member.userId ? { ...m, role: newRole } : m
+                                    ));
+                                  } else {
+                                    const data = await response.json();
+                                    alert(data.error || "更新權限失敗");
+                                  }
+                                } catch (err) {
+                                  alert("網路錯誤，請稍後再試");
+                                }
+                              }}
+                              onRemove={() => handleRemoveMember(member.userId)}
+                            />
+                          )
                         )}
                         {!isCreator && isCurrentUser && (
                           <button
@@ -674,7 +909,7 @@ export default function EditWalletPage() {
         {/* Description */}
         <div className="flex flex-col gap-2">
           <label htmlFor="description" className="text-sm font-medium text-black">
-            備註（選填）
+            備註
           </label>
           <textarea
             id="description"
@@ -698,22 +933,18 @@ export default function EditWalletPage() {
           </div>
         )}
 
-        <div className="mt-auto flex justify-end gap-3 pt-4">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-black hover:bg-gray-50"
-          >
-            返回
-          </button>
-          <button
-            type="submit"
-            disabled={loading || (!isDefaultWallet && !name.trim())}
-            className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
-          >
-            {loading ? "處理中..." : "確認"}
-          </button>
-        </div>
+        {/* Delete button at the bottom - only show for owner and non-default wallet */}
+        {isCreator && !isDefaultWallet && (
+          <div className="mt-auto pt-4 pb-4">
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="w-full rounded-lg border-2 border-red-300 bg-white px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
+            >
+              刪除
+            </button>
+          </div>
+        )}
       </form>
     </div>
   );

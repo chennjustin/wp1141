@@ -18,8 +18,9 @@ export const walletRepository = {
   /**
    * Find wallet by ID with members
    * System user can access all wallets
+   * @param includePending If true, includes PENDING members (only for owner)
    */
-  async findById(id: string, userId?: string) {
+  async findById(id: string, userId?: string, includePending: boolean = false) {
     const where: any = {
       id,
       isDeleted: false,
@@ -38,16 +39,21 @@ export const walletRepository = {
       };
     }
 
+    // Determine which member statuses to include
+    const memberStatusFilter = includePending
+      ? { isDeleted: false } // Include all non-deleted members
+      : {
+          isDeleted: false,
+          status: {
+            in: ["OWNER", "ACCEPTED"],
+          },
+        };
+
     return prisma.wallet.findFirst({
       where,
       include: {
         members: {
-          where: { 
-            isDeleted: false,
-            status: {
-              in: ["OWNER", "ACCEPTED"],
-            },
-          },
+          where: memberStatusFilter,
           include: {
             user: true,
           },

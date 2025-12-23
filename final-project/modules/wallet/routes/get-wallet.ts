@@ -13,8 +13,9 @@ import { walletService } from "../services/wallet.service";
 
 /**
  * Get wallet by ID
+ * @param includePending If true, includes PENDING members (only for owner)
  */
-export async function getWalletAction(walletId: string) {
+export async function getWalletAction(walletId: string, includePending: boolean = false) {
   try {
     const session = await getServerSession(authOptions);
 
@@ -26,7 +27,7 @@ export async function getWalletAction(walletId: string) {
       };
     }
 
-    return await walletService.getWalletById(walletId, session.user.id);
+    return await walletService.getWalletById(walletId, session.user.id, includePending);
   } catch (error) {
     console.error("[getWalletAction] Unexpected error", error);
     return {
