@@ -7,7 +7,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Pencil } from "lucide-react";
+import { Pencil, Menu } from "lucide-react";
 
 interface WalletHeaderProps {
   walletDisplayName: string;
@@ -39,15 +39,11 @@ export function WalletHeader({
       {/* Left: main menu toggle */}
       <button
         type="button"
-        className="relative flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/10"
+        className="relative flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/10 transition-colors"
         onClick={onMenuToggle}
         aria-label="Open main menu"
       >
-        <span className="flex flex-col gap-0.5">
-          <span className="h-0.5 w-4 rounded-full bg-black" />
-          <span className="h-0.5 w-4 rounded-full bg-black" />
-          <span className="h-0.5 w-4 rounded-full bg-black" />
-        </span>
+        <Menu className="h-5 w-5 text-black" strokeWidth={2} />
         {unreadCount > 0 && (
           <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white">
             {unreadCount > 99 ? "99+" : unreadCount}

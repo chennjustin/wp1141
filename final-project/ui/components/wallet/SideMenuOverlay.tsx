@@ -14,7 +14,7 @@ interface SideMenuOverlayProps {
 export function SideMenuOverlay({ isOpen, onClose }: SideMenuOverlayProps) {
   return (
     <div
-      className={`fixed inset-0 z-40 bg-black/40 md:absolute md:rounded-[3rem] transition-opacity duration-300 ${
+      className={`fixed inset-0 z-40 bg-black/40 md:absolute md:inset-0 md:rounded-[3rem] transition-opacity duration-300 ${
         isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
       }`}
       onClick={onClose}
