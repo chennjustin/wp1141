@@ -163,11 +163,7 @@ export const subscriptionLifecycleService = {
         updatedAt: new Date(subscription.updatedAt),
       };
 
-      // Get wallet name for notifications
-      const wallet = await prisma.wallet.findUnique({
-        where: { id: subscription.walletId },
-        select: { name: true },
-      });
+      // Use wallet name from the previously fetched wallet object
       const walletName = wallet?.name || "未知錢包";
 
       // If startDate is in the past, create all missing transactions from startDate to today
@@ -449,11 +445,7 @@ export const subscriptionLifecycleService = {
         updatedAt: new Date(updated.updatedAt),
       };
 
-      // Get wallet name for notifications
-      const wallet = await prisma.wallet.findUnique({
-        where: { id: updated.walletId },
-        select: { name: true },
-      });
+      // Use wallet name from the previously fetched wallet object
       const walletName = wallet?.name || "未知錢包";
 
       // Sync transactions if startDate, endDate, intervalMonths, or amount changed
