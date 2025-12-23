@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, BarChart3 } from "lucide-react";
+import { ChevronLeft, ChevronRight, BarChart3, Trash2 } from "lucide-react";
 import { useWallets } from "@/hooks/useWallet";
 import { useCurrentWallet } from "@/hooks/useCurrentWallet";
 import { useWalletTransactions } from "@/hooks/useWalletTransactions";
@@ -39,6 +39,7 @@ export default function WalletHistoryPage() {
     data: transactions,
     loading: transactionsLoading,
     error: transactionsError,
+    refetch: refetchTransactions,
   } = useWalletTransactions({
     walletId: currentWallet?.id ?? null,
     year: selectedYear,
@@ -196,6 +197,7 @@ export default function WalletHistoryPage() {
               formatAmount={formatAmount}
               walletId={currentWallet.id}
               walletDefaultCurrency={currentWallet.defaultCurrency}
+              onTransactionDeleted={refetchTransactions}
             />
           ))
         )}
@@ -214,6 +216,7 @@ function DailyTransactionCard({
   formatAmount,
   walletId,
   walletDefaultCurrency,
+  onTransactionDeleted,
 }: {
   group: DailyTransactionGroup;
   formatAmount: (amount: number, currency: string, type: "INCOME" | "EXPENSE") => {
@@ -224,8 +227,10 @@ function DailyTransactionCard({
   };
   walletId: string;
   walletDefaultCurrency: string;
+  onTransactionDeleted?: () => void;
 }) {
   const router = useRouter();
+  const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null);
   
   // Calculate daily net amount and determine color
   const netAmount = group.netAmount;
@@ -238,6 +243,35 @@ function DailyTransactionCard({
   // Handle transaction click - navigate to edit page
   const handleTransactionClick = (transactionId: string) => {
     router.push(`/wallets/${walletId}/transactions/${transactionId}/edit?from=history`);
+  };
+
+  // Handle delete transaction
+  const handleDeleteTransaction = async (e: React.MouseEvent, transactionId: string) => {
+    e.stopPropagation(); // Prevent triggering the transaction click
+    
+    if (!confirm("確定要刪除這筆交易嗎？")) {
+      return;
+    }
+
+    setDeletingTransactionId(transactionId);
+    try {
+      const response = await fetch(`/api/transactions/${transactionId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        // Refresh transactions after deletion
+        onTransactionDeleted?.();
+      } else {
+        const errorData = await response.json();
+        alert(`刪除失敗：${errorData.error || "未知錯誤"}`);
+      }
+    } catch (error) {
+      console.error("Error deleting transaction:", error);
+      alert("刪除交易時發生錯誤");
+    } finally {
+      setDeletingTransactionId(null);
+    }
   };
 
   return (
@@ -263,22 +297,25 @@ function DailyTransactionCard({
           // Get iconKey with fallback
           const iconKey = transaction.tag?.iconKey || "tag";
 
+          const isDeleting = deletingTransactionId === transaction.id;
+
           return (
             <div key={transaction.id}>
-              <button
-                type="button"
-                onClick={() => handleTransactionClick(transaction.id)}
-                className="w-full flex items-center gap-2 py-2 hover:bg-black/5 transition-colors"
-              >
-                {/* Left: Icon */}
-                <div className="flex h-8 w-8 items-center justify-center flex-shrink-0">
-                  <TagIcon iconKey={iconKey} />
-                </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleTransactionClick(transaction.id)}
+                  className="flex-1 flex items-center gap-2 py-2 hover:bg-black/5 transition-colors"
+                >
+                  {/* Left: Icon */}
+                  <div className="flex h-8 w-8 items-center justify-center flex-shrink-0">
+                    <TagIcon iconKey={iconKey} />
+                  </div>
 
-                {/* Center: Item name */}
-                <div className="flex-1 text-left">
-                  <span className="text-sm text-black">{itemName}</span>
-                </div>
+                  {/* Center: Item name */}
+                  <div className="flex-1 text-left">
+                    <span className="text-sm text-black">{itemName}</span>
+                  </div>
 
                   {/* Right: Amount */}
                   <div className="text-right flex-shrink-0">
@@ -293,10 +330,10 @@ function DailyTransactionCard({
                   type="button"
                   onClick={(e) => handleDeleteTransaction(e, transaction.id)}
                   disabled={isDeleting}
-                  className="flex-shrink-0 px-2 py-1 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-shrink-0 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title="刪除交易"
                 >
-                  {isDeleting ? "刪除中" : "刪除"}
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </div>
 
