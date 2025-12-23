@@ -43,7 +43,6 @@ export function useWalletHome(walletId: string) {
   }, [walletById, wallets]);
 
   const [showAmounts, setShowAmounts] = useState(true);
-  const [brightCarrier, setBrightCarrier] = useState(true);
   
   // Track loading state with minimum display time (0.3 seconds)
   const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -206,8 +205,6 @@ export function useWalletHome(walletId: string) {
     // UI state
     showAmounts,
     setShowAmounts,
-    brightCarrier,
-    setBrightCarrier,
     
     // Loading state
     isInitialLoading,

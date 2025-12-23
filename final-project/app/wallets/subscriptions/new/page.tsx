@@ -637,7 +637,7 @@ export default function NewSubscriptionPage() {
                        : "bg-white/50 text-black/70 hover:bg-white/70"
                    }`}
                  >
-                   填寫每月金額
+                   填寫每次金額
                  </button>
                </div>
             </div>

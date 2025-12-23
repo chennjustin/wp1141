@@ -66,7 +66,7 @@ export function SideMenu({
       style={{ backgroundColor: 'var(--wallet-bg)' }}
     >
       {/* User block with home icon */}
-      <div className="mt-2 mb-6 px-5">
+      <div className="mt-6 mb-6 px-5">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
             {userImage ? (
