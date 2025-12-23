@@ -24,24 +24,27 @@ type SessionWithDefaultWallet = Session & {
 /**
  * Handle default wallet redirect
  * 
- * This function validates the user's defaultWalletId and redirects to that wallet
- * if it exists and the user has access. If the wallet is invalid or the user
- * doesn't have access, it clears the defaultWalletId from the user record.
+ * This function performs the following operations:
+ * 1. Checks if user has a defaultWalletId (in session or database)
+ * 2. If no defaultWalletId exists, automatically sets the user's first wallet as default
+ * 3. Validates the defaultWalletId and redirects to that wallet if it exists and user has access
+ * 4. If the wallet is invalid or user doesn't have access, clears the defaultWalletId
  * 
  * If redirect occurs, this function will never return (Next.js redirect behavior).
  * 
  * @param session - Session object containing user information and defaultWalletId
  * @param userId - User ID (should match session.user.id)
- * @returns false if no redirect occurred (defaultWalletId doesn't exist or was invalid)
+ * @returns false if no redirect occurred (user has no wallets or all validation failed)
  * @throws Never throws - redirects instead if wallet is valid
  * 
  * @example
  * ```ts
  * const { session } = await validateAuthForRoute();
- * // Try to redirect to default wallet
+ * // Try to redirect to default wallet (or first wallet if no default exists)
  * const redirected = await handleDefaultWalletRedirect(session, session.user.id);
  * if (!redirected) {
- *   // Continue with other logic (e.g., find "我的錢包" or first wallet)
+ *   // User has no wallets - redirect to create wallet page
+ *   redirect("/wallets/new");
  * }
  * ```
  */
@@ -68,9 +71,40 @@ export async function handleDefaultWalletRedirect(
     }
   }
   
-  // If still no defaultWalletId after checking database, user doesn't have one
+  // If still no defaultWalletId after checking database, try to set first wallet as default
   if (!defaultWalletId) {
-    return false;
+    try {
+      // Get user's wallets
+      const userWallets = await walletService.getUserWallets(userId);
+      
+      // If user has at least one wallet, set the first one as default
+      if (userWallets.length > 0) {
+        const firstWalletId = userWallets[0].id;
+        
+        // Set the first wallet as default
+        await prisma.user.update({
+          where: { id: userId },
+          data: { defaultWalletId: firstWalletId },
+        });
+        
+        // Redirect to the first wallet
+        // Note: redirect() throws a NEXT_REDIRECT error which should propagate
+        redirect(`/wallets/${firstWalletId}`);
+      } else {
+        // User has no wallets at all, cannot set default
+        return false;
+      }
+    } catch (error: any) {
+      // Check if this is a Next.js redirect error
+      if (error?.digest?.startsWith("NEXT_REDIRECT")) {
+        // Re-throw redirect errors - they are expected and should propagate to Next.js
+        throw error;
+      }
+      
+      // Only log and handle actual errors, not redirects
+      console.error("Error setting first wallet as default:", error);
+      return false;
+    }
   }
   
   try {
