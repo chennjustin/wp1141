@@ -102,6 +102,9 @@ export function WalletsClientLayout({ children }: WalletsClientLayoutProps) {
     !pathname?.includes("/subscriptions/") &&
     !pathname?.includes("/transactions/");
 
+  // Check if current page is the new wallet page
+  const isNewWalletPage = pathname === "/wallets/new";
+
   // Handle edit wallet click
   const handleEditWallet = () => {
     if (currentWalletId) {
@@ -114,7 +117,7 @@ export function WalletsClientLayout({ children }: WalletsClientLayoutProps) {
       {/* Mobile-sized container with thick black border and rounded corners */}
       <div className="relative flex h-[calc(100vh-2rem)] w-full max-w-sm flex-col border-[3px] border-black rounded-[3rem] overflow-hidden" style={{ backgroundColor: "var(--wallet-bg)" }}>
         {/* Header */}
-        {!isNewTransactionPage && !isEditTransactionPage && !isSubscriptionPage && !isEditPage && (
+        {!isNewTransactionPage && !isEditTransactionPage && !isSubscriptionPage && !isEditPage && !isNewWalletPage && (
           <>
             <WalletHeader
               walletDisplayName={walletDisplayName}

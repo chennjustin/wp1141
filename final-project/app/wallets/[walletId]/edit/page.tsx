@@ -598,7 +598,7 @@ export default function EditWalletPage() {
             const hasPendingInvitations = invitedUsers.length > 0;
             
             if (hasNameChange || hasDescriptionChange || hasPendingInvitations) {
-              if (confirm("您有未儲存的變更，確定要離開嗎？變更將不會被儲存。")) {
+              if (confirm("您有未儲存的變更，確定要離開嗎？")) {
                 router.back();
               }
             } else {
@@ -606,7 +606,7 @@ export default function EditWalletPage() {
             }
           }}
           className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/10 transition-colors"
-          aria-label="返回"
+          aria-label="取消"
         >
           <svg
             className="h-5 w-5 text-black"
@@ -639,9 +639,9 @@ export default function EditWalletPage() {
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={loading}
+          disabled={loading || (!isDefaultWallet && !name.trim())}
           className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          aria-label="完成"
+          aria-label="確認"
         >
           <svg
             className="h-5 w-5 text-black"
