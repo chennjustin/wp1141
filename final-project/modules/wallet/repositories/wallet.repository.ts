@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { SYSTEM_USER_ID } from "@/config/constants";
 import type { CreateWalletData, UpdateWalletData } from "../domain/wallet.types";
 import { WalletUserStatus } from "../domain/wallet.types";
+import { WalletUserStatus as PrismaWalletUserStatus } from "@prisma/client";
 
 /**
  * Wallet repository interface
@@ -45,7 +46,7 @@ export const walletRepository = {
       : {
           isDeleted: false,
           status: {
-            in: ["OWNER", "ACCEPTED"],
+            in: [PrismaWalletUserStatus.OWNER, PrismaWalletUserStatus.ACCEPTED],
           },
         };
 
