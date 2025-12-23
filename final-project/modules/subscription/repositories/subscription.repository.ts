@@ -56,6 +56,28 @@ export const subscriptionRepository = {
             name: true,
           },
         },
+        payers: {
+          include: {
+            payer: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+              },
+            },
+          },
+        },
+        shares: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+              },
+            },
+          },
+        },
       },
     });
   },
@@ -88,6 +110,28 @@ export const subscriptionRepository = {
           select: {
             id: true,
             name: true,
+          },
+        },
+        payers: {
+          include: {
+            payer: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+              },
+            },
+          },
+        },
+        shares: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+              },
+            },
           },
         },
       },
@@ -124,6 +168,28 @@ export const subscriptionRepository = {
           select: {
             id: true,
             name: true,
+          },
+        },
+        payers: {
+          include: {
+            payer: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+              },
+            },
+          },
+        },
+        shares: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+              },
+            },
           },
         },
       },
@@ -168,24 +234,94 @@ export const subscriptionRepository = {
    * Create subscription
    */
   async create(userId: string, data: CreateSubscriptionData) {
-    return prisma.subscription.create({
-      data: {
-        walletId: data.walletId,
-        userId,
-        tagId: data.tagId,
-        type: data.type,
-        amount: data.amount,
-        currency: data.currency,
-        rateToDefaultCurrency: data.rateToDefaultCurrency ?? null,
-        startDate: new Date(data.startDate),
-        endDate: data.endDate ? new Date(data.endDate) : null,
-        intervalMonths: data.intervalMonths ?? 1,
-        nextBilling: data.nextBilling ? new Date(data.nextBilling) : new Date(data.startDate),
-        name: data.name || null,
-      },
-      include: {
-        tag: true,
-      },
+    return prisma.$transaction(async (tx) => {
+      // Create the subscription
+      const subscription = await tx.subscription.create({
+        data: {
+          walletId: data.walletId,
+          userId,
+          tagId: data.tagId,
+          type: data.type,
+          amount: data.amount,
+          currency: data.currency,
+          rateToDefaultCurrency: data.rateToDefaultCurrency ?? null,
+          startDate: new Date(data.startDate),
+          endDate: data.endDate ? new Date(data.endDate) : null,
+          intervalMonths: data.intervalMonths ?? 1,
+          nextBilling: data.nextBilling ? new Date(data.nextBilling) : new Date(data.startDate),
+          name: data.name || null,
+        },
+      });
+
+      // Create payers if provided
+      if (data.payers && data.payers.length > 0) {
+        await tx.subscriptionPayer.createMany({
+          data: data.payers.map((payer) => ({
+            subscriptionId: subscription.id,
+            payerId: payer.payerId,
+            paidAmount: payer.paidAmount,
+          })),
+        });
+      } else {
+        // Default payer is the creator
+        await tx.subscriptionPayer.create({
+          data: {
+            subscriptionId: subscription.id,
+            payerId: userId,
+            paidAmount: data.amount,
+          },
+        });
+      }
+
+      // Create shares if provided
+      if (data.shares && data.shares.length > 0) {
+        await tx.subscriptionShare.createMany({
+          data: data.shares.map((share) => ({
+            subscriptionId: subscription.id,
+            userId: share.userId,
+            shareAmount: share.shareAmount,
+          })),
+        });
+      } else {
+        // Default share is the creator (equal to amount)
+        await tx.subscriptionShare.create({
+          data: {
+            subscriptionId: subscription.id,
+            userId: userId,
+            shareAmount: data.amount,
+          },
+        });
+      }
+
+      // Return subscription with relations
+      return tx.subscription.findUnique({
+        where: { id: subscription.id },
+        include: {
+          tag: true,
+          payers: {
+            include: {
+              payer: {
+                select: {
+                  id: true,
+                  name: true,
+                  image: true,
+                },
+              },
+            },
+          },
+          shares: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  image: true,
+                },
+              },
+            },
+          },
+        },
+      });
     });
   },
 
@@ -193,48 +329,146 @@ export const subscriptionRepository = {
    * Update subscription
    */
   async update(id: string, data: UpdateSubscriptionData) {
-    const updateData: any = {};
+    return prisma.$transaction(async (tx) => {
+      const updateData: any = {};
 
-    if (data.tagId !== undefined) {
-      updateData.tagId = data.tagId;
-    }
-    if (data.type !== undefined) {
-      updateData.type = data.type;
-    }
-    if (data.amount !== undefined) {
-      updateData.amount = data.amount;
-    }
-    if (data.currency !== undefined) {
-      updateData.currency = data.currency;
-    }
-    if (data.rateToDefaultCurrency !== undefined) {
-      updateData.rateToDefaultCurrency = data.rateToDefaultCurrency;
-    }
-    if (data.startDate !== undefined) {
-      updateData.startDate = new Date(data.startDate);
-    }
-    if (data.endDate !== undefined) {
-      updateData.endDate = data.endDate ? new Date(data.endDate) : null;
-    }
-    if (data.intervalMonths !== undefined) {
-      updateData.intervalMonths = data.intervalMonths;
-    }
-    if (data.nextBilling !== undefined) {
-      updateData.nextBilling = new Date(data.nextBilling);
-    }
-    if (data.name !== undefined) {
-      updateData.name = data.name;
-    }
-    if (data.isDeleted !== undefined) {
-      updateData.isDeleted = data.isDeleted;
-    }
+      if (data.tagId !== undefined) {
+        updateData.tagId = data.tagId;
+      }
+      if (data.type !== undefined) {
+        updateData.type = data.type;
+      }
+      if (data.amount !== undefined) {
+        updateData.amount = data.amount;
+      }
+      if (data.currency !== undefined) {
+        updateData.currency = data.currency;
+      }
+      if (data.rateToDefaultCurrency !== undefined) {
+        updateData.rateToDefaultCurrency = data.rateToDefaultCurrency;
+      }
+      if (data.startDate !== undefined) {
+        updateData.startDate = new Date(data.startDate);
+      }
+      if (data.endDate !== undefined) {
+        updateData.endDate = data.endDate ? new Date(data.endDate) : null;
+      }
+      if (data.intervalMonths !== undefined) {
+        updateData.intervalMonths = data.intervalMonths;
+      }
+      if (data.nextBilling !== undefined) {
+        updateData.nextBilling = new Date(data.nextBilling);
+      }
+      if (data.name !== undefined) {
+        updateData.name = data.name;
+      }
+      if (data.isDeleted !== undefined) {
+        updateData.isDeleted = data.isDeleted;
+      }
 
-    return prisma.subscription.update({
-      where: { id },
-      data: updateData,
-      include: {
-        tag: true,
-      },
+      // Update subscription
+      await tx.subscription.update({
+        where: { id },
+        data: updateData,
+      });
+
+      // Update payers if provided
+      if (data.payers !== undefined) {
+        // Delete existing payers
+        await tx.subscriptionPayer.deleteMany({
+          where: { subscriptionId: id },
+        });
+
+        // Create new payers
+        if (data.payers.length > 0) {
+          await tx.subscriptionPayer.createMany({
+            data: data.payers.map((payer) => ({
+              subscriptionId: id,
+              payerId: payer.payerId,
+              paidAmount: payer.paidAmount,
+            })),
+          });
+        } else {
+          // If no payers provided, create default (creator pays all)
+          const subscription = await tx.subscription.findUnique({
+            where: { id },
+            select: { userId: true, amount: true },
+          });
+          if (subscription) {
+            await tx.subscriptionPayer.create({
+              data: {
+                subscriptionId: id,
+                payerId: subscription.userId,
+                paidAmount: subscription.amount,
+              },
+            });
+          }
+        }
+      }
+
+      // Update shares if provided
+      if (data.shares !== undefined) {
+        // Delete existing shares
+        await tx.subscriptionShare.deleteMany({
+          where: { subscriptionId: id },
+        });
+
+        // Create new shares
+        if (data.shares.length > 0) {
+          await tx.subscriptionShare.createMany({
+            data: data.shares.map((share) => ({
+              subscriptionId: id,
+              userId: share.userId,
+              shareAmount: share.shareAmount,
+            })),
+          });
+        } else {
+          // If no shares provided, create default (creator shares all)
+          const subscription = await tx.subscription.findUnique({
+            where: { id },
+            select: { userId: true, amount: true },
+          });
+          if (subscription) {
+            await tx.subscriptionShare.create({
+              data: {
+                subscriptionId: id,
+                userId: subscription.userId,
+                shareAmount: subscription.amount,
+              },
+            });
+          }
+        }
+      }
+
+      // Return subscription with relations
+      return tx.subscription.findUnique({
+        where: { id },
+        include: {
+          tag: true,
+          payers: {
+            include: {
+              payer: {
+                select: {
+                  id: true,
+                  name: true,
+                  image: true,
+                },
+              },
+            },
+          },
+          shares: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  image: true,
+                },
+              },
+            },
+          },
+        },
+      });
     });
   },
 

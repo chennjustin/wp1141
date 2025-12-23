@@ -8,6 +8,7 @@
 
 import type { AppError } from "@/lib/errors";
 import type { TransactionType } from "@/modules/transaction/domain/transaction.types";
+import type { CreateTransactionPayerData, CreateTransactionShareData } from "@/modules/transaction/domain/transaction.types";
 
 /**
  * Subscription tag information
@@ -39,6 +40,8 @@ export interface Subscription {
   isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;
+  payers?: CreateTransactionPayerData[];
+  shares?: CreateTransactionShareData[];
 }
 
 /**
@@ -56,6 +59,8 @@ export interface CreateSubscriptionData {
   intervalMonths?: number; // Default 1
   nextBilling?: Date | string; // Calculated from startDate if not provided
   name?: string | null; // Optional description
+  payers?: CreateTransactionPayerData[];
+  shares?: CreateTransactionShareData[];
 }
 
 /**
@@ -73,6 +78,8 @@ export interface UpdateSubscriptionData {
   nextBilling?: Date | string;
   name?: string | null;
   isDeleted?: boolean;
+  payers?: CreateTransactionPayerData[];
+  shares?: CreateTransactionShareData[];
 }
 
 /**

@@ -4,6 +4,7 @@ import { DatePickerField } from "./DatePickerField";
 import { CurrencySelector } from "./CurrencySelector";
 import { IntervalSelector } from "./IntervalSelector";
 import type { IntervalType } from "@/ui/utils/subscription-utils";
+import type { CreateTransactionPayerData, CreateTransactionShareData } from "@/modules/transaction/domain/transaction.types";
 
 interface SubscriptionFormFieldsProps {
   name: string;
@@ -36,6 +37,14 @@ interface SubscriptionFormFieldsProps {
   onToggleEndDatePicker: () => void;
   onToggleCurrencyDropdown: () => void;
   onHideCalculator: () => void;
+  selectedPayers?: CreateTransactionPayerData[];
+  selectedShares?: CreateTransactionShareData[];
+  splitMethod?: "even" | "custom";
+  showPayerSelector?: boolean;
+  showShareSelector?: boolean;
+  onTogglePayerSelector?: () => void;
+  onToggleShareSelector?: () => void;
+  walletMembers?: Array<{ userId: string; user: { name: string; email?: string | null } }>;
 }
 
 export function SubscriptionFormFields({
@@ -69,6 +78,14 @@ export function SubscriptionFormFields({
   onToggleEndDatePicker,
   onToggleCurrencyDropdown,
   onHideCalculator,
+  selectedPayers = [],
+  selectedShares = [],
+  splitMethod = "custom",
+  showPayerSelector = false,
+  showShareSelector = false,
+  onTogglePayerSelector,
+  onToggleShareSelector,
+  walletMembers = [],
 }: SubscriptionFormFieldsProps) {
   return (
     <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4" style={{ backgroundColor: 'var(--wallet-bg)' }}>
@@ -237,6 +254,128 @@ export function SubscriptionFormFields({
         }}
         onHideCalculator={onHideCalculator}
       />
+
+      {/* Payer - 誰先付錢 */}
+      {onTogglePayerSelector && (
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <svg
+              className="h-4 w-4 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+              />
+            </svg>
+            <label className="text-xs text-gray-600">誰先付錢</label>
+          </div>
+          <button
+            type="button"
+            onClick={onTogglePayerSelector}
+            className="flex h-10 w-full items-center justify-between px-3 bg-white border-b border-gray-200 text-left hover:border-gray-400 transition-colors"
+          >
+            <span className="text-sm text-black">
+              {selectedPayers.length > 0
+                ? selectedPayers.length === 1
+                  ? walletMembers.find((m) => m.userId === selectedPayers[0].payerId)?.user.name || "已選擇"
+                  : `${selectedPayers.length} 人`
+                : "我自己"}
+            </span>
+            <div className="flex items-center gap-2">
+              <svg
+                className="h-4 w-4 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+                />
+              </svg>
+              <svg
+                className="h-4 w-4 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </div>
+          </button>
+        </div>
+      )}
+
+      {/* Share - 如何分 */}
+      {onToggleShareSelector && (
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <svg
+              className="h-4 w-4 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+              />
+            </svg>
+            <label className="text-xs text-gray-600">如何分</label>
+          </div>
+          <button
+            type="button"
+            onClick={onToggleShareSelector}
+            className="flex h-10 w-full items-center justify-between px-3 bg-white border-b border-gray-200 text-left hover:border-gray-400 transition-colors"
+          >
+            <span className="text-sm text-black">
+              {splitMethod === "even" ? "平均分攤" : "自訂金額"}
+            </span>
+            <div className="flex items-center gap-2">
+              <svg
+                className="h-4 w-4 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+                />
+              </svg>
+              <svg
+                className="h-4 w-4 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </div>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -116,6 +116,28 @@ export async function addTransactionFromSubscriptions() {
             },
           },
         },
+        payers: {
+          include: {
+            payer: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+              },
+            },
+          },
+        },
+        shares: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+              },
+            },
+          },
+        },
       },
     } as any);
 
@@ -136,6 +158,7 @@ export async function addTransactionFromSubscriptions() {
           userId: sub.userId,
           amount: sub.amount,
           currency: sub.currency,
+          rateToDefaultCurrency: sub.rateToDefaultCurrency,
           nextBilling: new Date(sub.nextBilling),
           intervalMonths: sub.intervalMonths,
           startDate: new Date(sub.startDate),
@@ -151,6 +174,14 @@ export async function addTransactionFromSubscriptions() {
           isDeleted: sub.isDeleted,
           createdAt: new Date(sub.createdAt),
           updatedAt: new Date(sub.updatedAt),
+          payers: sub.payers?.map((p: any) => ({
+            payerId: p.payerId,
+            paidAmount: p.paidAmount,
+          })),
+          shares: sub.shares?.map((s: any) => ({
+            userId: s.userId,
+            shareAmount: s.shareAmount,
+          })),
         };
 
         // Check if billing is tomorrow and create reminder notification
@@ -173,6 +204,14 @@ export async function addTransactionFromSubscriptions() {
         const transactionDate = new Date(sub.nextBilling);
         transactionDate.setHours(0, 0, 0, 0);
 
+        // Use subscription's payers and shares if available
+        const payers = subscriptionTyped.payers && subscriptionTyped.payers.length > 0
+          ? subscriptionTyped.payers
+          : undefined;
+        const shares = subscriptionTyped.shares && subscriptionTyped.shares.length > 0
+          ? subscriptionTyped.shares
+          : undefined;
+
         const transaction = await transactionRepository.create(userId, {
           walletId: sub.walletId,
           date: transactionDate,
@@ -181,6 +220,8 @@ export async function addTransactionFromSubscriptions() {
           name: sub.name || sub.tag.name,
           type: sub.type,
           tagId: sub.tagId,
+          payers,
+          shares,
         });
 
         // Create notification for successful transaction creation

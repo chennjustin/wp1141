@@ -44,6 +44,8 @@ model User {
   notifications       Notification[]
   tags                Tag[]              @relation("UserCreatedTags")
   subscriptions       Subscription[]
+  subscriptionPayers  SubscriptionPayer[]
+  subscriptionShares  SubscriptionShare[]
   deviceCarriers      DeviceCarrier[]
 
   @@index([userID])
@@ -271,7 +273,35 @@ model Subscription {
   user   User   @relation(fields: [userId], references: [id])
   tag    Tag    @relation(fields: [tagId], references: [id])
 
+  payers  SubscriptionPayer[]
+  shares SubscriptionShare[]
   histories SubscriptionHistory[]
+}
+
+model SubscriptionPayer {
+  id            String @id @default(cuid())
+  subscriptionId String
+  payerId       String
+  paidAmount    Float
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  payer        User        @relation(fields: [payerId], references: [id])
+
+  @@index([subscriptionId])
+  @@index([payerId])
+}
+
+model SubscriptionShare {
+  id            String @id @default(cuid())
+  subscriptionId String
+  userId        String
+  shareAmount   Float
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  user         User        @relation(fields: [userId], references: [id])
+
+  @@index([subscriptionId])
+  @@index([userId])
 }
 
 model SubscriptionHistory {

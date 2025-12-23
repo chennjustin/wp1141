@@ -8,6 +8,9 @@ import type { TransactionType } from "@/modules/transaction/domain/transaction.t
 import { CalculatorKeypad } from "@/ui/components/CalculatorKeypad";
 import { TagIcon } from "@/ui/utils/tag-icon";
 import { useWallet } from "@/hooks/useWallet";
+import { PayerSelector } from "@/ui/components/split/PayerSelector";
+import { ShareSelector } from "@/ui/components/split/ShareSelector";
+import type { CreateTransactionPayerData, CreateTransactionShareData } from "@/modules/transaction/domain/transaction.types";
 
 /**
  * Tag with iconKey (extended interface for UI)
@@ -98,6 +101,13 @@ export default function NewTransactionPage() {
   const [fetchingLastRate, setFetchingLastRate] = useState(false);
   const [fetchingCurrentRate, setFetchingCurrentRate] = useState(false);
   const [currentRate, setCurrentRate] = useState<number | null>(null);
+  
+  // Split-related state
+  const [selectedPayers, setSelectedPayers] = useState<CreateTransactionPayerData[]>([]);
+  const [selectedShares, setSelectedShares] = useState<CreateTransactionShareData[]>([]);
+  const [splitMethod, setSplitMethod] = useState<"even" | "custom">("custom");
+  const [showPayerSelector, setShowPayerSelector] = useState(false);
+  const [showShareSelector, setShowShareSelector] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
 
   // Redirect to tag selection if required params are missing
@@ -407,6 +417,8 @@ export default function NewTransactionPage() {
         note: note || null,
         type: transactionType,
         tagId,
+        payers: selectedPayers.length > 0 ? selectedPayers : undefined,
+        shares: selectedShares.length > 0 ? selectedShares : undefined,
       });
 
       if (result.success) {
@@ -832,7 +844,113 @@ export default function NewTransactionPage() {
               </div>
             )}
 
-            {/* 4. Notes - 備註 */}
+            {/* 4. Payer - 誰先付錢 */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <svg
+                  className="h-4 w-4 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+                  />
+                </svg>
+                <label className="text-xs text-gray-600">誰先付錢</label>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPayerSelector(true);
+                  setShowDatePicker(false);
+                  setShowCurrencyDropdown(false);
+                  setShowCalculator(false);
+                  setShowRateInput(false);
+                  setShowShareSelector(false);
+                }}
+                className="flex h-10 w-full items-center justify-between px-3 bg-white border-b border-gray-200 text-left hover:border-gray-400 transition-colors"
+              >
+                <span className="text-sm text-black">
+                  {selectedPayers.length > 0
+                    ? selectedPayers.length === 1
+                      ? wallet?.members.find((m) => m.userId === selectedPayers[0].payerId)?.user.name || "已選擇"
+                      : `${selectedPayers.length} 人`
+                    : "我自己"}
+                </span>
+                <svg
+                  className="h-4 w-4 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {/* 5. Share - 如何分 */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <svg
+                  className="h-4 w-4 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                  />
+                </svg>
+                <label className="text-xs text-gray-600">如何分</label>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowShareSelector(true);
+                  setShowDatePicker(false);
+                  setShowCurrencyDropdown(false);
+                  setShowCalculator(false);
+                  setShowRateInput(false);
+                  setShowPayerSelector(false);
+                }}
+                className="flex h-10 w-full items-center justify-between px-3 bg-white border-b border-gray-200 text-left hover:border-gray-400 transition-colors"
+              >
+                <span className="text-sm text-black">
+                  {selectedShares.length > 0
+                    ? selectedShares.length === 1
+                      ? wallet?.members.find((m) => m.userId === selectedShares[0].userId)?.user.name || "已選擇"
+                      : `${selectedShares.length} 人`
+                    : "平均分攤"}
+                </span>
+                <svg
+                  className="h-4 w-4 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {/* 6. Notes - 備註 */}
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <svg
@@ -888,6 +1006,46 @@ export default function NewTransactionPage() {
             clearOnConfirm={true}
           />
         </div>
+      )}
+
+      {/* Payer Selector */}
+      {showPayerSelector && wallet && (
+        <PayerSelector
+          members={wallet.members}
+          totalAmount={parseFloat(amount) || 0}
+          currency={currency}
+          initialPayers={selectedPayers}
+          transactionName={name}
+          tagName={selectedTag?.name}
+          onConfirm={(payers) => {
+            setSelectedPayers(payers);
+            setShowPayerSelector(false);
+          }}
+          onCancel={() => {
+            setShowPayerSelector(false);
+          }}
+        />
+      )}
+
+      {/* Share Selector */}
+      {showShareSelector && wallet && (
+        <ShareSelector
+          members={wallet.members}
+          totalAmount={parseFloat(amount) || 0}
+          currency={currency}
+          initialPayers={selectedShares}
+          transactionName={name}
+          tagName={selectedTag?.name}
+          initialMethod={splitMethod}
+          onConfirm={(shares, method) => {
+            setSelectedShares(shares);
+            setSplitMethod(method);
+            setShowShareSelector(false);
+          }}
+          onCancel={() => {
+            setShowShareSelector(false);
+          }}
+        />
       )}
     </div>
   );

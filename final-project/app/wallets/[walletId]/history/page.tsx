@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { ChevronLeft, ChevronRight, BarChart3 } from "lucide-react";
 import { useWallets } from "@/hooks/useWallet";
 import { useCurrentWallet } from "@/hooks/useCurrentWallet";
@@ -9,6 +10,7 @@ import { useWalletTransactions } from "@/hooks/useWalletTransactions";
 import { groupTransactionsByDate, type DailyTransactionGroup } from "@/ui/utils/transaction-grouping";
 import { TagIcon } from "@/ui/utils/tag-icon";
 import { Loading } from "@/ui/components/common/Loading";
+import type { Transaction } from "@/modules/transaction/domain/transaction.types";
 
 /**
  * Wallet history page
@@ -23,6 +25,8 @@ export default function WalletHistoryPage() {
   const router = useRouter();
   const params = useParams();
   const walletId = params?.walletId as string | null;
+  const { data: session } = useSession();
+  const currentUserId = session?.user?.id;
   const { wallets, loading: walletsLoading } = useWallets();
   const currentWallet = useCurrentWallet({
     wallets,
@@ -51,8 +55,8 @@ export default function WalletHistoryPage() {
     if (!transactions || transactions.length === 0 || !currentWallet) {
       return [];
     }
-    return groupTransactionsByDate(transactions, currentWallet.defaultCurrency);
-  }, [transactions, currentWallet]);
+    return groupTransactionsByDate(transactions, currentWallet.defaultCurrency, currentUserId);
+  }, [transactions, currentWallet, currentUserId]);
 
   // Check if current selected month is the current month
   const isCurrentMonth = useMemo(() => {
@@ -196,6 +200,7 @@ export default function WalletHistoryPage() {
               formatAmount={formatAmount}
               walletId={currentWallet.id}
               walletDefaultCurrency={currentWallet.defaultCurrency}
+              currentUserId={currentUserId}
             />
           ))
         )}
@@ -214,6 +219,7 @@ function DailyTransactionCard({
   formatAmount,
   walletId,
   walletDefaultCurrency,
+  currentUserId,
 }: {
   group: DailyTransactionGroup;
   formatAmount: (amount: number, currency: string, type: "INCOME" | "EXPENSE") => {
@@ -224,11 +230,25 @@ function DailyTransactionCard({
   };
   walletId: string;
   walletDefaultCurrency: string;
+  currentUserId: string | undefined;
 }) {
   const router = useRouter();
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   
-  // Calculate daily net amount and determine color
+  /**
+   * Get current user's paid amount from transaction payers
+   * Returns null if current user didn't pay anything
+   */
+  const getUserPaidAmount = (transaction: Transaction): number | null => {
+    if (!currentUserId || !transaction.payers || transaction.payers.length === 0) {
+      return null;
+    }
+    const userPayer = transaction.payers.find((payer) => payer.payerId === currentUserId);
+    return userPayer ? userPayer.paidAmount : null;
+  };
+  
+  // Calculate daily net amount based on current user's paid amounts
+  // The group.netAmount is already calculated based on user's paid amounts in groupTransactionsByDate
   const netAmount = group.netAmount;
   const dailyAmountColor = netAmount >= 0 
     ? { color: 'var(--income-color)' }
@@ -287,16 +307,19 @@ function DailyTransactionCard({
       <div className="flex flex-col gap-2">
         {group.transactions.map((transaction, index) => {
           const itemName = transaction.name || transaction.tag?.name || "未命名交易";
-          const { sign, colorStyle, formatted, currency } = formatAmount(
-            transaction.amount,
-            transaction.currency,
-            transaction.type
-          );
+          
+          // Get current user's paid amount instead of total transaction amount
+          const userPaidAmount = getUserPaidAmount(transaction);
           
           // Get iconKey with fallback
           const iconKey = transaction.tag?.iconKey || "tag";
 
           const isDeleting = deletingIds.has(transaction.id);
+          
+          // Format amount only if user paid something
+          const amountDisplay = userPaidAmount !== null
+            ? formatAmount(userPaidAmount, transaction.currency, transaction.type)
+            : null;
 
           return (
             <div key={transaction.id}>
@@ -318,9 +341,15 @@ function DailyTransactionCard({
 
                   {/* Right: Amount */}
                   <div className="text-right flex-shrink-0">
-                    <span className="text-sm font-semibold" style={colorStyle}>
-                      {currency} {sign}{formatted}
-                    </span>
+                    {amountDisplay ? (
+                      <span className="text-sm font-semibold" style={amountDisplay.colorStyle}>
+                        {amountDisplay.currency} {amountDisplay.sign}{amountDisplay.formatted}
+                      </span>
+                    ) : (
+                      <span className="text-sm font-semibold text-black/30">
+                        {/* Empty - user didn't pay anything */}
+                      </span>
+                    )}
                   </div>
                 </button>
 

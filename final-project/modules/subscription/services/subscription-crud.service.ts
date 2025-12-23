@@ -59,9 +59,42 @@ export const subscriptionCrudService = {
         };
       }
 
+      // Convert Prisma model to Domain type with payers and shares
+      const subscriptionTyped: Subscription = {
+        id: subscription.id,
+        walletId: subscription.walletId,
+        userId: subscription.userId,
+        amount: subscription.amount,
+        currency: subscription.currency,
+        rateToDefaultCurrency: subscription.rateToDefaultCurrency,
+        nextBilling: new Date(subscription.nextBilling),
+        intervalMonths: subscription.intervalMonths,
+        startDate: new Date(subscription.startDate),
+        endDate: subscription.endDate ? new Date(subscription.endDate) : null,
+        type: subscription.type,
+        tagId: subscription.tagId,
+        name: subscription.name,
+        tag: {
+          id: subscription.tag.id,
+          name: subscription.tag.name,
+          iconKey: subscription.tag.iconKey,
+        },
+        isDeleted: subscription.isDeleted,
+        createdAt: new Date(subscription.createdAt),
+        updatedAt: new Date(subscription.updatedAt),
+        payers: (subscription as any).payers?.map((p: any) => ({
+          payerId: p.payerId,
+          paidAmount: p.paidAmount,
+        })),
+        shares: (subscription as any).shares?.map((s: any) => ({
+          userId: s.userId,
+          shareAmount: s.shareAmount,
+        })),
+      };
+
       return {
         success: true,
-        data: subscription as Subscription,
+        data: subscriptionTyped,
         error: undefined,
       };
     } catch (error) {

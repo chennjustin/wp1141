@@ -9,10 +9,13 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useWallets, useWallet } from "@/hooks/useWallet";
 import { useUserCarrier } from "@/hooks/useCarrier";
 import { useMonthlySummary } from "@/hooks/useMonthlySummary";
 import { useDailyTransactions } from "@/hooks/useDailyTransactions";
+import { useWalletTransactions } from "@/hooks/useWalletTransactions";
+import type { Transaction } from "@/modules/transaction/domain/transaction.types";
 
 /**
  * Transaction display format
@@ -20,7 +23,7 @@ import { useDailyTransactions } from "@/hooks/useDailyTransactions";
 export interface DisplayTransaction {
   id: string;
   title: string;
-  amount: number;
+  amount: number | null; // null when current user didn't pay anything
   currency: string;
   time: string;
 }
@@ -34,6 +37,8 @@ export interface DisplayTransaction {
 export function useWalletHome(walletId: string) {
   const router = useRouter();
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const currentUserId = session?.user?.id;
   const { wallets, loading: walletsLoading } = useWallets();
   const { wallet: walletById, loading: walletByIdLoading } = useWallet(walletId);
   const { carrier, loading: carrierLoading } = useUserCarrier();
@@ -58,22 +63,83 @@ export function useWalletHome(walletId: string) {
   const carrierCode = carrier?.carrierCode || "";
   const hasRealCarrier = !!carrier;
 
-  // Fetch monthly summary from API with refetch capability
+  // Fetch all transactions for current month to calculate user-specific summary
   const {
-    data: monthlySummary,
-    loading: summaryLoading,
-    error: summaryError,
-    refetch: refetchSummary,
-  } = useMonthlySummary({
+    data: monthlyTransactions,
+    loading: monthlyTransactionsLoading,
+    error: monthlyTransactionsError,
+  } = useWalletTransactions({
     walletId: activeWallet?.id ?? null,
     year,
     month,
     enabled: !!activeWallet,
   });
 
-  // Use API data if available, otherwise fallback to 0
-  const incomeTotal = monthlySummary?.totalIncome ?? 0;
-  const expenseTotal = monthlySummary?.totalExpense ?? 0;
+  /**
+   * Get current user's paid amount from transaction payers
+   * Returns 0 if current user didn't pay anything
+   */
+  const getUserPaidAmount = (transaction: Transaction): number => {
+    if (!currentUserId || !transaction.payers || transaction.payers.length === 0) {
+      return 0;
+    }
+    const userPayer = transaction.payers.find((payer) => payer.payerId === currentUserId);
+    return userPayer ? userPayer.paidAmount : 0;
+  };
+
+  /**
+   * Convert amount to wallet default currency
+   */
+  const convertToDefaultCurrency = (
+    amount: number,
+    currency: string,
+    rateToDefaultCurrency: number | null,
+    walletDefaultCurrency: string
+  ): number => {
+    if (currency === walletDefaultCurrency) {
+      return amount;
+    }
+    if (!rateToDefaultCurrency || rateToDefaultCurrency <= 0) {
+      return 0;
+    }
+    return amount * rateToDefaultCurrency;
+  };
+
+  // Calculate monthly summary based on current user's paid amounts
+  const { incomeTotal, expenseTotal } = useMemo(() => {
+    if (!activeWallet || !monthlyTransactions || monthlyTransactions.length === 0) {
+      return { incomeTotal: 0, expenseTotal: 0 };
+    }
+
+    let totalIncome = 0;
+    let totalExpense = 0;
+
+    for (const transaction of monthlyTransactions) {
+      const userPaidAmount = getUserPaidAmount(transaction);
+      if (userPaidAmount === 0) {
+        continue; // User didn't pay anything for this transaction
+      }
+
+      const convertedAmount = convertToDefaultCurrency(
+        userPaidAmount,
+        transaction.currency,
+        transaction.rateToDefaultCurrency,
+        activeWallet.defaultCurrency
+      );
+
+      if (transaction.type === "INCOME") {
+        totalIncome += convertedAmount;
+      } else if (transaction.type === "EXPENSE") {
+        totalExpense += convertedAmount;
+      }
+    }
+
+    return { incomeTotal: totalIncome, expenseTotal: totalExpense };
+  }, [monthlyTransactions, activeWallet, currentUserId]);
+
+  // Use loading state from transactions fetch
+  const summaryLoading = monthlyTransactionsLoading;
+  const summaryError = monthlyTransactionsError;
 
   // Fetch daily transactions for today with refetch capability
   const {
@@ -155,23 +221,21 @@ export function useWalletHome(walletId: string) {
 
   // Refetch data when returning from transaction creation page
   useEffect(() => {
-    // Refetch transactions and summary when wallet is loaded and pathname matches
+    // Refetch transactions when wallet is loaded and pathname matches
     if (activeWallet && pathname === `/wallets/${activeWallet.id}`) {
       // Small delay to ensure navigation is complete
       const timer = setTimeout(() => {
         refetchTransactions();
-        refetchSummary();
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [activeWallet?.id, pathname, refetchTransactions, refetchSummary]);
+  }, [activeWallet?.id, pathname, refetchTransactions]);
 
   // Also refetch when page becomes visible (user returns to tab)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible" && activeWallet) {
         refetchTransactions();
-        refetchSummary();
       }
     };
 
@@ -179,7 +243,7 @@ export function useWalletHome(walletId: string) {
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [activeWallet, refetchTransactions, refetchSummary]);
+  }, [activeWallet, refetchTransactions]);
 
   return {
     // Wallet data
@@ -219,7 +283,6 @@ export function useWalletHome(walletId: string) {
     
     // Refetch functions
     refetchTransactions,
-    refetchSummary,
   };
 }
 
