@@ -1,21 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useCarriers } from "@/hooks/useCarrier";
-import { useWallets } from "@/hooks/useWallet";
-import type { DeviceCarrier } from "@/modules/carrier/domain/carrier.types";
 import { Loading } from "@/ui/components/common/Loading";
 
 /**
  * Settings page for wallet and user preferences.
  * 
- * This page allows users to manage their wallets and device carriers (載具).
+ * This page allows users to manage their device carriers (載具).
  */
 export default function SettingsPage() {
-  const router = useRouter();
-  const { carriers, loading: carriersLoading, error, refetch } = useCarriers();
-  const { wallets, loading: walletsLoading } = useWallets();
+  const { carriers, loading: carriersLoading, refetch } = useCarriers();
   const [carrierCode, setCarrierCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -147,56 +142,13 @@ export default function SettingsPage() {
     }
   };
 
-  if (carriersLoading || walletsLoading) {
+  if (carriersLoading) {
     return <Loading />;
   }
 
   return (
     <div className="flex h-full flex-col gap-4 p-4 overflow-y-auto">
       <h1 className="text-lg font-semibold text-black">設定</h1>
-
-      {/* Wallet management section */}
-      <section className="rounded-xl p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}>
-        <h2 className="mb-4 text-sm font-medium">錢包管理</h2>
-        
-        {wallets.length === 0 ? (
-          <p className="text-xs text-black/50">尚無錢包</p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {wallets.map((wallet) => (
-              <button
-                key={wallet.id}
-                type="button"
-                onClick={() => router.push(`/wallets/${wallet.id}/edit`)}
-                className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2 text-left hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium text-black">{wallet.name}</span>
-                  {wallet.description && (
-                    <span className="text-xs text-black/50">{wallet.description}</span>
-                  )}
-                </div>
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="text-black/40"
-                >
-                  <path
-                    d="M6 12L10 8L6 4"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-            ))}
-          </div>
-        )}
-      </section>
 
       {/* Carrier settings section */}
       <section className="rounded-xl p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}>
