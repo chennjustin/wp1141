@@ -1,8 +1,7 @@
 /**
- * Server Action: Invite users to wallet
+ * Server Action: Update member role
  * 
- * This action allows wallet members to invite other users to join their wallet.
- * Invited users will receive a notification and their status will be set to PENDING.
+ * This action allows wallet owner to update a member's role in the wallet.
  */
 
 "use server";
@@ -10,15 +9,15 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { walletService } from "../services/wallet.service";
+import { WalletRole } from "../domain/wallet.types";
 
 /**
- * Invite users to a wallet
- * 
- * @param invitations Array of { userId, role } objects
+ * Update member role in wallet
  */
-export async function inviteUsersToWalletAction(
+export async function updateMemberRoleAction(
   walletId: string,
-  invitations: Array<{ userId: string; role: "MEMBER" | "VIEWER" }>
+  targetUserId: string,
+  newRole: WalletRole
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -40,21 +39,30 @@ export async function inviteUsersToWalletAction(
       };
     }
 
-    if (!Array.isArray(invitations) || invitations.length === 0) {
+    if (!targetUserId || typeof targetUserId !== "string") {
       return {
         success: false,
-        error: "At least one invitation is required",
+        error: "Target user ID is required",
         data: null,
       };
     }
 
-    return await walletService.inviteUsersToWallet(
+    if (newRole !== WalletRole.MEMBER && newRole !== WalletRole.VIEWER) {
+      return {
+        success: false,
+        error: "Role must be either MEMBER or VIEWER",
+        data: null,
+      };
+    }
+
+    return await walletService.updateMemberRole(
       walletId,
       session.user.id,
-      invitations
+      targetUserId,
+      newRole
     );
   } catch (error) {
-    console.error("[inviteUsersToWalletAction] Unexpected error", error);
+    console.error("[updateMemberRoleAction] Unexpected error", error);
     return {
       success: false,
       error: "Internal server error",

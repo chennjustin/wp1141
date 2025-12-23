@@ -53,10 +53,13 @@ interface RouteContext {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-export async function GET(_req: Request, context: RouteContext) {
+export async function GET(req: Request, context: RouteContext) {
   try {
     const { walletId } = context.params;
-    const result = await getWalletAction(walletId);
+    const { searchParams } = new URL(req.url);
+    const includePending = searchParams.get("includePending") === "true";
+    
+    const result = await getWalletAction(walletId, includePending);
 
     if (!result.success) {
       const status =

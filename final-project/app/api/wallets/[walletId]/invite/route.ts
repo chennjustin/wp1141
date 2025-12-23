@@ -85,16 +85,42 @@ export async function POST(req: Request, context: RouteContext) {
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
 
-    const { userIds }: { userIds?: string[] } = body;
+    // Support both old format (userIds) and new format (invitations)
+    const { userIds, invitations }: { userIds?: string[]; invitations?: Array<{ userId: string; role: "MEMBER" | "VIEWER" }> } = body;
 
-    if (!Array.isArray(userIds) || userIds.length === 0) {
+    // Convert old format to new format for backward compatibility
+    let finalInvitations: Array<{ userId: string; role: "MEMBER" | "VIEWER" }> = [];
+    
+    if (invitations && Array.isArray(invitations) && invitations.length > 0) {
+      // New format
+      finalInvitations = invitations;
+    } else if (userIds && Array.isArray(userIds) && userIds.length > 0) {
+      // Old format - convert to new format with default role MEMBER
+      finalInvitations = userIds.map(userId => ({ userId, role: "MEMBER" as const }));
+    } else {
       return NextResponse.json(
         { error: "At least one user ID is required" },
         { status: 400 }
       );
     }
 
-    const result = await inviteUsersToWalletAction(walletId, userIds);
+    // Validate invitations format
+    for (const inv of finalInvitations) {
+      if (!inv.userId || typeof inv.userId !== "string") {
+        return NextResponse.json(
+          { error: "Invalid invitation format: userId is required" },
+          { status: 400 }
+        );
+      }
+      if (inv.role && inv.role !== "MEMBER" && inv.role !== "VIEWER") {
+        return NextResponse.json(
+          { error: "Invalid role: must be MEMBER or VIEWER" },
+          { status: 400 }
+        );
+      }
+    }
+
+    const result = await inviteUsersToWalletAction(walletId, finalInvitations);
 
     if (!result.success) {
       const status =
