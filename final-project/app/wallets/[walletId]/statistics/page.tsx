@@ -15,7 +15,9 @@
 
 import { useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useWallet } from "@/hooks/useWallet";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useWallets } from "@/hooks/useWallet";
+import { useCurrentWallet } from "@/hooks/useCurrentWallet";
 import { useWalletTransactions } from "@/hooks/useWalletTransactions";
 import {
   processTransactionsByCategory,
@@ -211,7 +213,11 @@ export default function WalletStatisticsPage() {
   const router = useRouter();
   const params = useParams();
   const walletId = params?.walletId as string | null;
-  const { wallet, loading: walletLoading } = useWallet(walletId || "");
+  const { wallets, loading: walletsLoading } = useWallets();
+  const currentWallet = useCurrentWallet({
+    wallets,
+    currentWalletId: walletId || null,
+  });
 
   // Get current date for default selection
   const today = useMemo(() => new Date(), []);
@@ -228,10 +234,10 @@ export default function WalletStatisticsPage() {
     loading: monthLoading,
     error: monthError,
   } = useWalletTransactions({
-    walletId: wallet?.id ?? null,
+    walletId: currentWallet?.id ?? null,
     year: selectedYear,
     month: selectedMonth,
-    enabled: !!wallet && selectedPeriod === "month",
+    enabled: !!currentWallet && selectedPeriod === "month",
   });
 
   const {
@@ -239,9 +245,9 @@ export default function WalletStatisticsPage() {
     loading: yearLoading,
     error: yearError,
   } = useYearTransactions(
-    wallet?.id ?? null,
+    currentWallet?.id ?? null,
     selectedYear,
-    !!wallet && selectedPeriod === "year"
+    !!currentWallet && selectedPeriod === "year"
   );
 
   // Use appropriate data based on selected period
@@ -350,7 +356,7 @@ export default function WalletStatisticsPage() {
     setTransactionType((prev) => (prev === "INCOME" ? "EXPENSE" : "INCOME"));
   };
 
-  if (walletLoading) {
+  if (walletsLoading) {
     return (
       <div className="flex h-full items-center justify-center">
         <span className="text-sm text-black/50">Loading...</span>
@@ -358,7 +364,7 @@ export default function WalletStatisticsPage() {
     );
   }
 
-  if (!wallet) {
+  if (!currentWallet) {
     return (
       <div className="flex h-full items-center justify-center">
         <span className="text-sm text-red-500">
@@ -406,13 +412,13 @@ export default function WalletStatisticsPage() {
           <button
             type="button"
             onClick={handlePreviousPeriod}
-            className="flex items-center justify-center text-lg font-medium text-black hover:bg-black/5 rounded transition-colors"
+            className="flex items-center justify-center text-black hover:bg-black/5 rounded transition-colors"
             aria-label="Previous period"
           >
-            ◀
+            <ChevronLeft className="h-5 w-5" strokeWidth={2} />
           </button>
 
-          <h1 className="text-lg font-medium text-black">{periodLabel}</h1>
+          <h1 className="text-base font-medium text-black">{periodLabel}</h1>
 
           <button
             type="button"
@@ -420,15 +426,15 @@ export default function WalletStatisticsPage() {
             disabled={
               selectedPeriod === "month" ? isCurrentMonth : selectedYear >= today.getFullYear()
             }
-            className={`flex items-center justify-center text-lg font-medium rounded transition-colors ${
+            className={`flex items-center justify-center rounded transition-colors ${
               (selectedPeriod === "month" && isCurrentMonth) ||
               (selectedPeriod === "year" && selectedYear >= today.getFullYear())
-                ? "text-black/30 cursor-not-allowed"
+                ? "text-gray-300 cursor-not-allowed"
                 : "text-black hover:bg-black/5"
             }`}
             aria-label="Next period"
           >
-            ▶
+            <ChevronRight className="h-5 w-5" strokeWidth={2} />
           </button>
         </div>
 
@@ -436,7 +442,7 @@ export default function WalletStatisticsPage() {
         <button
           type="button"
           onClick={handleChartTypeToggle}
-          className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-black/5 transition-colors"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md hover:bg-white transition-all duration-200"
           aria-label="Toggle chart type"
         >
           {chartType === "donut" ? (
@@ -601,7 +607,7 @@ export default function WalletStatisticsPage() {
                 <DonutChart
                   data={categoryStats}
                   totalAmount={totalAmount}
-                  currency={wallet.defaultCurrency}
+                  currency={currentWallet.defaultCurrency}
                 />
               ) : (
                 <BarChart data={categoryStats} />
@@ -615,7 +621,7 @@ export default function WalletStatisticsPage() {
               </div>
               <CategoryLegend
                 categories={categoryStats}
-                currency={wallet.defaultCurrency}
+                currency={currentWallet.defaultCurrency}
               />
             </div>
           </div>

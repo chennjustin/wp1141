@@ -92,7 +92,7 @@ export function SideMenu({
             onClick={handleHomeClick}
             aria-label="Go to wallet home"
           >
-            <Home className="h-5 w-5 text-black" strokeWidth={2} />
+            <Home className="h-4 w-4 text-gray-500" strokeWidth={2} />
           </button>
         </div>
         <div className="border-t border-gray-200" />
@@ -117,13 +117,13 @@ export function SideMenu({
           },
           {
             id: "history",
-            path: "/wallets/history",
+            path: currentWalletId ? `/wallets/${currentWalletId}/history` : "/wallets/history",
             label: "收支明細",
             icon: FileText,
           },
           {
             id: "statistics",
-            path: "/wallets/statistics",
+            path: currentWalletId ? `/wallets/${currentWalletId}/statistics` : "/wallets/statistics",
             label: "統計",
             icon: BarChart3,
           },
@@ -147,9 +147,11 @@ export function SideMenu({
           if (item.id === "notifications") {
             isActive = pathname === "/wallets/notifications";
           } else if (item.id === "history") {
-            isActive = pathname === "/wallets/history";
+            // Match both /wallets/history and /wallets/[walletId]/history
+            isActive = pathname === item.path || pathname?.includes("/history");
           } else if (item.id === "statistics") {
-            isActive = pathname === "/wallets/statistics";
+            // Match both /wallets/statistics and /wallets/[walletId]/statistics
+            isActive = pathname === item.path || pathname?.includes("/statistics");
           } else if (item.id === "settings") {
             isActive = pathname === "/wallets/settings";
           } else if (item.id === "subscriptions") {

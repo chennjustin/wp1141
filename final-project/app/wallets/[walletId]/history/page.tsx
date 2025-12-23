@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useWallet } from "@/hooks/useWallet";
+import { useWallets } from "@/hooks/useWallet";
+import { useCurrentWallet } from "@/hooks/useCurrentWallet";
 import { useWalletTransactions } from "@/hooks/useWalletTransactions";
 import { groupTransactionsByDate, type DailyTransactionGroup } from "@/ui/utils/transaction-grouping";
 import { TagIcon } from "@/ui/utils/tag-icon";
@@ -21,7 +22,11 @@ export default function WalletHistoryPage() {
   const router = useRouter();
   const params = useParams();
   const walletId = params?.walletId as string | null;
-  const { wallet, loading: walletLoading } = useWallet(walletId);
+  const { wallets, loading: walletsLoading } = useWallets();
+  const currentWallet = useCurrentWallet({
+    wallets,
+    currentWalletId: walletId || null,
+  });
 
   // Get current date for default month selection
   const today = useMemo(() => new Date(), []);
@@ -34,10 +39,10 @@ export default function WalletHistoryPage() {
     loading: transactionsLoading,
     error: transactionsError,
   } = useWalletTransactions({
-    walletId: wallet?.id ?? null,
+    walletId: currentWallet?.id ?? null,
     year: selectedYear,
     month: selectedMonth,
-    enabled: !!wallet,
+    enabled: !!currentWallet,
   });
 
   // Group transactions by date
@@ -84,7 +89,9 @@ export default function WalletHistoryPage() {
 
   // Handle statistics icon click - navigate to statistics page
   const handleStatisticsClick = () => {
-    router.push("/wallets/statistics");
+    if (walletId) {
+      router.push(`/wallets/${walletId}/statistics`);
+    }
   };
 
   // Format amount with sign and color
@@ -96,11 +103,11 @@ export default function WalletHistoryPage() {
     return { sign, colorStyle, formatted: Math.abs(amount).toLocaleString() };
   };
 
-  if (walletLoading) {
+  if (walletsLoading) {
     return <Loading />;
   }
 
-  if (!wallet) {
+  if (!currentWallet) {
     return (
       <div className="flex h-full items-center justify-center">
         <span className="text-sm text-red-500">錢包不存在或無權限存取</span>
@@ -237,7 +244,7 @@ export default function WalletHistoryPage() {
               key={group.dateKey} 
               group={group} 
               formatAmount={formatAmount}
-              walletId={wallet.id}
+              walletId={currentWallet.id}
             />
           ))
         )}
