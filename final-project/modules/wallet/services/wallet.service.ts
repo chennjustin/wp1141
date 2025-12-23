@@ -79,7 +79,9 @@ export const walletService = {
     }
 
     const trimmedName = data.name.trim();
-    const defaultCurrency = data.defaultCurrency || DEFAULT_CURRENCY;
+    // Use nullish coalescing to only fallback when defaultCurrency is null or undefined
+    // This ensures empty string or other falsy values are preserved if explicitly provided
+    const defaultCurrency = data.defaultCurrency ?? DEFAULT_CURRENCY;
     const description = data.description?.trim() || null;
     const note = data.note?.trim() || null;
     const invitedUserIds = data.invitedUserIds || [];
