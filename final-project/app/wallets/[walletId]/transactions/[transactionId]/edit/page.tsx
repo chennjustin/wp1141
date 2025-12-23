@@ -989,7 +989,7 @@ export default function EditTransactionPage() {
                 type="button"
                 onClick={() => setShowDeleteConfirm(true)}
                 disabled={deleting}
-                className="w-full h-12 bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded"
+                className="w-full rounded-lg border-2 border-red-300 bg-white px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 刪除
               </button>
