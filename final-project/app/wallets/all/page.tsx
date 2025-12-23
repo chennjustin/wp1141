@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Pin } from "lucide-react";
+import { Pin, Pencil } from "lucide-react";
 import { useWallets } from "@/hooks/useWallet";
 import { useUser } from "@/hooks/useUser";
 import { usePinnedWallets } from "@/hooks/usePinnedWallets";
@@ -20,6 +20,7 @@ interface WalletCardProps {
   currentUserId: string | undefined;
   onPinToggle: (walletId: string, isPinned: boolean) => Promise<void>;
   onCardClick: (walletId: string) => void;
+  onEditClick: (walletId: string) => void;
 }
 
 function WalletCard({
@@ -29,6 +30,7 @@ function WalletCard({
   currentUserId,
   onPinToggle,
   onCardClick,
+  onEditClick,
 }: WalletCardProps) {
   const [isToggling, setIsToggling] = useState(false);
 
@@ -44,12 +46,27 @@ function WalletCard({
     }
   };
 
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    onEditClick(wallet.id);
+  };
+
   return (
     <div
       className="relative z-0 rounded-xl p-4 border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
       style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}
       onClick={() => onCardClick(wallet.id)}
     >
+      {/* Edit button - top right, before pin button */}
+      <button
+        type="button"
+        className="absolute top-3 right-10 z-10 p-1 rounded-full hover:bg-gray-100 transition-colors"
+        onClick={handleEditClick}
+        aria-label="編輯錢包"
+      >
+        <Pencil size={16} className="opacity-60" />
+      </button>
+
       {/* Pin button - top right */}
       <button
         type="button"
@@ -189,9 +206,13 @@ export default function AllWalletsPage() {
   };
 
   // Handle card click - navigate to wallet detail page
-  // Handle card click - navigate to wallet detail page
   const handleCardClick = (walletId: string) => {
     router.push(`/wallets/${walletId}`);
+  };
+
+  // Handle edit click - navigate to wallet edit page
+  const handleEditClick = (walletId: string) => {
+    router.push(`/wallets/${walletId}/edit`);
   };
 
   // Check if wallet is My Wallet
@@ -235,6 +256,7 @@ export default function AllWalletsPage() {
               currentUserId={currentUserId}
               onPinToggle={handlePinToggle}
               onCardClick={handleCardClick}
+              onEditClick={handleEditClick}
             />
           );
         })}

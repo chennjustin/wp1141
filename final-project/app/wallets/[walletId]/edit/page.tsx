@@ -6,6 +6,7 @@ import { useWallet } from "@/hooks/useWallet";
 import { useUser } from "@/hooks/useUser";
 import { useWallets } from "@/hooks/useWallet";
 import { useSession } from "next-auth/react";
+import { usePinnedWallets } from "@/hooks/usePinnedWallets";
 import { WalletUserStatus, WalletRole } from "@/modules/wallet/domain/wallet.types";
 
 /**
@@ -213,6 +214,7 @@ export default function EditWalletPage() {
   const { wallet, loading: walletLoading } = useWallet(walletId);
   const { profile } = useUser();
   const { refetch: refreshWallets } = useWallets();
+  const { refetch: refetchPinnedWallets } = usePinnedWallets(true);
   const [userDefaultWalletId, setUserDefaultWalletId] = useState<string | null>(null);
 
   // Form state
@@ -277,9 +279,10 @@ export default function EditWalletPage() {
     fetchUserDefaultWallet();
   }, [currentUserId]);
 
+  // Check if this is the default wallet ("我的錢包")
   const isDefaultWallet = useMemo(() => {
-    return userDefaultWalletId === walletId;
-  }, [userDefaultWalletId, walletId]);
+    return wallet?.name === "我的錢包";
+  }, [wallet]);
 
   // Load wallet data
   useEffect(() => {
@@ -552,6 +555,7 @@ export default function EditWalletPage() {
 
       setSuccess(true);
       refreshWallets();
+      refetchPinnedWallets();
       
       // Update initial values to reflect saved state
       setInitialName(name.trim());
@@ -743,6 +747,9 @@ export default function EditWalletPage() {
             <option value="JPY">JPY - 日圓</option>
             <option value="CNY">CNY - 人民幣</option>
           </select>
+          {isDefaultWallet && (
+            <p className="text-xs text-black/50">預設錢包無法修改幣別</p>
+          )}
         </div>
 
         {/* Member management section with gray background */}
