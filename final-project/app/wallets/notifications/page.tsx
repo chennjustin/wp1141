@@ -230,11 +230,13 @@ export default function NotificationsPage() {
   }, [notifications]);
 
   const handleNotificationClick = async (notification: Notification) => {
-    // Mark as read if unread
+    // If notification is unread, mark as read and return (don't navigate)
     if (!notification.isRead) {
       await handleMarkAsRead(notification.id);
+      return;
     }
 
+    // Only navigate if notification is already read
     // Handle different notification types
     if (notification.type === NotificationType.SUBSCRIPTION_REMINDER) {
       // Extract subscription info from message and navigate to subscriptions page
@@ -353,8 +355,9 @@ export default function NotificationsPage() {
     const invitationStatus = invitationInfo?.status;
     const isWalletInvitation = notification.type === NotificationType.WALLET_INVITATION;
     const isProcessing = processingInvitations.has(notification.id);
-    // If invitation is accepted, make it clickable
-    const isClickable = !isWalletInvitation || invitationStatus === "ACCEPTED";
+    // Unread notifications are always clickable (to mark as read)
+    // Read notifications: wallet invitations are only clickable if accepted, others are always clickable
+    const isClickable = !notification.isRead || (!isWalletInvitation || invitationStatus === "ACCEPTED");
 
     return (
       <div
