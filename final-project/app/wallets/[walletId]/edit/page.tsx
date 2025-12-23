@@ -220,6 +220,10 @@ export default function EditWalletPage() {
   const [defaultCurrency, setDefaultCurrency] = useState("TWD");
   const [description, setDescription] = useState("");
   
+  // Track initial values to detect unsaved changes
+  const [initialName, setInitialName] = useState("");
+  const [initialDescription, setInitialDescription] = useState("");
+  
   // Member management
   const [existingMembers, setExistingMembers] = useState<Array<{
     id: string;
@@ -282,9 +286,14 @@ export default function EditWalletPage() {
     async function loadWalletWithAllMembers() {
       if (!wallet || !currentUserId) return;
 
-      setName(wallet.name || "");
+      const walletName = wallet.name || "";
+      const walletDescription = wallet.description || "";
+      
+      setName(walletName);
+      setInitialName(walletName);
       setDefaultCurrency(wallet.defaultCurrency || "TWD");
-      setDescription(wallet.description || "");
+      setDescription(walletDescription);
+      setInitialDescription(walletDescription);
       
       // If user is owner, fetch wallet with all members (including PENDING)
       if (isCreator) {
@@ -544,6 +553,10 @@ export default function EditWalletPage() {
       setSuccess(true);
       refreshWallets();
       
+      // Update initial values to reflect saved state
+      setInitialName(name.trim());
+      setInitialDescription(description.trim());
+      
       // Navigate back to previous page after successful update
       setTimeout(() => {
         router.back();
@@ -573,12 +586,25 @@ export default function EditWalletPage() {
 
   return (
     <div className="flex h-full flex-col relative -mx-4">
-      {/* Header with back button and checkmark */}
-      <div className="relative flex items-center justify-between px-4 pt-2 pb-2">
-        {/* Back Button - Left */}
+      {/* Custom header: Back button, Wallet name, Checkmark button */}
+      <header className="relative mb-1 flex items-center justify-between px-4 py-3" style={{ backgroundColor: 'var(--wallet-bg)' }}>
+        {/* Left: Back button */}
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={() => {
+            // Check for unsaved changes
+            const hasNameChange = !isDefaultWallet && name.trim() !== initialName.trim();
+            const hasDescriptionChange = description.trim() !== initialDescription.trim();
+            const hasPendingInvitations = invitedUsers.length > 0;
+            
+            if (hasNameChange || hasDescriptionChange || hasPendingInvitations) {
+              if (confirm("您有未儲存的變更，確定要離開嗎？變更將不會被儲存。")) {
+                router.back();
+              }
+            } else {
+              router.back();
+            }
+          }}
           className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/10 transition-colors"
           aria-label="返回"
         >
@@ -597,11 +623,23 @@ export default function EditWalletPage() {
           </svg>
         </button>
 
-        {/* Checkmark/Submit Button - Right */}
+        {/* Center: Wallet name - absolutely centered (same style as WalletHeader) */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <button
+            type="button"
+            className="relative inline-flex items-center justify-center rounded-full px-6 py-2 text-sm font-medium hover:opacity-80 active:opacity-90 focus:outline-none focus:ring-0 transition-opacity"
+            style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}
+            aria-label="錢包名稱"
+          >
+            <span className="max-w-[140px] truncate">{wallet?.name || "載入中..."}</span>
+          </button>
+        </div>
+
+        {/* Right: Checkmark/Submit button */}
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={loading || (!isDefaultWallet && !name.trim())}
+          disabled={loading}
           className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="完成"
         >
@@ -619,7 +657,7 @@ export default function EditWalletPage() {
             />
           </svg>
         </button>
-      </div>
+      </header>
 
       {/* Delete confirmation dialog */}
       {showDeleteConfirm && (
