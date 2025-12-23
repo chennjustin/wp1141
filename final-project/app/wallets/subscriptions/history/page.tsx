@@ -35,25 +35,26 @@ interface SubscriptionWithTag {
  */
 function getTagColor(iconKey: string): string {
   const colorMap: Record<string, string> = {
-    food: "bg-orange-100",
-    drinks: "bg-amber-100",
-    entertainment: "bg-purple-100",
-    transportation: "bg-blue-100",
-    shopping: "bg-sky-100",
-    bills: "bg-amber-100",
-    healthcare: "bg-red-100",
-    education: "bg-indigo-100",
-    travel: "bg-cyan-100",
-    other: "bg-slate-200",
-    salary: "bg-green-100",
-    bonus: "bg-emerald-100",
-    investment: "bg-teal-100",
-    gift: "bg-pink-100",
-    freelance: "bg-lime-100",
-    interest: "bg-blue-100",
-    refund: "bg-rose-100",
-    dividend: "bg-violet-100",
+    // Default
     tag: "bg-gray-100",
+    
+    // System expense tags (Full IDs only)
+    "system-tag-food": "bg-orange-100",
+    "system-tag-drinks": "bg-amber-100",
+    "system-tag-entertainment": "bg-purple-100",
+    "system-tag-transportation": "bg-blue-100",
+    "system-tag-shopping": "bg-sky-100",
+    "system-tag-bills": "bg-amber-100",
+    "system-tag-healthcare": "bg-red-100",
+    "system-tag-education": "bg-indigo-100",
+    "system-tag-travel": "bg-cyan-100",
+    "system-tag-other": "bg-slate-200",
+    
+    // System income tags (Full IDs only)
+    "system-tag-salary": "bg-green-100",
+    "system-tag-bonus": "bg-emerald-100",
+    "system-tag-investment": "bg-teal-100",
+    "system-tag-gift": "bg-pink-100",
   };
   return colorMap[iconKey] || "bg-gray-100";
 }

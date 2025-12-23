@@ -47,23 +47,23 @@ export const MAX_NAME_LENGTH = 50;
 export const SYSTEM_USER_ID = "system" as const;
 
 export const DEFAULT_SYSTEM_TAGS = [
-  "food",
-  "drinks",
-  "entertainment",
-  "transportation",
-  "shopping",
-  "bills",
-  "healthcare",
-  "education",
-  "travel",
-  "other",
+  "飲食",
+  "飲料",
+  "娛樂",
+  "交通",
+  "購物",
+  "帳單",
+  "醫療",
+  "教育",
+  "旅遊",
+  "其他",
 ] as const;
 
 export const DEFAULT_SYSTEM_INCOME_TAGS = [
-  "salary",
-  "bonus",
-  "investment",
-  "gift"
+  "薪水",
+  "獎金",
+  "投資",
+  "禮物"
 ] as const;
 
 /**
@@ -71,22 +71,22 @@ export const DEFAULT_SYSTEM_INCOME_TAGS = [
  * Maps system tag names to their fixed IDs
  */
 export const SYSTEM_TAG_IDS: Record<(typeof DEFAULT_SYSTEM_TAGS)[number], string> = {
-  food: "system-tag-food",
-  drinks: "system-tag-drinks",
-  entertainment: "system-tag-entertainment",
-  transportation: "system-tag-transportation",
-  shopping: "system-tag-shopping",
-  bills: "system-tag-bills",
-  healthcare: "system-tag-healthcare",
-  education: "system-tag-education",
-  travel: "system-tag-travel",
-  other: "system-tag-other",
+  飲食: "system-tag-food",
+  飲料: "system-tag-drinks",
+  娛樂: "system-tag-entertainment",
+  交通: "system-tag-transportation",
+  購物: "system-tag-shopping",
+  帳單: "system-tag-bills",
+  醫療: "system-tag-healthcare",
+  教育: "system-tag-education",
+  旅遊: "system-tag-travel",
+  其他: "system-tag-other",
 } as const;
 
 export const SYSTEM_INCOME_TAG_IDS: Record<(typeof DEFAULT_SYSTEM_INCOME_TAGS)[number], string> = {
-  salary: "system-tag-salary",
-  bonus: "system-tag-bonus",
-  investment: "system-tag-investment",
-  gift: "system-tag-gift"
+  薪水: "system-tag-salary",
+  獎金: "system-tag-bonus",
+  投資: "system-tag-investment",
+  禮物: "system-tag-gift"
 } as const;
 

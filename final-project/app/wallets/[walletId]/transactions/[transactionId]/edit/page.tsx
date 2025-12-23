@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { createTransactionAction } from "@/modules/transaction/routes/create-transaction";
+import { getTransactionAction } from "@/modules/transaction/routes/get-transaction";
+import { updateTransactionAction } from "@/modules/transaction/routes/update-transaction";
+import { deleteTransactionAction } from "@/modules/transaction/routes/delete-transaction";
 import { listTagsAction } from "@/modules/tag/routes/list-tags";
-import type { TransactionType } from "@/modules/transaction/domain/transaction.types";
+import type { TransactionType, Transaction } from "@/modules/transaction/domain/transaction.types";
 import { CalculatorKeypad } from "@/ui/components/CalculatorKeypad";
 import { TagIcon } from "@/ui/utils/tag-icon";
 
@@ -50,74 +52,127 @@ function getTagColor(iconKey: string): string {
 const CURRENCIES = ["TWD", "USD", "EUR", "JPY", "CNY"];
 
 /**
- * New Transaction page
+ * Edit Transaction page
  * 
- * This page is accessed after selecting a tag.
- * User fills in transaction details and enters amount using the calculator.
+ * This page allows users to edit an existing transaction.
+ * Users can modify all fields, change the tag, and delete the transaction.
  */
-export default function NewTransactionPage() {
+export default function EditTransactionPage() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
   const walletId = params.walletId as string;
+  const transactionId = params.transactionId as string;
 
-  // Get tagId and type from URL parameters
+  // Get tagId and type from URL parameters (when returning from tag selection)
   const tagIdFromUrl = searchParams.get("tagId");
   const typeFromUrl = searchParams.get("type") as TransactionType | null;
+  
+  // Get source page from URL parameters (where user came from)
+  const fromPage = searchParams.get("from") || "home"; // Default to "home" if not specified
 
-  // Redirect to tag selection if required params are missing
-  useEffect(() => {
-    if (!tagIdFromUrl || !typeFromUrl) {
-      router.push(`/wallets/${walletId}/transactions/new/tag`);
-    }
-  }, [tagIdFromUrl, typeFromUrl, walletId, router]);
+  // State for transaction data
+  const [transaction, setTransaction] = useState<Transaction | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [fetchingTransaction, setFetchingTransaction] = useState(true);
 
-  const [transactionType] = useState<TransactionType>(typeFromUrl || "EXPENSE");
-  const [date, setDate] = useState<string>(() => {
-    const today = new Date();
-    return today.toISOString().split("T")[0];
-  });
-  const [time, setTime] = useState<string>(() => {
-    const now = new Date();
-    const hours = String(now.getHours()).padStart(2, "0");
-    const minutes = String(now.getMinutes()).padStart(2, "0");
-    return `${hours}:${minutes}`;
-  });
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [tagId] = useState<string>(tagIdFromUrl || "");
+  // Form state
+  const [transactionType, setTransactionType] = useState<TransactionType>("EXPENSE");
+  const [date, setDate] = useState<string>("");
+  const [time, setTime] = useState<string>("");
+  const [tagId, setTagId] = useState<string>("");
   const [name, setName] = useState<string>("");
   const [currency, setCurrency] = useState<string>("TWD");
   const [amount, setAmount] = useState<string>("");
   const [note, setNote] = useState<string>("");
-  const [calculatorExpression, setCalculatorExpression] = useState<string>("");
   const [selectedTag, setSelectedTag] = useState<TagWithIcon | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
-  const [fetchingTag, setFetchingTag] = useState(true);
-  const [showCalculator, setShowCalculator] = useState(false);
+  const [fetchingTag, setFetchingTag] = useState(false);
 
-  // Fetch selected tag
+  // UI state
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [calculatorExpression, setCalculatorExpression] = useState<string>("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Fetch transaction data on mount
   useEffect(() => {
-    async function fetchTag() {
-      if (!tagId) return;
+    async function fetchTransaction() {
       try {
-        const result = await listTagsAction({ filter: "all" });
+        const result = await getTransactionAction(transactionId);
         if (result.success && result.data) {
-          const tags = result.data as unknown as TagWithIcon[];
-          const tag = tags.find((t) => t.id === tagId);
-          if (tag) {
-            setSelectedTag(tag);
-          }
+          const tx = result.data;
+          setTransaction(tx);
+          
+          // Pre-fill form fields
+          setTransactionType(tx.type);
+          setTagId(tx.tagId);
+          
+          // Format date and time
+          const txDate = new Date(tx.date);
+          const year = txDate.getFullYear();
+          const month = String(txDate.getMonth() + 1).padStart(2, "0");
+          const day = String(txDate.getDate()).padStart(2, "0");
+          setDate(`${year}-${month}-${day}`);
+          
+          const hours = String(txDate.getHours()).padStart(2, "0");
+          const minutes = String(txDate.getMinutes()).padStart(2, "0");
+          setTime(`${hours}:${minutes}`);
+          
+          setName(tx.name || "");
+          setCurrency(tx.currency);
+          setAmount(tx.amount.toString());
+          setNote(tx.note || "");
+          
+          // Set selected tag
+          setSelectedTag({
+            id: tx.tag.id,
+            name: tx.tag.name,
+            type: tx.type,
+            iconKey: tx.tag.iconKey,
+          });
+        } else {
+          setError(result.error?.toString() || "無法載入交易資料");
         }
       } catch (err) {
-        console.error("Failed to fetch tag", err);
+        console.error("Failed to fetch transaction", err);
+        setError(err instanceof Error ? err.message : "載入失敗");
       } finally {
-        setFetchingTag(false);
+        setFetchingTransaction(false);
       }
     }
-    fetchTag();
-  }, [tagId]);
+    fetchTransaction();
+  }, [transactionId]);
+
+  // Handle tag change from URL parameters (when returning from tag selection)
+  useEffect(() => {
+    if (tagIdFromUrl && typeFromUrl && transaction) {
+      setTagId(tagIdFromUrl);
+      setTransactionType(typeFromUrl);
+      fetchTagById(tagIdFromUrl);
+    }
+  }, [tagIdFromUrl, typeFromUrl, transaction]);
+
+  // Fetch tag by ID
+  async function fetchTagById(tagIdToFetch: string) {
+    setFetchingTag(true);
+    try {
+      const result = await listTagsAction({ filter: "all" });
+      if (result.success && result.data) {
+        const tags = result.data as unknown as TagWithIcon[];
+        const tag = tags.find((t) => t.id === tagIdToFetch);
+        if (tag) {
+          setSelectedTag(tag);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch tag", err);
+    } finally {
+      setFetchingTag(false);
+    }
+  }
 
   // Auto-save calculator expression when clicking outside calculator
   useEffect(() => {
@@ -165,6 +220,7 @@ export default function NewTransactionPage() {
 
   // Format date for display
   const formatDate = (dateString: string) => {
+    if (!dateString) return "";
     const date = new Date(dateString);
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -185,21 +241,6 @@ export default function NewTransactionPage() {
     return `$${num.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
   };
 
-  const handleClear = () => {
-    const now = new Date();
-    setDate(now.toISOString().split("T")[0]);
-    const hours = String(now.getHours()).padStart(2, "0");
-    const minutes = String(now.getMinutes()).padStart(2, "0");
-    setTime(`${hours}:${minutes}`);
-    setName("");
-    setCurrency("TWD");
-    setAmount("");
-    setNote("");
-    setCalculatorExpression("");
-    setError(null);
-    setShowCalculator(false);
-  };
-
   // Hide calculator when other fields are focused
   const handleHideCalculator = () => {
     setShowCalculator(false);
@@ -209,9 +250,9 @@ export default function NewTransactionPage() {
 
   // Show calculator when amount is clicked
   const handleAmountClick = () => {
-    // 如果有已有金額，將其設置為計算器表達式，以便繼續編輯
+    // If there's an existing amount, set it as calculator expression for continued editing
     if (amount && !calculatorExpression) {
-      // 移除格式化符號（$ 和逗號），只保留數字
+      // Remove formatting symbols ($ and commas), keep only numbers
       const cleanAmount = amount.replace(/[$,]/g, '');
       setCalculatorExpression(cleanAmount);
     }
@@ -220,6 +261,27 @@ export default function NewTransactionPage() {
     setShowCurrencyDropdown(false);
   };
 
+  // Handle tag click - navigate to tag selection page
+  const handleTagClick = () => {
+    router.push(`/wallets/${walletId}/transactions/${transactionId}/edit/tag?from=${fromPage}`);
+  };
+
+  // Navigate back to the source page
+  const navigateBack = () => {
+    if (fromPage === "history") {
+      router.push(`/wallets/${walletId}/history`);
+    } else {
+      // Default to home page
+      router.push(`/wallets/${walletId}`);
+    }
+  };
+
+  // Handle back button - navigate back to source page
+  const handleBack = () => {
+    navigateBack();
+  };
+
+  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -250,8 +312,7 @@ export default function NewTransactionPage() {
       const dateTime = new Date(date);
       dateTime.setHours(hours, minutes, 0, 0);
 
-      const result = await createTransactionAction({
-        walletId,
+      const result = await updateTransactionAction(transactionId, {
         date: dateTime.toISOString(),
         amount: parseFloat(amount),
         currency,
@@ -262,12 +323,12 @@ export default function NewTransactionPage() {
       });
 
       if (result.success) {
-        router.push(`/wallets/${walletId}`);
+        navigateBack();
         setTimeout(() => {
           router.refresh();
         }, 100);
       } else {
-        const errorMessage = result.error?.toString() || "創建交易失敗";
+        const errorMessage = result.error?.toString() || "更新交易失敗";
         setError(errorMessage);
         setTimeout(() => {
           const errorElement = document.querySelector('[data-error]');
@@ -277,11 +338,53 @@ export default function NewTransactionPage() {
         }, 100);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "創建交易失敗");
+      setError(err instanceof Error ? err.message : "更新交易失敗");
     } finally {
       setLoading(false);
     }
   };
+
+  // Handle delete
+  const handleDelete = async () => {
+    setDeleting(true);
+    setError(null);
+
+    try {
+      const result = await deleteTransactionAction(transactionId);
+
+      if (result.success) {
+        navigateBack();
+        setTimeout(() => {
+          router.refresh();
+        }, 100);
+      } else {
+        const errorMessage = result.error?.toString() || "刪除交易失敗";
+        setError(errorMessage);
+        setShowDeleteConfirm(false);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "刪除交易失敗");
+      setShowDeleteConfirm(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  if (fetchingTransaction) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <span className="text-sm text-gray-500">載入中...</span>
+      </div>
+    );
+  }
+
+  if (!transaction || error) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <span className="text-sm text-red-500">{error || "無法載入交易資料"}</span>
+      </div>
+    );
+  }
 
   if (fetchingTag || !selectedTag) {
     return (
@@ -309,7 +412,7 @@ export default function NewTransactionPage() {
               {/* Back Button */}
               <button
                 type="button"
-                onClick={() => router.back()}
+                onClick={handleBack}
                 className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-black/10 transition-colors"
                 aria-label="返回"
               >
@@ -355,19 +458,31 @@ export default function NewTransactionPage() {
             {/* Amount Section - Compact */}
             <div className="px-4 pb-4">
               <div className="flex items-center gap-3">
-                {/* Tag Icon - Circular background white (temporarily) */}
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white">
+                {/* Tag Icon - Clickable to change tag */}
+                <button
+                  type="button"
+                  onClick={handleTagClick}
+                  className="flex h-12 w-12 items-center justify-center rounded-full bg-white hover:opacity-80 transition-opacity"
+                  aria-label="更改分類"
+                >
                   <TagIcon
                     iconKey={selectedTag.iconKey}
                     size={24}
                     color="currentColor"
                     className="text-gray-700"
                   />
-                </div>
+                </button>
 
                 {/* Tag Name and Amount */}
                 <div className="flex-1">
-                  <div className="text-black text-sm mb-1">{selectedTag.name}</div>
+                  {/* Tag name - clickable to change tag */}
+                  <button
+                    type="button"
+                    onClick={handleTagClick}
+                    className="text-black text-sm mb-1 hover:opacity-80 transition-opacity text-left"
+                  >
+                    {selectedTag.name}
+                  </button>
                   {/* Clickable Amount */}
                   <button
                     type="button"
@@ -584,6 +699,18 @@ export default function NewTransactionPage() {
                 {error}
               </div>
             )}
+
+            {/* Delete Button */}
+            <div className="pt-4 pb-4">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={deleting}
+                className="w-full h-12 bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded"
+              >
+                刪除
+              </button>
+            </div>
           </div>
         </form>
 
@@ -593,7 +720,7 @@ export default function NewTransactionPage() {
       {showCalculator && (
         <div className="absolute bottom-0 left-0 right-0 z-50 bg-white transition-transform duration-200" data-calculator onClick={(e) => e.stopPropagation()}>
           <CalculatorKeypad
-            key={`calc-${showCalculator}-${amount}`} // 使用 key 確保每次打開時正確初始化
+            key={`calc-${showCalculator}-${amount}`}
             initialValue={calculatorExpression || (amount ? amount.replace(/[$,]/g, '') : "")}
             onConfirm={(result: number) => {
               setAmount(result.toFixed(2));
@@ -607,6 +734,34 @@ export default function NewTransactionPage() {
           />
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div className="absolute inset-0 z-[100] bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full">
+            <h3 className="text-lg font-semibold text-black mb-2">確認刪除</h3>
+            <p className="text-sm text-gray-600 mb-4">確定要刪除這筆交易嗎？此操作無法復原。</p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 h-10 bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition-colors rounded"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 h-10 bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded"
+              >
+                {deleting ? "刪除中..." : "刪除"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
