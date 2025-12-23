@@ -11,6 +11,7 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { History, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { useDailyTransactions } from "@/hooks/useDailyTransactions";
+import { TagIcon } from "@/ui/utils/tag-icon";
 import type { DisplayTransaction } from "@/hooks/useWalletHome";
 import type { Transaction } from "@/modules/transaction/domain/transaction.types";
 
@@ -38,12 +39,16 @@ function transformTransactionToDisplay(tx: Transaction): DisplayTransaction {
   const minutes = transactionDate.getMinutes().toString().padStart(2, "0");
   const time = `${hours}:${minutes}`;
 
+  // Get iconKey from tag with fallback to default "tag"
+  const iconKey = tx.tag?.iconKey || "tag";
+
   return {
     id: tx.id,
     title,
     amount: displayAmount,
     currency: tx.currency,
     time,
+    iconKey,
   };
 }
 
@@ -218,12 +223,20 @@ export function DailyTransactionsSection({
                   onClick={() => handleTransactionClick(tx.id)}
                   className="w-full flex items-center justify-between py-3 hover:bg-black/5 transition-colors rounded"
                 >
-                  <div className="flex flex-col items-start gap-0.5">
-                    <span className="text-sm text-black text-left">{tx.title}</span>
-                    <span className="text-xs text-black/50 text-left">{tx.time}</span>
+                  <div className="flex items-center gap-2 flex-1">
+                    {/* Icon */}
+                    <div className="flex h-8 w-8 items-center justify-center flex-shrink-0">
+                      <TagIcon iconKey={tx.iconKey} />
+                    </div>
+
+                    {/* Title and time */}
+                    <div className="flex flex-col items-start gap-0.5 flex-1">
+                      <span className="text-sm text-black text-left">{tx.title}</span>
+                      <span className="text-xs text-black/50 text-left">{tx.time}</span>
+                    </div>
                   </div>
                   <span
-                    className={`text-sm font-semibold text-black ${
+                    className={`text-sm font-semibold text-black flex-shrink-0 ${
                       tx.amount >= 0 ? "" : ""
                     }`}
                   >
