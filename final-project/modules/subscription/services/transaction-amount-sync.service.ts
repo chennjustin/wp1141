@@ -40,7 +40,7 @@ export async function syncTransactionAmounts(
     console.log(`[syncTransactionAmounts] Found ${transactions.length} transactions for subscription ${subscriptionId}, updating to amount ${newAmount}`);
 
     // Get subscription details for notification
-    const fullSubscription = await (tx || prisma).subscription.findUnique({
+    const fullSubscription = await (tx || prisma).subscription.findFirst({
       where: { id: subscriptionId },
       include: {
         tag: true,

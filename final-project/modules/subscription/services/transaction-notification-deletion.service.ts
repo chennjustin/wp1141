@@ -16,7 +16,7 @@ export async function deleteTransactionNotifications(
   tx?: any
 ): Promise<void> {
   try {
-    const subscription = await (tx || prisma).subscription.findUnique({
+    const subscription = await (tx || prisma).subscription.findFirst({
       where: { id: subscriptionId },
       include: {
         tag: true,
@@ -78,7 +78,7 @@ export async function deleteTransactionNotificationsForDate(
   tx?: any
 ): Promise<void> {
   try {
-    const subscription = await (tx || prisma).subscription.findUnique({
+    const subscription = await (tx || prisma).subscription.findFirst({
       where: { id: subscriptionId },
       include: {
         tag: true,
@@ -141,7 +141,7 @@ export async function deleteNotificationsForTransaction(
   tx?: any
 ): Promise<void> {
   try {
-    const subscription = await (tx || prisma).subscription.findUnique({
+    const subscription = await (tx || prisma).subscription.findFirst({
       where: { id: subscriptionId },
       include: {
         tag: true,
