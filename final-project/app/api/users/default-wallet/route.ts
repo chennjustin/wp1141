@@ -3,6 +3,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { walletRepository } from "@/modules/wallet/repositories/wallet.repository";
 
+// Force dynamic rendering since we use session (which reads headers)
+export const dynamic = 'force-dynamic';
+
 /**
  * Pin/unpin wallet for user
  * 

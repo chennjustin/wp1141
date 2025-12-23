@@ -6,6 +6,9 @@ import { createNotificationAction } from "@/modules/notification/routes/create-n
 import { listNotificationsAction } from "@/modules/notification/routes/list-notifications";
 import { markAllNotificationsAsReadAction } from "@/modules/notification/routes/mark-notification-read";
 
+// Force dynamic rendering since we use session (which reads headers)
+export const dynamic = 'force-dynamic';
+
 /**
  * @swagger
  * /api/notifications:

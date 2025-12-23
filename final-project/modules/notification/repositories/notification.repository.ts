@@ -176,7 +176,7 @@ export const notificationRepository = {
    */
   async findBySubscription(subscriptionId: string, userId: string) {
     // First get the subscription to extract its name and tag name
-    const subscription = await prisma.subscription.findUnique({
+    const subscription = await prisma.subscription.findFirst({
       where: { id: subscriptionId },
       include: {
         tag: true,
