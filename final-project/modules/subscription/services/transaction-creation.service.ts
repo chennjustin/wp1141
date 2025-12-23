@@ -26,7 +26,7 @@ export async function createMissingTransactions(
   const client = tx || prisma;
   
   // Get subscription with full details
-  const fullSubscription = await (tx || prisma).subscription.findUnique({
+  const fullSubscription = await (tx || prisma).subscription.findFirst({
     where: { id: subscription.id },
     include: {
       tag: true,
