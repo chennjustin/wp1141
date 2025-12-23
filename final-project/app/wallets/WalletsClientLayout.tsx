@@ -82,6 +82,12 @@ export function WalletsClientLayout({ children }: WalletsClientLayoutProps) {
     pathname?.startsWith("/wallets/") &&
     pathname.includes("/transactions/new");
   
+  // 是否為「編輯交易」頁面：/wallets/[walletId]/transactions/[transactionId]/edit
+  const isEditTransactionPage =
+    pathname?.startsWith("/wallets/") &&
+    pathname.includes("/transactions/") &&
+    pathname.includes("/edit");
+  
   // 是否為「新增/編輯訂閱」頁面：/wallets/[walletId]/subscriptions/new 或 /wallets/[walletId]/subscriptions/[id]/edit
   // 或訂閱歷史頁面：/wallets/[walletId]/subscriptions/history
   const isSubscriptionPage =
@@ -89,12 +95,26 @@ export function WalletsClientLayout({ children }: WalletsClientLayoutProps) {
     (pathname?.includes("/subscriptions/") && pathname.includes("/edit")) ||
     pathname?.includes("/subscriptions/history");
 
+  // Check if current page is the wallet edit page itself (not subscription edit)
+  const isEditPage = 
+    pathname?.startsWith("/wallets/") &&
+    pathname?.includes("/edit") &&
+    !pathname?.includes("/subscriptions/");
+
+  // Handle edit wallet click
+  const handleEditWallet = () => {
+    if (currentWalletId) {
+      router.push(`/wallets/${currentWalletId}/edit`);
+    }
+  };
+
+  console.log("isNewTransactionPage", isNewTransactionPage);
   return (
     <div className="h-screen overflow-hidden flex justify-center px-4 py-4" style={{ backgroundColor: "var(--wallet-bg)" }}>
       {/* Mobile-sized container with thick black border and rounded corners */}
       <div className="relative flex h-[calc(100vh-2rem)] w-full max-w-sm flex-col border-[3px] border-black rounded-[3rem] overflow-hidden" style={{ backgroundColor: "var(--wallet-bg)" }}>
         {/* Header */}
-        {!isNewTransactionPage && !isSubscriptionPage && (
+        {!isNewTransactionPage && !isEditTransactionPage && !isSubscriptionPage && (
           <>
             <WalletHeader
               walletDisplayName={walletDisplayName}
@@ -103,6 +123,8 @@ export function WalletsClientLayout({ children }: WalletsClientLayoutProps) {
               onWalletSelectorOpen={() => setIsWalletSelectorOpen(true)}
               walletButtonRef={walletButtonRef}
               unreadCount={unreadCount}
+              currentWalletId={!isEditPage ? currentWalletId : null}
+              onEditClick={!isEditPage ? handleEditWallet : undefined}
             />
 
             <WalletSelectorDropdown

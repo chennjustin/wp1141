@@ -7,6 +7,7 @@
 "use client";
 
 import { useRef } from "react";
+import { Settings } from "lucide-react";
 
 interface WalletHeaderProps {
   walletDisplayName: string;
@@ -15,6 +16,8 @@ interface WalletHeaderProps {
   onWalletSelectorOpen: () => void;
   walletButtonRef: React.RefObject<HTMLButtonElement>;
   unreadCount?: number;
+  currentWalletId?: string | null;
+  onEditClick?: () => void;
 }
 
 export function WalletHeader({
@@ -24,7 +27,13 @@ export function WalletHeader({
   onWalletSelectorOpen,
   walletButtonRef,
   unreadCount = 0,
+  currentWalletId,
+  onEditClick,
 }: WalletHeaderProps) {
+  // Determine if settings icon should be shown
+  // Show only when currentWalletId exists and onEditClick is provided
+  const showSettingsIcon = currentWalletId && onEditClick;
+
   return (
     <header className="relative mb-1 flex items-center justify-between px-4 py-3" style={{ backgroundColor: 'var(--wallet-bg)' }}>
       {/* Left: main menu toggle */}
@@ -46,7 +55,7 @@ export function WalletHeader({
         )}
       </button>
 
-      {/* Center: wallet selector - oval button, absolutely centered */}
+      {/* Center: wallet selector - absolutely centered */}
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
         <button
           ref={walletButtonRef}
@@ -58,6 +67,16 @@ export function WalletHeader({
         >
           <span className="max-w-[140px] truncate">{walletDisplayName}</span>
         </button>
+        {showSettingsIcon && (
+          <button
+            type="button"
+            onClick={onEditClick}
+            className="absolute left-full ml-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full hover:bg-black/10 active:bg-black/20 transition-colors focus:outline-none focus:ring-0"
+            aria-label="Edit wallet settings"
+          >
+            <Settings className="h-4 w-4 text-black" />
+          </button>
+        )}
       </div>
 
       {/* Right: user name or role text */}

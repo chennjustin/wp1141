@@ -277,8 +277,7 @@ function DailyTransactionCard({
 
   // Handle transaction click - navigate to edit page
   const handleTransactionClick = (transactionId: string) => {
-    // TODO: Navigate to transaction edit page when implemented
-    // router.push(`/wallets/${walletId}/transactions/${transactionId}/edit`);
+    router.push(`/wallets/${walletId}/transactions/${transactionId}/edit?from=history`);
   };
 
   const handleDeleteTransaction = async (e: React.MouseEvent, transactionId: string) => {

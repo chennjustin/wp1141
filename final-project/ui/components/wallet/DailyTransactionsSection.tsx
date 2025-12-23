@@ -130,6 +130,11 @@ export function DailyTransactionsSection({
     return "當天還沒有交易記錄";
   };
 
+  // Handle transaction click - navigate to edit page
+  const handleTransactionClick = (transactionId: string) => {
+    router.push(`/wallets/${walletId}/transactions/${transactionId}/edit?from=home`);
+  };
+
   return (
     <section className="relative flex min-h-0 flex-1 flex-col rounded-xl pl-4 pr-2 pt-4 pb-4 text-sm" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}>
       <div className="mb-2 flex items-center justify-between pr-2">
@@ -207,7 +212,11 @@ export function DailyTransactionsSection({
           <ul className="pr-2">
             {displayTransactions.map((tx, index) => (
               <li key={tx.id}>
-                <div className="flex items-center justify-between py-3">
+                <button
+                  type="button"
+                  onClick={() => handleTransactionClick(tx.id)}
+                  className="w-full flex items-center justify-between py-3 hover:bg-black/5 transition-colors rounded"
+                >
                   <div className="flex flex-col gap-0.5">
                     <span className="text-sm text-black">{tx.title}</span>
                     <span className="text-xs text-black/50">{tx.time}</span>
@@ -220,7 +229,7 @@ export function DailyTransactionsSection({
                     {tx.amount >= 0 ? "+" : "-"}
                     {Math.abs(tx.amount).toLocaleString()}
                   </span>
-                </div>
+                </button>
                 {index < displayTransactions.length - 1 && (
                   <div className="border-b border-[#E8E8E8]" />
                 )}
