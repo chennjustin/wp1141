@@ -95,6 +95,20 @@ export function WalletsClientLayout({ children }: WalletsClientLayoutProps) {
     (pathname?.includes("/subscriptions/") && pathname.includes("/edit")) ||
     pathname?.includes("/subscriptions/history");
 
+  // Check if current page is the wallet edit page itself (not subscription edit)
+  const isEditPage = 
+    pathname?.startsWith("/wallets/") &&
+    pathname?.includes("/edit") &&
+    !pathname?.includes("/subscriptions/");
+
+  // Handle edit wallet click
+  const handleEditWallet = () => {
+    if (currentWalletId) {
+      router.push(`/wallets/${currentWalletId}/edit`);
+    }
+  };
+
+  console.log("isNewTransactionPage", isNewTransactionPage);
   return (
     <div className="h-screen overflow-hidden flex justify-center px-4 py-4" style={{ backgroundColor: "var(--wallet-bg)" }}>
       {/* Mobile-sized container with thick black border and rounded corners */}
@@ -109,6 +123,8 @@ export function WalletsClientLayout({ children }: WalletsClientLayoutProps) {
               onWalletSelectorOpen={() => setIsWalletSelectorOpen(true)}
               walletButtonRef={walletButtonRef}
               unreadCount={unreadCount}
+              currentWalletId={!isEditPage ? currentWalletId : null}
+              onEditClick={!isEditPage ? handleEditWallet : undefined}
             />
 
             <WalletSelectorDropdown
