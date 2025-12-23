@@ -13,7 +13,7 @@ import { formatDate, formatAmount, isBillingInTwoDays } from "../utils/subscript
 
 /**
  * Create a transaction notification for a subscription
- * Format: 「系統已幫您建立「{訂閱名稱}{金額}」的款項了！！」 ({錢包名稱})
+ * Format: 系統已幫您建立「{訂閱名稱}{金額}」的款項了！！ ({錢包名稱})
  */
 export async function createTransactionNotification(
   subscription: Subscription,
@@ -32,7 +32,7 @@ export async function createTransactionNotification(
 
     const subscriptionName = subscription.name || subscription.tag.name;
     const amount = formatAmount(subscription.amount, subscription.currency);
-    const message = `「系統已幫您建立「${subscriptionName}${amount}」的款項了！！」 (${finalWalletName})`;
+    const message = `系統已幫您建立「${subscriptionName}${amount}」的款項了！！ (${finalWalletName})`;
 
     await notificationService.createSubscriptionNotification(
       subscription.userId,

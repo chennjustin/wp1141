@@ -987,6 +987,7 @@ export default function EditTransactionPage() {
             )}
 
             {/* 4. Payer and Share - 誰先付錢 and 如何分 */}
+            {wallet && wallet.members.length > 1 && (
             <div className="flex gap-3">
               {/* Payer - 誰先付錢 */}
               <div className="flex-1">
@@ -1094,6 +1095,7 @@ export default function EditTransactionPage() {
                 </button>
               </div>
             </div>
+            )}
 
             {/* 6. Notes - 備註 */}
             <div>
