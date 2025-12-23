@@ -27,6 +27,8 @@ export interface SubscriptionFormState {
   tagId: string;
   name: string;
   currency: string;
+  rateToDefaultCurrency: string;
+  rateMode: "last" | "manual";
   amountMode: AmountMode;
   totalAmount: string;
   monthlyAmount: string;
@@ -51,6 +53,8 @@ export interface SubscriptionFormActions {
   setTagId: (value: string) => void;
   setName: (value: string) => void;
   setCurrency: (value: string) => void;
+  setRateToDefaultCurrency: (value: string) => void;
+  setRateMode: (value: "last" | "manual") => void;
   setAmountMode: (value: AmountMode) => void;
   setTotalAmount: (value: string) => void;
   setMonthlyAmount: (value: string) => void;
@@ -82,6 +86,8 @@ export function useSubscriptionForm(initialState?: Partial<SubscriptionFormState
   const [tagId, setTagId] = useState<string>(initialState?.tagId || "");
   const [name, setName] = useState<string>(initialState?.name || "");
   const [currency, setCurrency] = useState<string>(initialState?.currency || "TWD");
+  const [rateToDefaultCurrency, setRateToDefaultCurrency] = useState<string>(initialState?.rateToDefaultCurrency || "");
+  const [rateMode, setRateMode] = useState<"last" | "manual">(initialState?.rateMode || "last");
   const [amountMode, setAmountMode] = useState<AmountMode>(initialState?.amountMode || "monthly");
   const [totalAmount, setTotalAmount] = useState<string>(initialState?.totalAmount || "");
   const [monthlyAmount, setMonthlyAmount] = useState<string>(initialState?.monthlyAmount || "");
@@ -116,6 +122,8 @@ export function useSubscriptionForm(initialState?: Partial<SubscriptionFormState
     tagId,
     name,
     currency,
+    rateToDefaultCurrency,
+    rateMode,
     amountMode,
     totalAmount,
     monthlyAmount,
@@ -137,6 +145,8 @@ export function useSubscriptionForm(initialState?: Partial<SubscriptionFormState
     setTagId,
     setName,
     setCurrency,
+    setRateToDefaultCurrency,
+    setRateMode,
     setAmountMode,
     setTotalAmount,
     setMonthlyAmount,

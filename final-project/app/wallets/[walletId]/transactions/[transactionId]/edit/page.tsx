@@ -9,6 +9,7 @@ import { listTagsAction } from "@/modules/tag/routes/list-tags";
 import type { TransactionType, Transaction } from "@/modules/transaction/domain/transaction.types";
 import { CalculatorKeypad } from "@/ui/components/CalculatorKeypad";
 import { TagIcon } from "@/ui/utils/tag-icon";
+import { useWallet } from "@/hooks/useWallet";
 
 /**
  * Tag with iconKey (extended interface for UI)
@@ -85,6 +86,8 @@ export default function EditTransactionPage() {
   const [tagId, setTagId] = useState<string>("");
   const [name, setName] = useState<string>("");
   const [currency, setCurrency] = useState<string>("TWD");
+  const [rateToDefaultCurrency, setRateToDefaultCurrency] = useState<string>("");
+  const [rateMode, setRateMode] = useState<"last" | "manual">("last");
   const [amount, setAmount] = useState<string>("");
   const [note, setNote] = useState<string>("");
   const [selectedTag, setSelectedTag] = useState<TagWithIcon | null>(null);
@@ -93,9 +96,14 @@ export default function EditTransactionPage() {
   // UI state
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
+  const [showRateInput, setShowRateInput] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
   const [calculatorExpression, setCalculatorExpression] = useState<string>("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [fetchingLastRate, setFetchingLastRate] = useState(false);
+
+  // Get wallet information
+  const { wallet, loading: walletLoading } = useWallet(walletId);
 
   // Fetch transaction data on mount
   useEffect(() => {
@@ -123,6 +131,13 @@ export default function EditTransactionPage() {
           
           setName(tx.name || "");
           setCurrency(tx.currency);
+          if (tx.rateToDefaultCurrency) {
+            setRateToDefaultCurrency(tx.rateToDefaultCurrency.toString());
+            setRateMode("manual");
+          } else {
+            setRateToDefaultCurrency("");
+            setRateMode("last");
+          }
           setAmount(tx.amount.toString());
           setNote(tx.note || "");
           
@@ -154,6 +169,52 @@ export default function EditTransactionPage() {
       fetchTagById(tagIdFromUrl);
     }
   }, [tagIdFromUrl, typeFromUrl, transaction]);
+
+  // Show/hide rate input based on currency and wallet default currency
+  useEffect(() => {
+    if (wallet && currency) {
+      setShowRateInput(currency !== wallet.defaultCurrency);
+      if (currency === wallet.defaultCurrency) {
+        setRateToDefaultCurrency("");
+        setRateMode("last");
+      }
+    }
+  }, [wallet, currency]);
+
+  // Fetch last exchange rate when currency changes or rateMode is "last"
+  useEffect(() => {
+    async function fetchLastRate() {
+      if (!wallet || !currency || currency === wallet.defaultCurrency || rateMode !== "last") {
+        return;
+      }
+
+      setFetchingLastRate(true);
+      try {
+        const response = await fetch(`/api/transactions/last-rate?walletId=${walletId}&currency=${currency}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.rateToDefaultCurrency) {
+            setRateToDefaultCurrency(data.rateToDefaultCurrency.toString());
+          } else {
+            setRateToDefaultCurrency("");
+            // If no last rate found, switch to manual mode
+            setRateMode("manual");
+          }
+        } else {
+          setRateToDefaultCurrency("");
+          setRateMode("manual");
+        }
+      } catch (err) {
+        console.error("Failed to fetch last rate", err);
+        setRateToDefaultCurrency("");
+        setRateMode("manual");
+      } finally {
+        setFetchingLastRate(false);
+      }
+    }
+
+    fetchLastRate();
+  }, [wallet, currency, rateMode, walletId]);
 
   // Fetch tag by ID
   async function fetchTagById(tagIdToFetch: string) {
@@ -312,10 +373,20 @@ export default function EditTransactionPage() {
       const dateTime = new Date(date);
       dateTime.setHours(hours, minutes, 0, 0);
 
+      // Determine rateToDefaultCurrency
+      let finalRateToDefaultCurrency: number | null = null;
+      if (showRateInput && rateToDefaultCurrency) {
+        const parsedRate = parseFloat(rateToDefaultCurrency);
+        if (!isNaN(parsedRate) && parsedRate > 0) {
+          finalRateToDefaultCurrency = parsedRate;
+        }
+      }
+
       const result = await updateTransactionAction(transactionId, {
         date: dateTime.toISOString(),
         amount: parseFloat(amount),
         currency,
+        rateToDefaultCurrency: finalRateToDefaultCurrency,
         name: name || null,
         note: note || null,
         type: transactionType,
@@ -619,6 +690,7 @@ export default function EditTransactionPage() {
                   setShowCurrencyDropdown(!showCurrencyDropdown);
                   setShowDatePicker(false);
                   setShowCalculator(false);
+                  setShowRateInput(false);
                 }}
                 className="flex h-10 w-full items-center justify-between px-3 bg-white border-b border-gray-200 text-left hover:border-gray-400 transition-colors"
               >
@@ -657,6 +729,91 @@ export default function EditTransactionPage() {
                 </div>
               )}
             </div>
+
+            {/* 3.5. Exchange Rate - 匯率 (only show if currency differs from wallet default) */}
+            {showRateInput && wallet && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <svg
+                    className="h-4 w-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                    />
+                  </svg>
+                  <label className="text-xs text-gray-600">匯率</label>
+                </div>
+                <div className="space-y-2">
+                  {/* Rate mode selection */}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRateMode("last");
+                        setRateToDefaultCurrency("");
+                      }}
+                      className={`flex-1 h-9 px-3 text-sm rounded border transition-colors ${
+                        rateMode === "last"
+                          ? "bg-black text-white border-black"
+                          : "bg-white text-black border-gray-200 hover:border-gray-400"
+                      }`}
+                    >
+                      使用上次匯率
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRateMode("manual");
+                        setRateToDefaultCurrency("");
+                      }}
+                      className={`flex-1 h-9 px-3 text-sm rounded border transition-colors ${
+                        rateMode === "manual"
+                          ? "bg-black text-white border-black"
+                          : "bg-white text-black border-gray-200 hover:border-gray-400"
+                      }`}
+                    >
+                      手動輸入
+                    </button>
+                  </div>
+                  {/* Rate input */}
+                  {rateMode === "last" ? (
+                    <div className="h-10 px-3 bg-gray-50 border-b border-gray-200 flex items-center">
+                      {fetchingLastRate ? (
+                        <span className="text-sm text-gray-500">載入中...</span>
+                      ) : rateToDefaultCurrency ? (
+                        <span className="text-sm text-black">
+                          1 {currency} = {parseFloat(rateToDefaultCurrency).toLocaleString()} {wallet.defaultCurrency}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-gray-500">沒有找到上次使用的匯率</span>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={rateToDefaultCurrency}
+                        onChange={(e) => setRateToDefaultCurrency(e.target.value)}
+                        onFocus={handleHideCalculator}
+                        placeholder={`1 ${currency} = ? ${wallet.defaultCurrency}`}
+                        className="w-full h-10 px-3 bg-white border-b border-gray-200 text-sm text-black placeholder:text-gray-400 focus:outline-none focus:border-gray-400"
+                      />
+                      <p className="text-xs text-gray-500 px-3">
+                        1 {currency} = ? {wallet.defaultCurrency}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* 4. Notes - 備註 */}
             <div>

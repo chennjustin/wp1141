@@ -27,6 +27,7 @@ export interface Subscription {
   userId: string;
   amount: number;
   currency: string;
+  rateToDefaultCurrency: number | null;
   nextBilling: Date;
   intervalMonths: number;
   startDate: Date;
@@ -49,6 +50,7 @@ export interface CreateSubscriptionData {
   type: TransactionType;
   amount: number; // Monthly amount
   currency: string;
+  rateToDefaultCurrency?: number | null;
   startDate: Date | string;
   endDate?: Date | string | null; // Optional, null means permanent
   intervalMonths?: number; // Default 1
@@ -64,6 +66,7 @@ export interface UpdateSubscriptionData {
   type?: TransactionType;
   amount?: number;
   currency?: string;
+  rateToDefaultCurrency?: number | null;
   startDate?: Date | string;
   endDate?: Date | string | null;
   intervalMonths?: number;

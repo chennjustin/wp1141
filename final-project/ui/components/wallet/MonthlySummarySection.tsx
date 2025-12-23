@@ -14,6 +14,7 @@ interface MonthlySummarySectionProps {
   month: number;
   incomeTotal: number;
   expenseTotal: number;
+  currency?: string; // Currency code for display (e.g., "TWD", "USD")
   loading: boolean;
   error: string | null;
   showAmounts: boolean;
@@ -25,11 +26,25 @@ export function MonthlySummarySection({
   month,
   incomeTotal,
   expenseTotal,
+  currency = "TWD",
   loading,
   error,
   showAmounts,
   onToggleAmounts,
 }: MonthlySummarySectionProps) {
+  // Format amount with currency
+  const formatAmount = (amount: number) => {
+    if (showAmounts) {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: currency,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(amount);
+    } else {
+      return "*".repeat(amount.toString().length || 1);
+    }
+  };
   return (
     <section className="rounded-xl p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--card-text)' }}>
       <div className="mb-4 flex items-center justify-between">
@@ -60,10 +75,8 @@ export function MonthlySummarySection({
               <span className="text-sm text-red-500" title={error}>
                 載入失敗
               </span>
-            ) : showAmounts ? (
-              incomeTotal.toLocaleString()
             ) : (
-              "*".repeat(incomeTotal.toString().length || 1)
+              formatAmount(incomeTotal)
             )}
           </span>
         </div>
@@ -76,10 +89,8 @@ export function MonthlySummarySection({
               <span className="text-sm text-red-500" title={error}>
                 載入失敗
               </span>
-            ) : showAmounts ? (
-              expenseTotal.toLocaleString()
             ) : (
-              "*".repeat(expenseTotal.toString().length || 1)
+              formatAmount(expenseTotal)
             )}
           </span>
         </div>

@@ -62,18 +62,52 @@ function getDateKey(date: Date): string {
 }
 
 /**
+ * Convert transaction amount to wallet default currency
+ * 
+ * @param amount - Transaction amount in original currency
+ * @param currency - Transaction currency
+ * @param rateToDefaultCurrency - Exchange rate to wallet default currency
+ * @param walletDefaultCurrency - Wallet default currency
+ * @returns Amount converted to wallet default currency
+ */
+function convertToDefaultCurrency(
+  amount: number,
+  currency: string,
+  rateToDefaultCurrency: number | null,
+  walletDefaultCurrency: string
+): number {
+  // If same currency, no conversion needed
+  if (currency === walletDefaultCurrency) {
+    return amount;
+  }
+
+  // If no exchange rate, return 0 (cannot convert)
+  if (!rateToDefaultCurrency || rateToDefaultCurrency <= 0) {
+    console.warn(
+      `Missing exchange rate for ${currency} to ${walletDefaultCurrency}. Transaction excluded from daily summary.`
+    );
+    return 0;
+  }
+
+  // Convert: amount * rateToDefaultCurrency
+  return amount * rateToDefaultCurrency;
+}
+
+/**
  * Group transactions by date and calculate daily summaries
  * 
  * This function groups transactions by date (year-month-day) and calculates
- * daily totals for income, expense, and net amount. Transactions within
- * each day are sorted by time (most recent first).
+ * daily totals for income, expense, and net amount. All amounts are converted
+ * to wallet default currency before calculation. Transactions within each day
+ * are sorted by time (most recent first).
  * 
  * @param transactions - Array of transactions to group
+ * @param walletDefaultCurrency - Wallet default currency for conversion
  * @returns Array of daily transaction groups, sorted by date (most recent first)
  * 
  * @example
  * ```tsx
- * const groups = groupTransactionsByDate(transactions);
+ * const groups = groupTransactionsByDate(transactions, "TWD");
  * // Returns: [
  * //   {
  * //     date: Date,
@@ -89,7 +123,8 @@ function getDateKey(date: Date): string {
  * ```
  */
 export function groupTransactionsByDate(
-  transactions: Transaction[]
+  transactions: Transaction[],
+  walletDefaultCurrency: string
 ): DailyTransactionGroup[] {
   // Group transactions by date
   const dateMap = new Map<string, Transaction[]>();
@@ -116,15 +151,23 @@ export function groupTransactionsByDate(
       return dateB - dateA;
     });
     
-    // Calculate daily totals
+    // Calculate daily totals (converted to wallet default currency)
     let totalIncome = 0;
     let totalExpense = 0;
     
     for (const transaction of dayTransactions) {
+      // Convert amount to wallet default currency
+      const convertedAmount = convertToDefaultCurrency(
+        transaction.amount,
+        transaction.currency,
+        transaction.rateToDefaultCurrency,
+        walletDefaultCurrency
+      );
+      
       if (transaction.type === "INCOME") {
-        totalIncome += transaction.amount;
+        totalIncome += convertedAmount;
       } else {
-        totalExpense += transaction.amount;
+        totalExpense += convertedAmount;
       }
     }
     

@@ -48,6 +48,9 @@ export default function WalletDetailPage() {
     activeWallet,
   } = useWalletHome(walletId);
 
+  // Get currency from wallet or monthly summary
+  const currency = activeWallet?.defaultCurrency || "TWD";
+
   // Show loading state while initial data is being fetched
   if (isInitialLoading) {
     return <Loading />;
@@ -68,6 +71,7 @@ export default function WalletDetailPage() {
         month={month}
         incomeTotal={incomeTotal}
         expenseTotal={expenseTotal}
+        currency={currency}
         loading={summaryLoading}
         error={summaryError}
         showAmounts={showAmounts}

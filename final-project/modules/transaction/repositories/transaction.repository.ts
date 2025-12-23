@@ -182,20 +182,20 @@ export const transactionRepository = {
       },
       select: {
         currency: true,
-        rateToNTD: true,
+        rateToDefaultCurrency: true,
       },
     });
   },
 
   /**
-   * Find last exchange rate for a currency in a wallet
+   * Find last exchange rate for a currency in a wallet (to default currency)
    */
-  async findLastExchangeRate(walletId: string, currency: string) {
+  async findLastExchangeRateToDefaultCurrency(walletId: string, currency: string) {
     return prisma.transaction.findFirst({
       where: {
         walletId,
         currency,
-        rateToNTD: {
+        rateToDefaultCurrency: {
           not: null,
         },
         isDeleted: false,
@@ -204,7 +204,7 @@ export const transactionRepository = {
         date: "desc",
       },
       select: {
-        rateToNTD: true,
+        rateToDefaultCurrency: true,
       },
     });
   },
@@ -225,7 +225,7 @@ export const transactionRepository = {
           date: new Date(data.date),
           amount: data.amount,
           currency: data.currency || "TWD",
-          rateToNTD: data.rateToNTD ?? null,
+          rateToDefaultCurrency: data.rateToDefaultCurrency ?? null,
           name: data.name || null,
           note: data.note || null,
           type: (data.type || DEFAULT_TRANSACTION_TYPE) as TransactionType,
@@ -296,8 +296,8 @@ export const transactionRepository = {
       if (data.currency !== undefined) {
         updateData.currency = data.currency;
       }
-      if (data.rateToNTD !== undefined) {
-        updateData.rateToNTD = data.rateToNTD;
+      if (data.rateToDefaultCurrency !== undefined) {
+        updateData.rateToDefaultCurrency = data.rateToDefaultCurrency;
       }
       if (data.name !== undefined) {
         updateData.name = data.name || null;
@@ -425,7 +425,7 @@ export const transactionRepository = {
         date: true,
         amount: true,
         currency: true,
-        rateToNTD: true,
+        rateToDefaultCurrency: true,
         name: true,
         note: true,
         tag: {
@@ -448,7 +448,7 @@ export const transactionRepository = {
       date: tx.date,
       amount: tx.amount,
       currency: tx.currency,
-      rateToNTD: tx.rateToNTD,
+      rateToDefaultCurrency: tx.rateToDefaultCurrency,
       name: tx.name,
       note: tx.note,
       tag: {

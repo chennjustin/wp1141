@@ -10,6 +10,11 @@ interface SubscriptionFormFieldsProps {
   startDate: string;
   endDate: string;
   currency: string;
+  rateToDefaultCurrency?: string;
+  rateMode?: "last" | "manual";
+  showRateInput?: boolean;
+  walletDefaultCurrency?: string;
+  fetchingLastRate?: boolean;
   intervalType: IntervalType;
   selectedUnit: "day" | "week" | "month" | "year";
   customIntervalMonths: string;
@@ -21,6 +26,8 @@ interface SubscriptionFormFieldsProps {
   onStartDateChange: (value: string) => void;
   onEndDateChange: (value: string) => void;
   onCurrencyChange: (value: string) => void;
+  onRateToDefaultCurrencyChange?: (value: string) => void;
+  onRateModeChange?: (mode: "last" | "manual") => void;
   onIntervalTypeChange: (type: IntervalType) => void;
   onSelectedUnitChange: (unit: "day" | "week" | "month" | "year") => void;
   onCustomIntervalMonthsChange: (value: string) => void;
@@ -36,6 +43,11 @@ export function SubscriptionFormFields({
   startDate,
   endDate,
   currency,
+  rateToDefaultCurrency = "",
+  rateMode = "last",
+  showRateInput = false,
+  walletDefaultCurrency,
+  fetchingLastRate = false,
   intervalType,
   selectedUnit,
   customIntervalMonths,
@@ -47,6 +59,8 @@ export function SubscriptionFormFields({
   onStartDateChange,
   onEndDateChange,
   onCurrencyChange,
+  onRateToDefaultCurrencyChange,
+  onRateModeChange,
   onIntervalTypeChange,
   onSelectedUnitChange,
   onCustomIntervalMonthsChange,
@@ -118,6 +132,91 @@ export function SubscriptionFormFields({
         isOpen={showCurrencyDropdown}
         onToggle={onToggleCurrencyDropdown}
       />
+
+      {/* Exchange Rate - 匯率 (only show if currency differs from wallet default) */}
+      {showRateInput && walletDefaultCurrency && onRateToDefaultCurrencyChange && onRateModeChange && (
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <svg
+              className="h-4 w-4 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+              />
+            </svg>
+            <label className="text-xs text-gray-600">匯率</label>
+          </div>
+          <div className="space-y-2">
+            {/* Rate mode selection */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  onRateModeChange("last");
+                  onRateToDefaultCurrencyChange("");
+                }}
+                className={`flex-1 h-9 px-3 text-sm rounded border transition-colors ${
+                  rateMode === "last"
+                    ? "bg-black text-white border-black"
+                    : "bg-white text-black border-gray-200 hover:border-gray-400"
+                }`}
+              >
+                使用上次匯率
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onRateModeChange("manual");
+                  onRateToDefaultCurrencyChange("");
+                }}
+                className={`flex-1 h-9 px-3 text-sm rounded border transition-colors ${
+                  rateMode === "manual"
+                    ? "bg-black text-white border-black"
+                    : "bg-white text-black border-gray-200 hover:border-gray-400"
+                }`}
+              >
+                手動輸入
+              </button>
+            </div>
+            {/* Rate input */}
+            {rateMode === "last" ? (
+              <div className="h-10 px-3 bg-gray-50 border-b border-gray-200 flex items-center">
+                {fetchingLastRate ? (
+                  <span className="text-sm text-gray-500">載入中...</span>
+                ) : rateToDefaultCurrency ? (
+                  <span className="text-sm text-black">
+                    1 {currency} = {parseFloat(rateToDefaultCurrency).toLocaleString()} {walletDefaultCurrency}
+                  </span>
+                ) : (
+                  <span className="text-sm text-gray-500">沒有找到上次使用的匯率</span>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={rateToDefaultCurrency}
+                  onChange={(e) => onRateToDefaultCurrencyChange(e.target.value)}
+                  onFocus={onHideCalculator}
+                  placeholder={`1 ${currency} = ? ${walletDefaultCurrency}`}
+                  className="w-full h-10 px-3 bg-white border-b border-gray-200 text-sm text-black placeholder:text-gray-400 focus:outline-none focus:border-gray-400"
+                />
+                <p className="text-xs text-gray-500 px-3">
+                  1 {currency} = ? {walletDefaultCurrency}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Interval Type */}
       <IntervalSelector

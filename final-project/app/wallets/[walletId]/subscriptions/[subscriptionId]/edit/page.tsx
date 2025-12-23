@@ -10,6 +10,7 @@ import { SubscriptionFormFields } from "@/ui/components/subscription/Subscriptio
 import { useSubscriptionForm } from "@/hooks/subscription/useSubscriptionForm";
 import { useAmountCalculation } from "@/hooks/subscription/useAmountCalculation";
 import { useSubscriptionDropdowns } from "@/hooks/subscription/useSubscriptionDropdowns";
+import { useWallet } from "@/hooks/useWallet";
 
 /**
  * Edit Subscription page
@@ -54,6 +55,10 @@ export default function EditSubscriptionPage() {
 
   const [fetchingSubscription, setFetchingSubscription] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  const [fetchingLastRate, setFetchingLastRate] = useState(false);
+
+  // Get wallet information
+  const { wallet, loading: walletLoading } = useWallet(walletId);
 
   // Fetch subscription data
   useEffect(() => {
@@ -69,6 +74,13 @@ export default function EditSubscriptionPage() {
           actions.setEndDate(sub.endDate ? new Date(sub.endDate).toISOString().split("T")[0] : "");
           actions.setTagId(sub.tagId);
           actions.setCurrency(sub.currency);
+          if (sub.rateToDefaultCurrency) {
+            actions.setRateToDefaultCurrency(sub.rateToDefaultCurrency.toString());
+            actions.setRateMode("manual");
+          } else {
+            actions.setRateToDefaultCurrency("");
+            actions.setRateMode("last");
+          }
           actions.setName(sub.name || "");
 
           // Determine amount mode based on endDate
@@ -155,6 +167,44 @@ export default function EditSubscriptionPage() {
     }
     fetchSubscription();
   }, [subscriptionId]);
+
+  // Show/hide rate input based on currency and wallet default currency
+  const showRateInput = wallet && state.currency && state.currency !== wallet.defaultCurrency;
+
+  // Fetch last exchange rate when currency changes or rateMode is "last"
+  useEffect(() => {
+    async function fetchLastRate() {
+      if (!wallet || !state.currency || state.currency === wallet.defaultCurrency || state.rateMode !== "last") {
+        return;
+      }
+
+      setFetchingLastRate(true);
+      try {
+        const response = await fetch(`/api/transactions/last-rate?walletId=${walletId}&currency=${state.currency}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.rateToDefaultCurrency) {
+            actions.setRateToDefaultCurrency(data.rateToDefaultCurrency.toString());
+          } else {
+            actions.setRateToDefaultCurrency("");
+            // If no last rate found, switch to manual mode
+            actions.setRateMode("manual");
+          }
+        } else {
+          actions.setRateToDefaultCurrency("");
+          actions.setRateMode("manual");
+        }
+      } catch (err) {
+        console.error("Failed to fetch last rate", err);
+        actions.setRateToDefaultCurrency("");
+        actions.setRateMode("manual");
+      } finally {
+        setFetchingLastRate(false);
+      }
+    }
+
+    fetchLastRate();
+  }, [wallet, state.currency, state.rateMode, walletId]);
 
   // Auto-save calculator expression when clicking outside calculator
   useEffect(() => {
@@ -309,11 +359,21 @@ export default function EditSubscriptionPage() {
           ? Math.round((calculatedMonthlyAmount || 0) * 100) / 100
           : Math.round(parseFloat(state.monthlyAmount) * 100) / 100;
 
+      // Determine rateToDefaultCurrency
+      let finalRateToDefaultCurrency: number | null = null;
+      if (showRateInput && state.rateToDefaultCurrency) {
+        const parsedRate = parseFloat(state.rateToDefaultCurrency);
+        if (!isNaN(parsedRate) && parsedRate > 0) {
+          finalRateToDefaultCurrency = parsedRate;
+        }
+      }
+
       const result = await updateSubscriptionAction(subscriptionId, {
         tagId: state.tagId,
         type: state.transactionType,
         amount: finalAmount,
         currency: state.currency,
+        rateToDefaultCurrency: finalRateToDefaultCurrency,
         startDate: new Date(state.startDate),
         endDate: state.endDate ? new Date(state.endDate) : null,
         intervalMonths: intervalMonths,
@@ -411,6 +471,11 @@ export default function EditSubscriptionPage() {
             startDate={state.startDate}
             endDate={state.endDate}
             currency={state.currency}
+            rateToDefaultCurrency={state.rateToDefaultCurrency}
+            rateMode={state.rateMode}
+            showRateInput={showRateInput || false}
+            walletDefaultCurrency={wallet?.defaultCurrency}
+            fetchingLastRate={fetchingLastRate}
             intervalType={state.intervalType}
             selectedUnit={state.selectedUnit}
             customIntervalMonths={state.customIntervalMonths}
@@ -422,6 +487,8 @@ export default function EditSubscriptionPage() {
             onStartDateChange={actions.setStartDate}
             onEndDateChange={actions.setEndDate}
             onCurrencyChange={actions.setCurrency}
+            onRateToDefaultCurrencyChange={actions.setRateToDefaultCurrency}
+            onRateModeChange={actions.setRateMode}
             onIntervalTypeChange={actions.setIntervalType}
             onSelectedUnitChange={actions.setSelectedUnit}
             onCustomIntervalMonthsChange={actions.setCustomIntervalMonths}

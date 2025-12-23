@@ -352,10 +352,10 @@ const swaggerDefinition = {
             description: "Currency code (e.g., TWD, USD)",
             example: "TWD",
           },
-          rateToNTD: {
+          rateToDefaultCurrency: {
             type: "number",
             nullable: true,
-            description: "Exchange rate to NTD",
+            description: "Exchange rate to wallet default currency",
             example: null,
           },
           name: {
@@ -562,7 +562,7 @@ const swaggerDefinition = {
             description: "Currency code (defaults to last transaction's currency or wallet's default)",
             example: "TWD",
           },
-          rateToNTD: {
+          rateToDefaultCurrency: {
             type: "number",
             nullable: true,
             description: "Exchange rate to NTD (defaults to last used rate for currency)",
@@ -661,7 +661,7 @@ const swaggerDefinition = {
             description: "Currency code",
             example: "USD",
           },
-          rateToNTD: {
+          rateToDefaultCurrency: {
             type: "number",
             nullable: true,
             description: "Exchange rate to NTD",

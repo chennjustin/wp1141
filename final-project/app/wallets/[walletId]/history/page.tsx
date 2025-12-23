@@ -48,11 +48,11 @@ export default function WalletHistoryPage() {
 
   // Group transactions by date
   const dailyGroups = useMemo(() => {
-    if (!transactions || transactions.length === 0) {
+    if (!transactions || transactions.length === 0 || !currentWallet) {
       return [];
     }
-    return groupTransactionsByDate(transactions);
-  }, [transactions]);
+    return groupTransactionsByDate(transactions, currentWallet.defaultCurrency);
+  }, [transactions, currentWallet]);
 
   // Check if current selected month is the current month
   const isCurrentMonth = useMemo(() => {
@@ -95,13 +95,13 @@ export default function WalletHistoryPage() {
     }
   };
 
-  // Format amount with sign and color
-  const formatAmount = (amount: number, type: "INCOME" | "EXPENSE") => {
+  // Format amount with sign, color, and currency
+  const formatAmount = (amount: number, currency: string, type: "INCOME" | "EXPENSE") => {
     const sign = type === "INCOME" ? "+" : "-";
     const colorStyle = type === "INCOME" 
       ? { color: 'var(--income-color)' }
       : { color: 'var(--expense-color)' };
-    return { sign, colorStyle, formatted: Math.abs(amount).toLocaleString() };
+    return { sign, colorStyle, formatted: Math.abs(amount).toLocaleString(), currency };
   };
 
   if (walletsLoading) {
@@ -195,6 +195,7 @@ export default function WalletHistoryPage() {
               group={group} 
               formatAmount={formatAmount}
               walletId={currentWallet.id}
+              walletDefaultCurrency={currentWallet.defaultCurrency}
             />
           ))
         )}
@@ -212,14 +213,17 @@ function DailyTransactionCard({
   group,
   formatAmount,
   walletId,
+  walletDefaultCurrency,
 }: {
   group: DailyTransactionGroup;
-  formatAmount: (amount: number, type: "INCOME" | "EXPENSE") => {
+  formatAmount: (amount: number, currency: string, type: "INCOME" | "EXPENSE") => {
     sign: string;
     colorStyle: React.CSSProperties;
     formatted: string;
+    currency: string;
   };
   walletId: string;
+  walletDefaultCurrency: string;
 }) {
   const router = useRouter();
   
@@ -242,7 +246,7 @@ function DailyTransactionCard({
       <div className="mb-3 flex items-center justify-between border-b border-black/20 pb-2">
         <span className="text-sm font-medium text-black">{group.dateLabel}</span>
         <span className="text-sm font-semibold" style={dailyAmountColor}>
-          ${dailyAmountSign}{dailyAmountFormatted}
+          {walletDefaultCurrency} {dailyAmountSign}{dailyAmountFormatted}
         </span>
       </div>
 
@@ -250,8 +254,9 @@ function DailyTransactionCard({
       <div className="flex flex-col gap-2">
         {group.transactions.map((transaction, index) => {
           const itemName = transaction.name || transaction.tag?.name || "未命名交易";
-          const { sign, colorStyle, formatted } = formatAmount(
+          const { sign, colorStyle, formatted, currency } = formatAmount(
             transaction.amount,
+            transaction.currency,
             transaction.type
           );
           
@@ -275,13 +280,25 @@ function DailyTransactionCard({
                   <span className="text-sm text-black">{itemName}</span>
                 </div>
 
-                {/* Right: Amount */}
-                <div className="text-right flex-shrink-0">
-                  <span className="text-sm font-semibold" style={colorStyle}>
-                    ${sign}{formatted}
-                  </span>
-                </div>
-              </button>
+                  {/* Right: Amount */}
+                  <div className="text-right flex-shrink-0">
+                    <span className="text-sm font-semibold" style={colorStyle}>
+                      {currency} {sign}{formatted}
+                    </span>
+                  </div>
+                </button>
+
+                {/* Delete Button */}
+                <button
+                  type="button"
+                  onClick={(e) => handleDeleteTransaction(e, transaction.id)}
+                  disabled={isDeleting}
+                  className="flex-shrink-0 px-2 py-1 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="刪除交易"
+                >
+                  {isDeleting ? "刪除中" : "刪除"}
+                </button>
+              </div>
 
               {/* Separator line (except for last item) */}
               {index < group.transactions.length - 1 && (

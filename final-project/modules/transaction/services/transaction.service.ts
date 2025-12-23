@@ -30,8 +30,8 @@ import {
 } from "../utils/transaction.validators";
 import {
   determineCurrency,
-  determineExchangeRate,
-  determineUpdateExchangeRate,
+  determineExchangeRateToDefaultCurrency,
+  determineUpdateExchangeRateToDefaultCurrency,
 } from "../utils/transaction.currency";
 import { handleTransactionError } from "../utils/transaction.error-handler";
 import { calculateMonthlySummary } from "../utils/transaction.summary";
@@ -139,10 +139,11 @@ export const transactionService = {
       userId,
       data.currency
     );
-    const rateToNTD = await determineExchangeRate(
+    const rateToDefaultCurrency = await determineExchangeRateToDefaultCurrency(
       data.walletId!,
       currency,
-      data.rateToNTD
+      wallet.defaultCurrency,
+      data.rateToDefaultCurrency
     );
 
     // Validate payers
@@ -168,7 +169,7 @@ export const transactionService = {
       const transaction = await transactionRepository.create(userId, {
         ...data,
         currency,
-        rateToNTD: rateToNTD ?? null,
+        rateToDefaultCurrency: rateToDefaultCurrency ?? null,
       });
 
       // Fetch complete transaction with relations
@@ -241,18 +242,31 @@ export const transactionService = {
       return { success: false, error: tagError };
     }
 
+    // Get wallet for default currency
+    const wallet = await walletRepository.findById(
+      existingTransaction.walletId,
+      userId
+    );
+    if (!wallet) {
+      return {
+        success: false,
+        error: new NotFoundError("Wallet not found"),
+      };
+    }
+
     // Determine exchange rate for update
-    const rateToNTD = await determineUpdateExchangeRate(
+    const rateToDefaultCurrency = await determineUpdateExchangeRateToDefaultCurrency(
       existingTransaction.walletId,
       existingTransaction,
+      wallet.defaultCurrency,
       data.currency,
-      data.rateToNTD
+      data.rateToDefaultCurrency
     );
 
     try {
       await transactionRepository.update(transactionId, {
         ...data,
-        rateToNTD,
+        rateToDefaultCurrency,
       });
 
       // Fetch updated transaction
@@ -342,24 +356,22 @@ export const transactionService = {
         filters
       );
 
-      // Determine target currency (default to NTD)
-      const targetCurrency = filters.targetCurrency || DEFAULT_CURRENCY;
-
-      // Get exchange rate for target currency if needed
-      let targetRateToNTD: number | null = null;
-      if (targetCurrency !== DEFAULT_CURRENCY) {
-        const lastRate = await transactionRepository.findLastExchangeRate(
-          filters.walletId,
-          targetCurrency
-        );
-        targetRateToNTD = lastRate?.rateToNTD ?? null;
+      // Get wallet to determine default currency
+      const wallet = await walletRepository.findById(filters.walletId, userId);
+      if (!wallet) {
+        return {
+          success: false,
+          error: new NotFoundError("Wallet not found"),
+        };
       }
 
-      // Calculate summary
+      // Use wallet default currency for summary
+      const walletDefaultCurrency = wallet.defaultCurrency;
+
+      // Calculate summary (all amounts converted to wallet default currency)
       const summary = calculateMonthlySummary(
         transactions,
-        targetCurrency,
-        targetRateToNTD
+        walletDefaultCurrency
       );
 
       const result: MonthlySummary = {
@@ -369,7 +381,7 @@ export const transactionService = {
         totalIncome: summary.totalIncome,
         totalExpense: summary.totalExpense,
         netAmount: summary.totalIncome - summary.totalExpense,
-        currency: targetCurrency,
+        currency: walletDefaultCurrency,
         incomeCount: summary.incomeCount,
         expenseCount: summary.expenseCount,
         incomes: summary.incomes,

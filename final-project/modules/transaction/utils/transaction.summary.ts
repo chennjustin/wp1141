@@ -9,48 +9,53 @@ import type { Transaction, TransactionSummaryItem } from "../domain/transaction.
 
 /**
  * Convert amount to target currency
- * If target currency is NTD, use rateToNTD
- * If target currency is the same as transaction currency, return original amount
- * Otherwise, convert via NTD (transaction -> NTD -> target)
+ * Converts: transaction currency -> wallet default currency -> target currency (if needed)
+ * Uses rateToDefaultCurrency to convert from transaction currency to wallet default currency
  */
 function convertToCurrency(
   amount: number,
   fromCurrency: string,
-  fromRateToNTD: number | null,
-  targetCurrency: string,
-  targetRateToNTD: number | null
+  fromRateToDefaultCurrency: number | null,
+  walletDefaultCurrency: string,
+  targetCurrency: string
 ): number {
   // If same currency, no conversion needed
   if (fromCurrency === targetCurrency) {
     return amount;
   }
 
-  // Convert to NTD first
-  let amountInNTD: number;
-  if (fromCurrency === DEFAULT_CURRENCY) {
-    amountInNTD = amount;
-  } else if (fromRateToNTD) {
-    amountInNTD = amount * fromRateToNTD;
+  // Convert to wallet default currency first
+  let amountInDefaultCurrency: number;
+  if (fromCurrency === walletDefaultCurrency) {
+    // Transaction is already in default currency
+    amountInDefaultCurrency = amount;
+  } else if (fromRateToDefaultCurrency && fromRateToDefaultCurrency > 0) {
+    // rateToDefaultCurrency: 1 unit of fromCurrency = ? units of defaultCurrency
+    amountInDefaultCurrency = amount * fromRateToDefaultCurrency;
   } else {
     // No exchange rate available, cannot convert
-    // Return 0 or throw error? For now, return 0
+    // This should not happen in normal operation, but if it does, we should log a warning
+    // For now, return 0 to exclude from calculations (this indicates missing rate data)
+    console.warn(
+      `Missing exchange rate for ${fromCurrency} to ${walletDefaultCurrency}. Transaction excluded from summary.`
+    );
     return 0;
   }
 
-  // Convert from NTD to target currency
-  if (targetCurrency === DEFAULT_CURRENCY) {
-    return amountInNTD;
-  } else if (targetRateToNTD) {
-    return amountInNTD / targetRateToNTD;
-  } else {
-    // No exchange rate available for target currency
-    // Return NTD amount if target is not NTD but no rate
-    return amountInNTD;
+  // If target currency is the same as default currency, return as is
+  if (targetCurrency === walletDefaultCurrency) {
+    return amountInDefaultCurrency;
   }
+
+  // If target currency is different from default currency, we would need a rate
+  // For now, since we're always converting to default currency, this shouldn't happen
+  // But if it does, return the default currency amount
+  return amountInDefaultCurrency;
 }
 
 /**
  * Calculate monthly summary from transactions
+ * All amounts are converted to wallet default currency using rateToDefaultCurrency
  */
 export function calculateMonthlySummary(
   transactions: Array<{
@@ -59,7 +64,7 @@ export function calculateMonthlySummary(
     date: Date;
     amount: number;
     currency: string;
-    rateToNTD: number | null;
+    rateToDefaultCurrency: number | null;
     name: string | null;
     note: string | null;
     tag: {
@@ -68,8 +73,7 @@ export function calculateMonthlySummary(
       iconKey: string;
     };
   }>,
-  targetCurrency: string = DEFAULT_CURRENCY,
-  targetRateToNTD: number | null = null
+  walletDefaultCurrency: string
 ): {
   totalIncome: number;
   totalExpense: number;
@@ -87,16 +91,16 @@ export function calculateMonthlySummary(
     const convertedAmount = convertToCurrency(
       transaction.amount,
       transaction.currency,
-      transaction.rateToNTD,
-      targetCurrency,
-      targetRateToNTD
+      transaction.rateToDefaultCurrency,
+      walletDefaultCurrency,
+      walletDefaultCurrency // Target is always default currency
     );
 
     const summaryItem: TransactionSummaryItem = {
       id: transaction.id,
       date: transaction.date,
       amount: convertedAmount,
-      currency: targetCurrency,
+      currency: walletDefaultCurrency,
       name: transaction.name,
       note: transaction.note,
       tag: transaction.tag,
