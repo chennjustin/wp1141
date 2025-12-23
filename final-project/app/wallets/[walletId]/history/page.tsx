@@ -95,13 +95,13 @@ export default function WalletHistoryPage() {
     }
   };
 
-  // Format amount with sign and color
-  const formatAmount = (amount: number, type: "INCOME" | "EXPENSE") => {
+  // Format amount with sign, color, and currency
+  const formatAmount = (amount: number, currency: string, type: "INCOME" | "EXPENSE") => {
     const sign = type === "INCOME" ? "+" : "-";
     const colorStyle = type === "INCOME" 
       ? { color: 'var(--income-color)' }
       : { color: 'var(--expense-color)' };
-    return { sign, colorStyle, formatted: Math.abs(amount).toLocaleString() };
+    return { sign, colorStyle, formatted: Math.abs(amount).toLocaleString(), currency };
   };
 
   if (walletsLoading) {
@@ -214,10 +214,11 @@ function DailyTransactionCard({
   walletId,
 }: {
   group: DailyTransactionGroup;
-  formatAmount: (amount: number, type: "INCOME" | "EXPENSE") => {
+  formatAmount: (amount: number, currency: string, type: "INCOME" | "EXPENSE") => {
     sign: string;
     colorStyle: React.CSSProperties;
     formatted: string;
+    currency: string;
   };
   walletId: string;
 }) {
@@ -283,8 +284,9 @@ function DailyTransactionCard({
       <div className="flex flex-col gap-2">
         {group.transactions.map((transaction, index) => {
           const itemName = transaction.name || transaction.tag?.name || "未命名交易";
-          const { sign, colorStyle, formatted } = formatAmount(
+          const { sign, colorStyle, formatted, currency } = formatAmount(
             transaction.amount,
+            transaction.currency,
             transaction.type
           );
           
@@ -314,7 +316,7 @@ function DailyTransactionCard({
                   {/* Right: Amount */}
                   <div className="text-right flex-shrink-0">
                     <span className="text-sm font-semibold" style={colorStyle}>
-                      ${sign}{formatted}
+                      {currency} {sign}{formatted}
                     </span>
                   </div>
                 </button>

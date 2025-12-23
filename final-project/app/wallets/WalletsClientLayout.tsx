@@ -108,7 +108,6 @@ export function WalletsClientLayout({ children }: WalletsClientLayoutProps) {
     }
   };
 
-  console.log("isNewTransactionPage", isNewTransactionPage);
   return (
     <div className="h-screen overflow-hidden flex justify-center px-4 py-4" style={{ backgroundColor: "var(--wallet-bg)" }}>
       {/* Mobile-sized container with thick black border and rounded corners */}

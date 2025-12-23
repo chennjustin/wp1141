@@ -196,7 +196,7 @@ model Transaction {
   date      DateTime
   amount    Float
   currency  String
-  rateToNTD Float?
+  rateToDefaultCurrency Float?
   name      String?  @db.Text
   note      String?  @db.Text
 
@@ -251,6 +251,7 @@ model Subscription {
 
   amount         Float
   currency       String
+  rateToDefaultCurrency Float?
   nextBilling    DateTime
   intervalMonths Float    @default(1)
 

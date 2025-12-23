@@ -67,7 +67,7 @@ export interface Transaction {
   date: Date;
   amount: number;
   currency: string;
-  rateToNTD: number | null;
+  rateToDefaultCurrency: number | null;
   name: string | null;
   note: string | null;
   isDeleted: boolean;
@@ -108,7 +108,7 @@ export interface CreateTransactionData {
   date: Date | string;
   amount: number;
   currency?: string;
-  rateToNTD?: number | null;
+  rateToDefaultCurrency?: number | null;
   name?: string | null;
   note?: string | null;
   type?: TransactionType;
@@ -124,7 +124,7 @@ export interface UpdateTransactionData {
   date?: Date | string;
   amount?: number;
   currency?: string;
-  rateToNTD?: number | null;
+  rateToDefaultCurrency?: number | null;
   name?: string | null;
   note?: string | null;
   type?: TransactionType;

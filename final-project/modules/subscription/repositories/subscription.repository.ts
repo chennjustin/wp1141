@@ -134,6 +134,37 @@ export const subscriptionRepository = {
   },
 
   /**
+   * Find last exchange rate for a currency in a wallet (to default currency)
+   */
+  async findLastExchangeRateToDefaultCurrency(walletId: string, currency: string) {
+    // First try to find from subscriptions
+    const lastSubscription = await prisma.subscription.findFirst({
+      where: {
+        walletId,
+        currency,
+        rateToDefaultCurrency: {
+          not: null,
+        },
+        isDeleted: false,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      select: {
+        rateToDefaultCurrency: true,
+      },
+    });
+
+    if (lastSubscription?.rateToDefaultCurrency) {
+      return { rateToDefaultCurrency: lastSubscription.rateToDefaultCurrency };
+    }
+
+    // Fallback to transactions
+    const { transactionRepository } = await import("@/modules/transaction/repositories/transaction.repository");
+    return transactionRepository.findLastExchangeRateToDefaultCurrency(walletId, currency);
+  },
+
+  /**
    * Create subscription
    */
   async create(userId: string, data: CreateSubscriptionData) {
@@ -145,6 +176,7 @@ export const subscriptionRepository = {
         type: data.type,
         amount: data.amount,
         currency: data.currency,
+        rateToDefaultCurrency: data.rateToDefaultCurrency ?? null,
         startDate: new Date(data.startDate),
         endDate: data.endDate ? new Date(data.endDate) : null,
         intervalMonths: data.intervalMonths ?? 1,
@@ -174,6 +206,9 @@ export const subscriptionRepository = {
     }
     if (data.currency !== undefined) {
       updateData.currency = data.currency;
+    }
+    if (data.rateToDefaultCurrency !== undefined) {
+      updateData.rateToDefaultCurrency = data.rateToDefaultCurrency;
     }
     if (data.startDate !== undefined) {
       updateData.startDate = new Date(data.startDate);

@@ -42,6 +42,7 @@ function transformTransactionToDisplay(tx: Transaction): DisplayTransaction {
     id: tx.id,
     title,
     amount: displayAmount,
+    currency: tx.currency,
     time,
   };
 }
@@ -226,7 +227,7 @@ export function DailyTransactionsSection({
                       tx.amount >= 0 ? "" : ""
                     }`}
                   >
-                    {tx.amount >= 0 ? "+" : "-"}
+                    {tx.currency} {tx.amount >= 0 ? "+" : "-"}
                     {Math.abs(tx.amount).toLocaleString()}
                   </span>
                 </button>

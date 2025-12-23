@@ -33,6 +33,8 @@ import {
   calculateCorrectNextBilling,
 } from "../utils/subscription-utils";
 import { findTransactionsBySubscription } from "./transaction-finder.service";
+import { walletRepository } from "@/modules/wallet/repositories/wallet.repository";
+import { determineCurrency, determineExchangeRateToDefaultCurrency } from "@/modules/transaction/utils/transaction.currency";
 
 /**
  * Subscription lifecycle service interface
@@ -99,6 +101,29 @@ export const subscriptionLifecycleService = {
         };
       }
 
+      // Get wallet for default currency
+      const wallet = await walletRepository.findById(data.walletId, userId);
+      if (!wallet) {
+        return {
+          success: false,
+          error: new InvalidSubscriptionDataError("Wallet not found"),
+          data: undefined,
+        };
+      }
+
+      // Determine currency and exchange rate
+      const currency = await determineCurrency(
+        data.walletId,
+        userId,
+        data.currency
+      );
+      const rateToDefaultCurrency = await determineExchangeRateToDefaultCurrency(
+        data.walletId,
+        currency,
+        wallet.defaultCurrency,
+        data.rateToDefaultCurrency
+      );
+
       // Calculate nextBilling based on today's date
       // We'll update it after creating transactions if needed
       const startDate = new Date(data.startDate);
@@ -109,6 +134,8 @@ export const subscriptionLifecycleService = {
       // Create subscription
       const subscription = await subscriptionRepository.create(userId, {
         ...data,
+        currency,
+        rateToDefaultCurrency: rateToDefaultCurrency ?? null,
         nextBilling: initialNextBilling,
       });
 
@@ -118,6 +145,7 @@ export const subscriptionLifecycleService = {
         userId: subscription.userId,
         amount: subscription.amount,
         currency: subscription.currency,
+        rateToDefaultCurrency: subscription.rateToDefaultCurrency,
         nextBilling: new Date(subscription.nextBilling),
         intervalMonths: subscription.intervalMonths,
         startDate: new Date(subscription.startDate),
@@ -183,6 +211,7 @@ export const subscriptionLifecycleService = {
                 date: transactionDate,
                 amount: subscription.amount,
                 currency: subscription.currency,
+                rateToDefaultCurrency: subscription.rateToDefaultCurrency,
                 name: subscriptionName,
                 type: subscription.type,
                 tagId: subscription.tagId,
@@ -324,6 +353,41 @@ export const subscriptionLifecycleService = {
         };
       }
 
+      // Get wallet for default currency
+      const wallet = await walletRepository.findById(existing.walletId, userId);
+      if (!wallet) {
+        return {
+          success: false,
+          error: new InvalidSubscriptionDataError("Wallet not found"),
+          data: undefined,
+        };
+      }
+
+      // Determine currency and exchange rate if currency or rate changed
+      let finalCurrency = data.currency ?? existing.currency;
+      let finalRateToDefaultCurrency = data.rateToDefaultCurrency;
+      
+      if (data.currency !== undefined || data.rateToDefaultCurrency !== undefined) {
+        const currency = await determineCurrency(
+          existing.walletId,
+          userId,
+          data.currency ?? existing.currency
+        );
+        finalCurrency = currency;
+        
+        if (data.rateToDefaultCurrency === undefined) {
+          // If rate not provided, determine it
+          const { determineUpdateExchangeRateToDefaultCurrency } = await import("@/modules/transaction/utils/transaction.currency");
+          finalRateToDefaultCurrency = await determineUpdateExchangeRateToDefaultCurrency(
+            existing.walletId,
+            { currency: existing.currency, rateToDefaultCurrency: existing.rateToDefaultCurrency },
+            wallet.defaultCurrency,
+            currency,
+            undefined
+          );
+        }
+      }
+
       // Store old subscription data for sync comparison
       const oldSubscription: Subscription = {
         id: existing.id,
@@ -331,6 +395,7 @@ export const subscriptionLifecycleService = {
         userId: existing.userId,
         amount: existing.amount,
         currency: existing.currency,
+        rateToDefaultCurrency: existing.rateToDefaultCurrency,
         nextBilling: new Date(existing.nextBilling),
         intervalMonths: existing.intervalMonths,
         startDate: new Date(existing.startDate),
@@ -348,10 +413,15 @@ export const subscriptionLifecycleService = {
         updatedAt: new Date(existing.updatedAt),
       };
 
-      // Update subscription
+      // Update subscription with determined currency and rate
+      const updateData: UpdateSubscriptionData = {
+        ...data,
+        currency: finalCurrency,
+        rateToDefaultCurrency: finalRateToDefaultCurrency ?? null,
+      };
       const updated = await subscriptionRepository.update(
         subscriptionId,
-        data
+        updateData
       );
 
       // Build new subscription data for sync comparison
@@ -361,6 +431,7 @@ export const subscriptionLifecycleService = {
         userId: updated.userId,
         amount: updated.amount,
         currency: updated.currency,
+        rateToDefaultCurrency: updated.rateToDefaultCurrency,
         nextBilling: new Date(updated.nextBilling),
         intervalMonths: updated.intervalMonths,
         startDate: new Date(updated.startDate),

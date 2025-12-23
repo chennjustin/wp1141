@@ -48,24 +48,56 @@ const CATEGORY_COLORS = [
 ];
 
 /**
+ * Convert transaction amount to wallet default currency
+ * 
+ * @param amount - Transaction amount in original currency
+ * @param currency - Transaction currency
+ * @param rateToDefaultCurrency - Exchange rate to wallet default currency
+ * @param walletDefaultCurrency - Wallet default currency
+ * @returns Amount converted to wallet default currency
+ */
+function convertToDefaultCurrency(
+  amount: number,
+  currency: string,
+  rateToDefaultCurrency: number | null,
+  walletDefaultCurrency: string
+): number {
+  // If same currency, no conversion needed
+  if (currency === walletDefaultCurrency) {
+    return amount;
+  }
+
+  // If no exchange rate, return 0 (cannot convert)
+  if (!rateToDefaultCurrency) {
+    return 0;
+  }
+
+  // Convert: amount * rateToDefaultCurrency
+  return amount * rateToDefaultCurrency;
+}
+
+/**
  * Process transactions and group by tag
  * 
  * This function takes an array of transactions and groups them by tag,
  * calculating the total amount, percentage, and assigning colors for each category.
+ * All amounts are converted to wallet default currency before calculation.
  * 
  * @param transactions - Array of transactions to process
  * @param transactionType - Filter by transaction type (INCOME or EXPENSE)
+ * @param walletDefaultCurrency - Wallet default currency for conversion
  * @returns Array of category statistics sorted by total amount (descending)
  * 
  * @example
  * ```ts
- * const stats = processTransactionsByCategory(transactions, "EXPENSE");
+ * const stats = processTransactionsByCategory(transactions, "EXPENSE", "TWD");
  * // Returns: [{ tagId: "...", tagName: "Food", totalAmount: 1000, percentage: 50, ... }, ...]
  * ```
  */
 export function processTransactionsByCategory(
   transactions: Transaction[],
-  transactionType: "INCOME" | "EXPENSE"
+  transactionType: "INCOME" | "EXPENSE",
+  walletDefaultCurrency: string
 ): CategoryStatistics[] {
   // Filter transactions by type
   const filteredTransactions = transactions.filter(
@@ -89,7 +121,14 @@ export function processTransactionsByCategory(
     const tagId = transaction.tagId;
     const tagName = transaction.tag.name;
     const iconKey = transaction.tag.iconKey;
-    const amount = Math.abs(transaction.amount);
+    // Convert amount to wallet default currency
+    const convertedAmount = convertToDefaultCurrency(
+      transaction.amount,
+      transaction.currency,
+      transaction.rateToDefaultCurrency,
+      walletDefaultCurrency
+    );
+    const amount = Math.abs(convertedAmount);
 
     if (categoryMap.has(tagId)) {
       const existing = categoryMap.get(tagId)!;
@@ -135,17 +174,29 @@ export function processTransactionsByCategory(
 /**
  * Calculate total amount for a transaction type
  * 
+ * All amounts are converted to wallet default currency before calculation.
+ * 
  * @param transactions - Array of transactions
  * @param transactionType - Transaction type to calculate total for
- * @returns Total amount (always positive)
+ * @param walletDefaultCurrency - Wallet default currency for conversion
+ * @returns Total amount (always positive) in wallet default currency
  */
 export function calculateTotalAmount(
   transactions: Transaction[],
-  transactionType: "INCOME" | "EXPENSE"
+  transactionType: "INCOME" | "EXPENSE",
+  walletDefaultCurrency: string
 ): number {
   return transactions
     .filter((t) => t.type === transactionType)
-    .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+    .reduce((sum, t) => {
+      const convertedAmount = convertToDefaultCurrency(
+        t.amount,
+        t.currency,
+        t.rateToDefaultCurrency,
+        walletDefaultCurrency
+      );
+      return sum + Math.abs(convertedAmount);
+    }, 0);
 }
 
 /**

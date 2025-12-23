@@ -260,19 +260,19 @@ export default function WalletStatisticsPage() {
 
   // Process transactions by category
   const categoryStats = useMemo(() => {
-    if (!transactions || transactions.length === 0) {
+    if (!transactions || transactions.length === 0 || !currentWallet) {
       return [];
     }
-    return processTransactionsByCategory(transactions, transactionType);
-  }, [transactions, transactionType]);
+    return processTransactionsByCategory(transactions, transactionType, currentWallet.defaultCurrency);
+  }, [transactions, transactionType, currentWallet]);
 
   // Calculate total amount
   const totalAmount = useMemo(() => {
-    if (!transactions || transactions.length === 0) {
+    if (!transactions || transactions.length === 0 || !currentWallet) {
       return 0;
     }
-    return calculateTotalAmount(transactions, transactionType);
-  }, [transactions, transactionType]);
+    return calculateTotalAmount(transactions, transactionType, currentWallet.defaultCurrency);
+  }, [transactions, transactionType, currentWallet]);
 
   // Check if current selected month is the current month
   const isCurrentMonth = useMemo(() => {

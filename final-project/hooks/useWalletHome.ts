@@ -21,6 +21,7 @@ export interface DisplayTransaction {
   id: string;
   title: string;
   amount: number;
+  currency: string;
   time: string;
 }
 
@@ -107,6 +108,7 @@ export function useWalletHome(walletId: string) {
         id: tx.id,
         title,
         amount: displayAmount,
+        currency: tx.currency,
         time,
       };
     });

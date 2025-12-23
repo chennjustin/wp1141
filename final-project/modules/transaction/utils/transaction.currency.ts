@@ -39,11 +39,12 @@ export async function determineCurrency(
 }
 
 /**
- * Determine exchange rate for a transaction
+ * Determine exchange rate for a transaction (to wallet default currency)
  */
-export async function determineExchangeRate(
+export async function determineExchangeRateToDefaultCurrency(
   walletId: string,
   currency: string,
+  walletDefaultCurrency: string,
   providedRate?: number | null
 ): Promise<number | null> {
   // If rate is explicitly provided (including null), use it
@@ -51,22 +52,23 @@ export async function determineExchangeRate(
     return providedRate;
   }
 
-  // If currency is default, no exchange rate needed
-  if (currency === DEFAULT_CURRENCY) {
+  // If currency is same as wallet default currency, no exchange rate needed
+  if (currency === walletDefaultCurrency) {
     return null;
   }
 
   // Get last used rate for this currency
-  const lastRate = await transactionRepository.findLastExchangeRate(walletId, currency);
-  return lastRate?.rateToNTD ?? null;
+  const lastRate = await transactionRepository.findLastExchangeRateToDefaultCurrency(walletId, currency);
+  return lastRate?.rateToDefaultCurrency ?? null;
 }
 
 /**
- * Determine exchange rate for transaction update
+ * Determine exchange rate for transaction update (to wallet default currency)
  */
-export async function determineUpdateExchangeRate(
+export async function determineUpdateExchangeRateToDefaultCurrency(
   walletId: string,
-  existingTransaction: { currency: string; rateToNTD: number | null },
+  existingTransaction: { currency: string; rateToDefaultCurrency: number | null },
+  walletDefaultCurrency: string,
   newCurrency?: string,
   providedRate?: number | null
 ): Promise<number | null> {
@@ -77,14 +79,14 @@ export async function determineUpdateExchangeRate(
 
   // If currency changed, try to get last exchange rate for new currency
   if (newCurrency !== undefined && newCurrency !== existingTransaction.currency) {
-    if (newCurrency !== DEFAULT_CURRENCY) {
-      const lastRate = await transactionRepository.findLastExchangeRate(walletId, newCurrency);
-      return lastRate?.rateToNTD ?? null;
+    if (newCurrency !== walletDefaultCurrency) {
+      const lastRate = await transactionRepository.findLastExchangeRateToDefaultCurrency(walletId, newCurrency);
+      return lastRate?.rateToDefaultCurrency ?? null;
     }
     return null;
   }
 
   // Keep existing rate
-  return existingTransaction.rateToNTD;
+  return existingTransaction.rateToDefaultCurrency;
 }
 
