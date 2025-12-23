@@ -72,11 +72,6 @@ export function WalletHeader({
           </button>
         )}
       </div>
-
-      {/* Right: user name or role text */}
-      <div className="flex flex-col items-end text-right text-xs leading-snug text-black">
-        <span className="font-semibold">{displayName}</span>
-      </div>
     </header>
   );
 }
