@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useWallets } from "@/hooks/useWallet";
 import { useCurrentWallet } from "@/hooks/useCurrentWallet";
 import { useWalletTransactions } from "@/hooks/useWalletTransactions";
@@ -131,7 +132,7 @@ export default function WalletHistoryPage() {
             className="flex items-center justify-center text-lg font-medium text-black hover:bg-black/5 rounded transition-colors"
             aria-label="Previous month"
           >
-            ◀
+            <ChevronLeft className="h-5 w-5" strokeWidth={2} />
           </button>
 
           {/* Month title */}
@@ -151,7 +152,7 @@ export default function WalletHistoryPage() {
             }`}
             aria-label="Next month"
           >
-            ▶
+            <ChevronRight className="h-5 w-5" strokeWidth={2} />
           </button>
         </div>
 

@@ -9,7 +9,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { History, Calendar } from "lucide-react";
+import { History, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { useDailyTransactions } from "@/hooks/useDailyTransactions";
 import type { DisplayTransaction } from "@/hooks/useWalletHome";
 import type { Transaction } from "@/modules/transaction/domain/transaction.types";
@@ -147,7 +147,7 @@ export function DailyTransactionsSection({
             className="flex items-center justify-center text-sm font-medium text-black hover:bg-black/5 rounded transition-colors"
             aria-label="Previous day"
           >
-            ◀
+            <ChevronLeft className="h-5 w-5" strokeWidth={2} />
           </button>
 
           {/* Date label */}
@@ -169,7 +169,7 @@ export function DailyTransactionsSection({
             }`}
             aria-label="Next day"
           >
-            ▶
+            <ChevronRight className="h-5 w-5" strokeWidth={2} />
           </button>
           
           {/* Back to today button - only show when not on today, absolute positioned */}

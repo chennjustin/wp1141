@@ -339,13 +339,6 @@ export default function WalletStatisticsPage() {
     }
   };
 
-  // Handle back to history page
-  const handleBackToHistory = () => {
-    if (walletId) {
-      router.push(`/wallets/${walletId}/history`);
-    }
-  };
-
   // Toggle chart type
   const handleChartTypeToggle = () => {
     setChartType((prev) => (prev === "donut" ? "bar" : "donut"));
@@ -380,32 +373,10 @@ export default function WalletStatisticsPage() {
 
   return (
     <div className="flex h-full flex-col gap-4">
-      {/* Header section with back button and chart toggle */}
+      {/* Header section with chart toggle */}
       <section className="flex items-center justify-between">
-        {/* Left: Back button */}
-        <button
-          type="button"
-          onClick={handleBackToHistory}
-          className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-black/5 transition-colors shadow-md"
-          aria-label="Back to history"
-        >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className="text-black"
-          >
-            <path
-              d="M15 18L9 12L15 6"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
+        {/* Left: Spacer */}
+        <div className="w-8" />
 
         {/* Center: Period navigation */}
         <div className="flex items-center gap-3">
@@ -442,7 +413,7 @@ export default function WalletStatisticsPage() {
         <button
           type="button"
           onClick={handleChartTypeToggle}
-          className="flex h-8 w-8 items-center justify-center rounded-full bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md hover:bg-white transition-all duration-200"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-white/80 backdrop-blur-sm shadow-md hover:shadow-lg hover:bg-white transition-all duration-200"
           aria-label="Toggle chart type"
         >
           {chartType === "donut" ? (
